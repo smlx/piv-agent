@@ -42,6 +42,12 @@ var touchStringMap = map[piv.TouchPolicy]string{
 	piv.TouchPolicyCached: "cached",
 }
 
+type sshPubKeySpec struct {
+	pubKey      ssh.PublicKey
+	slot        piv.Slot
+	touchPolicy piv.TouchPolicy
+}
+
 // Run the setup command to configure a security key.
 func (cmd *SetupCmd) Run() error {
 	log, err := zap.NewDevelopment()
@@ -60,27 +66,14 @@ func (cmd *SetupCmd) Run() error {
 }
 
 func printExistingKeys(k *piv.YubiKey) error {
-	for _, keySpec := range allKeySpec {
-		cert, err := k.Certificate(keySpec.slot)
-		if err != nil {
-			if errors.Is(err, piv.ErrNotFound) {
-				continue
-			}
-			return fmt.Errorf("couldn't get certificate for slot %v: %w",
-				keySpec.slot, err)
-		}
-		switch cert.PublicKey.(type) {
-		case *ecdsa.PublicKey:
-		default:
-			return fmt.Errorf("unexpected public key type: %T", cert.PublicKey)
-		}
-		pub, err := ssh.NewPublicKey(cert.PublicKey)
-		if err != nil {
-			return fmt.Errorf("couldn't convert public key: %w", err)
-		}
+	pubKeySpecs, err := getSSHPubKeys(k)
+	if err != nil {
+		fmt.Errorf("couldn't get SSH public keys: %w", err)
+	}
+	for _, pks := range pubKeySpecs {
 		fmt.Printf("🔑 Existing SSH key, touch policy: %s\n",
-			touchStringMap[keySpec.touchPolicy])
-		fmt.Printf(string(ssh.MarshalAuthorizedKey(pub)))
+			touchStringMap[pks.touchPolicy])
+		fmt.Printf(string(ssh.MarshalAuthorizedKey(pks.pubKey)))
 	}
 	return nil
 }
