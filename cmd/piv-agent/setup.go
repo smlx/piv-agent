@@ -157,7 +157,7 @@ func (cmd *SetupCmd) configureSlot(k *piv.YubiKey, mk [24]byte,
 	}
 	sshKey, err := ssh.NewPublicKey(pub)
 	if err != nil {
-		return fmt.Errorf("couldn't set certificate: %w", err)
+		return fmt.Errorf("couldn't get SSH public key: %w", err)
 	}
 	fmt.Printf("🔑 Generated SSH key, touch policy: %s\n",
 		touchStringMap[touchPolicy])

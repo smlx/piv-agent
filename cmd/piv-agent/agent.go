@@ -55,7 +55,7 @@ func (a *Agent) List() ([]*agent.Key, error) {
 		}
 	}
 	pubKeySpecs, err = getSSHPubKeys(a.securityKeys)
-	if err != nil {
+	if err != nil || len(a.securityKeys) == 0 {
 		return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
 	}
 	var pkss []*agent.Key
