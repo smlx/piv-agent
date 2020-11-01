@@ -112,10 +112,10 @@ func (cmd *SetupCmd) setup(k *piv.YubiKey) error {
 
 func (cmd *SetupCmd) configureSlot(k *piv.YubiKey, mk [24]byte,
 	slot piv.Slot, touchPolicy piv.TouchPolicy) error {
-	pub, err := k.GenerateKey(mk, piv.SlotAuthentication, piv.Key{
+	pub, err := k.GenerateKey(mk, slot, piv.Key{
 		Algorithm:   piv.AlgorithmEC256,
 		PINPolicy:   piv.PINPolicyOnce,
-		TouchPolicy: piv.TouchPolicyCached,
+		TouchPolicy: touchPolicy,
 	})
 	if err != nil {
 		return fmt.Errorf("couldn't generate key: %w", err)
@@ -152,7 +152,7 @@ func (cmd *SetupCmd) configureSlot(k *piv.YubiKey, mk [24]byte,
 	if err != nil {
 		return fmt.Errorf("couldn't parse certificate: %w", err)
 	}
-	if err = k.SetCertificate(mk, piv.SlotAuthentication, cert); err != nil {
+	if err = k.SetCertificate(mk, slot, cert); err != nil {
 		return fmt.Errorf("couldn't set certificate: %w", err)
 	}
 	sshKey, err := ssh.NewPublicKey(pub)
