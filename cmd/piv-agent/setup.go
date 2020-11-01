@@ -32,8 +32,8 @@ type slotSpec struct {
 
 var allKeySpec = []slotSpec{
 	{piv.SlotAuthentication, piv.TouchPolicyCached},
-	{piv.Slot{Key: 0x94, Object: 0x5fc105}, piv.TouchPolicyAlways},
-	{piv.Slot{Key: 0x95, Object: 0x5fc105}, piv.TouchPolicyNever},
+	{piv.SlotSignature, piv.TouchPolicyAlways},
+	{piv.SlotCardAuthentication, piv.TouchPolicyNever},
 }
 
 var touchStringMap = map[piv.TouchPolicy]string{
