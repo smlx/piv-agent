@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/go-piv/piv-go/piv"
+	"github.com/gopasspw/gopass/pkg/pinentry"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh"
 )
@@ -26,12 +27,12 @@ func getAllSecurityKeys(log *zap.Logger) ([]securityKey, error) {
 	for _, card := range cards {
 		sk, err = piv.Open(card)
 		if err != nil {
-			log.Info("couldn't open card", zap.String("card", card), zap.Error(err))
+			log.Debug("couldn't open card", zap.String("card", card), zap.Error(err))
 		} else {
 			// cache serial
 			serial, err := sk.Serial()
 			if err != nil {
-				log.Info("couldn't get serial for card",
+				log.Warn("couldn't get serial for card",
 					zap.String("card", card), zap.Error(err))
 				continue
 			}
@@ -94,4 +95,24 @@ func getSSHPubKeys(sks []securityKey) ([]sshPubKeySpec, error) {
 		}
 	}
 	return pubKeys, nil
+}
+
+func pinEntry(sk *securityKey) func() (string, error) {
+	return func() (string, error) {
+		p, err := pinentry.New()
+		if err != nil {
+			return "", fmt.Errorf("couldn't get pinentry client: %w", err)
+		}
+		defer p.Close()
+		p.Set("title", "piv-agent PIN Prompt")
+		r, err := sk.key.Retries()
+		if err != nil {
+			return "", fmt.Errorf("couldn't get retries for security key: %w", err)
+		}
+		p.Set("desc",
+			fmt.Sprintf("serial number: %d, attempts remaining: %d", sk.serial, r))
+		p.Set("prompt", "Please enter your PIN:")
+		pin, err := p.GetPin()
+		return string(pin), err
+	}
 }

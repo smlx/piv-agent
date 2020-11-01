@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 
 	"github.com/coreos/go-systemd/activation"
 	"go.uber.org/zap"
@@ -12,11 +11,19 @@ import (
 )
 
 // ServeCmd represents the listen command.
-type ServeCmd struct{}
+type ServeCmd struct {
+	Debug bool `kong:"help='Enable debug logging'"`
+}
 
 // Run the listen command to start listening for ssh-agent requests.
 func (cmd *ServeCmd) Run() error {
-	log, err := zap.NewProduction()
+	var log *zap.Logger
+	var err error
+	if cmd.Debug {
+		log, err = zap.NewDevelopment()
+	} else {
+		log, err = zap.NewProduction()
+	}
 	if err != nil {
 		return fmt.Errorf("couldn't init logger: %w", err)
 	}
@@ -32,21 +39,14 @@ func (cmd *ServeCmd) Run() error {
 		return fmt.Errorf("unexpected number of sockets, expected: 1, received: %v",
 			len(listeners))
 	}
-	// open the security key
-	keys, err := getAllSecurityKeys(log)
-	if err != nil {
-		return fmt.Errorf("couldn't get security key: %w", err)
-	}
-	return cmd.serve(&Agent{securityKeys: keys}, listeners[0])
-}
-
-func (cmd *ServeCmd) serve(a *Agent, s net.Listener) error {
+	// start serving connections
+	a := Agent{log: log}
 	for {
-		conn, err := s.Accept()
+		conn, err := listeners[0].Accept()
 		if err != nil {
-			return fmt.Errorf("accpet error: %w", err)
+			return fmt.Errorf("accept error: %w", err)
 		}
-		if err = agent.ServeAgent(a, conn); err != nil {
+		if err = agent.ServeAgent(&a, conn); err != nil {
 			if errors.Is(err, io.EOF) {
 				continue
 			}

@@ -11,7 +11,7 @@ import (
 
 	"github.com/gen2brain/beeep"
 	"github.com/go-piv/piv-go/piv"
-	"github.com/gopasspw/gopass/pkg/pinentry"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -21,19 +21,42 @@ import (
 type Agent struct {
 	securityKeys []securityKey
 	mutex        sync.Mutex
+	log          *zap.Logger
 }
 
 // ErrNotImplemented is returned from any unimplemented method.
 var ErrNotImplemented = errors.New("not implemented in piv-agent")
 
+// reopenSecurityKeys closes and attempts to re-open all avalable security keys
+func (a *Agent) reopenSecurityKeys() error {
+	for _, sk := range a.securityKeys {
+		_ = sk.key.Close()
+	}
+	sks, err := getAllSecurityKeys(a.log)
+	if err != nil {
+		return fmt.Errorf("couldn't get all security keys: %w", err)
+	}
+	a.securityKeys = sks
+	return nil
+}
+
 // List returns the identities known to the agent.
 func (a *Agent) List() ([]*agent.Key, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	// get the SSH keys from the security key
+	// try to get the list of SSH public keys, reopen the security keys on error
 	pubKeySpecs, err := getSSHPubKeys(a.securityKeys)
+	if err != nil || len(a.securityKeys) == 0 {
+		a.log.Debug("reopening security keys", zap.Error(err),
+			zap.Int("number of security keys", len(a.securityKeys)))
+		err = a.reopenSecurityKeys()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't reload security keys: %w", err)
+		}
+	}
+	pubKeySpecs, err = getSSHPubKeys(a.securityKeys)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get SSH public keys: %w", err)
+		return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
 	}
 	var pkss []*agent.Key
 	for _, pks := range pubKeySpecs {
@@ -129,7 +152,7 @@ func (a *Agent) signers() ([]ssh.Signer, error) {
 			privKey, err := sk.key.PrivateKey(
 				pubKeySpec.slot,
 				pubKeySpec.pubKey.(ssh.CryptoPublicKey).CryptoPublicKey(),
-				piv.KeyAuth{PINPrompt: a.pinEntry(&sk)},
+				piv.KeyAuth{PINPrompt: pinEntry(&sk)},
 			)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get private key for slot %x: %w",
@@ -143,24 +166,4 @@ func (a *Agent) signers() ([]ssh.Signer, error) {
 		}
 	}
 	return signers, nil
-}
-
-func (a *Agent) pinEntry(sk *securityKey) func() (string, error) {
-	return func() (string, error) {
-		p, err := pinentry.New()
-		if err != nil {
-			return "", fmt.Errorf("couldn't get pinentry client: %w", err)
-		}
-		defer p.Close()
-		p.Set("title", "piv-agent PIN Prompt")
-		r, err := sk.key.Retries()
-		if err != nil {
-			return "", fmt.Errorf("couldn't get retries for security key: %w", err)
-		}
-		p.Set("desc",
-			fmt.Sprintf("serial number: %d, attempts remaining: %d", sk.serial, r))
-		p.Set("prompt", "Please enter your PIN:")
-		pin, err := p.GetPin()
-		return string(pin), err
-	}
 }
