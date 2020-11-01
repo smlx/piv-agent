@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
 
 	"github.com/coreos/go-systemd/activation"
@@ -39,13 +41,15 @@ func (cmd *ServeCmd) Run() error {
 }
 
 func (cmd *ServeCmd) serve(a *Agent, s net.Listener) error {
-	// TODO: fix up this logic
 	for {
 		conn, err := s.Accept()
 		if err != nil {
 			return fmt.Errorf("accpet error: %w", err)
 		}
 		if err = agent.ServeAgent(a, conn); err != nil {
+			if errors.Is(err, io.EOF) {
+				continue
+			}
 			return fmt.Errorf("serveAgent error: %w", err)
 		}
 	}
