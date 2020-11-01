@@ -27,25 +27,25 @@ func (cmd *ServeCmd) Run() error {
 		log.Error("cannot retrieve listeners", zap.Error(err))
 	}
 	if len(listeners) != 1 {
-		log.Error("unexpected number of sockets", zap.Int("expected", 1),
-			zap.Int("received", len(listeners)))
+		return fmt.Errorf("unexpected number of sockets, expected: 1, received: %v",
+			len(listeners))
 	}
 	// open the security key
 	keys, err := getAllSecurityKeys(log)
 	if err != nil {
 		return fmt.Errorf("couldn't get security key: %w", err)
 	}
-	return cmd.listen(&Agent{securityKeys: keys}, listeners[0])
+	return cmd.serve(&Agent{securityKeys: keys}, listeners[0])
 }
 
-func (cmd *ServeCmd) listen(k *Agent, s net.Listener) error {
+func (cmd *ServeCmd) serve(a *Agent, s net.Listener) error {
 	// TODO: fix up this logic
 	for {
 		conn, err := s.Accept()
 		if err != nil {
 			return fmt.Errorf("accpet error: %w", err)
 		}
-		if err = agent.ServeAgent(k, conn); err != nil {
+		if err = agent.ServeAgent(a, conn); err != nil {
 			return fmt.Errorf("serveAgent error: %w", err)
 		}
 	}

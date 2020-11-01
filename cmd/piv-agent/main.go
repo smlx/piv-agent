@@ -11,7 +11,7 @@ var (
 
 // CLI represents the command-line interface.
 type CLI struct {
-	Serve ServeCmd `kong:"cmd,default=1,help='Listen for signing requests on the SSH_AUTH sock'"`
+	Serve ServeCmd `kong:"cmd,default=1,help='(default) Listen for signing requests'"`
 	Setup SetupCmd `kong:"cmd,help='Set up the security key for use with SSH'"`
 	List  ListCmd  `kong:"cmd,help='List SSH keys available on each security key'"`
 }
