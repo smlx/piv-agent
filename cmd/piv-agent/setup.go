@@ -22,7 +22,7 @@ type SetupCmd struct {
 	Card             string `kong:"help='Specify a smart card device'"`
 	ResetSecurityKey bool   `kong:"help='Overwrite any existing keys'"`
 	PIN              uint64 `kong:"required,help='Set the PIN/PUK of the device (6-8 chars)'"`
-	AllTouchPolicies bool   `kong:"help='Create two additional keys with touch policies always and never'"`
+	AllTouchPolicies bool   `kong:"default='true',help='Create two additional keys with touch policies always and never (default true)'"`
 }
 
 type slotSpec struct {
