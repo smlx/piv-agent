@@ -22,6 +22,8 @@ Currently requires systemd socket activation.
 
 ## Testing
 
+The dbus variable is required for `pinentry` to use a graphical prompt.
+
 ```
-go build ./cmd/piv-agent && systemd-socket-activate -l /tmp/piv-agent.sock ./piv-agent
+go build ./cmd/piv-agent && systemd-socket-activate -l /tmp/piv-agent.sock -E DBUS_SESSION_BUS_ADDRESS ./piv-agent serve --debug
 ```
