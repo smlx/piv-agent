@@ -9,14 +9,11 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
-// ListenCmd represents the listen command.
-type ListenCmd struct {
-	Card string `kong:"help='Specify a smart card device'"`
-	Sock string `kong:"help='Specify local unix socket to listen on'"`
-}
+// ServeCmd represents the listen command.
+type ServeCmd struct{}
 
 // Run the listen command to start listening for ssh-agent requests.
-func (cmd *ListenCmd) Run() error {
+func (cmd *ServeCmd) Run() error {
 	log, err := zap.NewProduction()
 	if err != nil {
 		return fmt.Errorf("couldn't init logger: %w", err)
@@ -34,14 +31,14 @@ func (cmd *ListenCmd) Run() error {
 			zap.Int("received", len(listeners)))
 	}
 	// open the security key
-	k, err := getSecurityKey(cmd.Card)
+	keys, err := getAllSecurityKeys(log)
 	if err != nil {
 		return fmt.Errorf("couldn't get security key: %w", err)
 	}
-	return cmd.listen(&Agent{securityKey: k}, listeners[0])
+	return cmd.listen(&Agent{securityKeys: keys}, listeners[0])
 }
 
-func (cmd *ListenCmd) listen(k *Agent, s net.Listener) error {
+func (cmd *ServeCmd) listen(k *Agent, s net.Listener) error {
 	// TODO: fix up this logic
 	for {
 		conn, err := s.Accept()

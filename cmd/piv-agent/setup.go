@@ -46,6 +46,8 @@ type sshPubKeySpec struct {
 	pubKey      ssh.PublicKey
 	slot        piv.Slot
 	touchPolicy piv.TouchPolicy
+	card        string
+	serial      uint32
 }
 
 // Run the setup command to configure a security key.
@@ -65,26 +67,10 @@ func (cmd *SetupCmd) Run() error {
 	return cmd.setup(k)
 }
 
-func printExistingKeys(k *piv.YubiKey) error {
-	pubKeySpecs, err := getSSHPubKeys(k)
-	if err != nil {
-		fmt.Errorf("couldn't get SSH public keys: %w", err)
-	}
-	for _, pks := range pubKeySpecs {
-		fmt.Printf("🔑 Existing SSH key, touch policy: %s\n",
-			touchStringMap[pks.touchPolicy])
-		fmt.Printf(string(ssh.MarshalAuthorizedKey(pks.pubKey)))
-	}
-	return nil
-}
-
 func (cmd *SetupCmd) setup(k *piv.YubiKey) error {
 	_, err := k.Certificate(piv.SlotAuthentication)
 	if err == nil {
 		if !cmd.ResetSecurityKey {
-			if err = printExistingKeys(k); err != nil {
-				return fmt.Errorf("couldn't print existing keys: %w", err)
-			}
 			return fmt.Errorf("security key already set up and --reset-security-key not specified")
 		}
 		if err = k.Reset(); err != nil {

@@ -19,9 +19,8 @@ import (
 // Agent implements the Agent interface
 // https://pkg.go.dev/golang.org/x/crypto/ssh/agent#Agent
 type Agent struct {
-	securityKey *piv.YubiKey
-	mutex       sync.Mutex
-	serial      int
+	securityKeys []securityKey
+	mutex        sync.Mutex
 }
 
 // ErrNotImplemented is returned from any unimplemented method.
@@ -32,16 +31,20 @@ func (a *Agent) List() ([]*agent.Key, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	// get the SSH keys from the security key
-	pubKeySpecs, err := getSSHPubKeys(a.securityKey)
+	pubKeySpecs, err := getSSHPubKeys(a.securityKeys)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get SSH public keys: %w", err)
 	}
 	var pkss []*agent.Key
 	for _, pks := range pubKeySpecs {
 		pkss = append(pkss, &agent.Key{
-			Format:  pks.pubKey.Type(),
-			Blob:    pks.pubKey.Marshal(),
-			Comment: fmt.Sprintf("YubiKey #%d PIV Slot %x", a.serial, pks.slot.Key),
+			Format: pks.pubKey.Type(),
+			Blob:   pks.pubKey.Marshal(),
+			Comment: fmt.Sprintf(
+				`Security Key "%s" #%d PIV Slot %x`,
+				pks.card,
+				pks.serial,
+				pks.slot.Key),
 		})
 	}
 	return pkss, nil
@@ -117,43 +120,47 @@ func (a *Agent) Signers() ([]ssh.Signer, error) {
 
 func (a *Agent) signers() ([]ssh.Signer, error) {
 	var signers []ssh.Signer
-	sshPubKeySpecs, err := getSSHPubKeys(a.securityKey)
+	sshPubKeySpecs, err := getSSHPubKeys(a.securityKeys)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get public keys: %w", err)
 	}
-	for _, pubKeySpec := range sshPubKeySpecs {
-		privKey, err := a.securityKey.PrivateKey(
-			pubKeySpec.slot,
-			pubKeySpec.pubKey.(ssh.CryptoPublicKey).CryptoPublicKey(),
-			piv.KeyAuth{PINPrompt: a.pinEntry},
-		)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't get private key for slot %x: %w",
-				pubKeySpec.slot.Key, err)
+	for _, sk := range a.securityKeys {
+		for _, pubKeySpec := range sshPubKeySpecs {
+			privKey, err := sk.key.PrivateKey(
+				pubKeySpec.slot,
+				pubKeySpec.pubKey.(ssh.CryptoPublicKey).CryptoPublicKey(),
+				piv.KeyAuth{PINPrompt: a.pinEntry(&sk)},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get private key for slot %x: %w",
+					pubKeySpec.slot.Key, err)
+			}
+			s, err := ssh.NewSignerFromKey(privKey)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get signer for key: %w", err)
+			}
+			signers = append(signers, s)
 		}
-		s, err := ssh.NewSignerFromKey(privKey)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't get signer for key: %w", err)
-		}
-		signers = append(signers, s)
 	}
 	return signers, nil
 }
 
-func (a *Agent) pinEntry() (string, error) {
-	p, err := pinentry.New()
-	if err != nil {
-		return "", fmt.Errorf("couldn't get pinentry client: %w", err)
+func (a *Agent) pinEntry(sk *securityKey) func() (string, error) {
+	return func() (string, error) {
+		p, err := pinentry.New()
+		if err != nil {
+			return "", fmt.Errorf("couldn't get pinentry client: %w", err)
+		}
+		defer p.Close()
+		p.Set("title", "piv-agent PIN Prompt")
+		r, err := sk.key.Retries()
+		if err != nil {
+			return "", fmt.Errorf("couldn't get retries for security key: %w", err)
+		}
+		p.Set("desc",
+			fmt.Sprintf("serial number: %d, attempts remaining: %d", sk.serial, r))
+		p.Set("prompt", "Please enter your PIN:")
+		pin, err := p.GetPin()
+		return string(pin), err
 	}
-	defer p.Close()
-	p.Set("title", "piv-agent PIN Prompt")
-	r, err := a.securityKey.Retries()
-	if err != nil {
-		return "", fmt.Errorf("couldn't get retries for security key: %w", err)
-	}
-	p.Set("desc",
-		fmt.Sprintf("serial number: %d, attempts remaining: %d", a.serial, r))
-	p.Set("prompt", "Please enter your PIN:")
-	pin, err := p.GetPin()
-	return string(pin), err
 }
