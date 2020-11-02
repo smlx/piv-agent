@@ -112,6 +112,9 @@ func pinEntry(sk *securityKey) func() (string, error) {
 		p.Set("desc",
 			fmt.Sprintf("serial number: %d, attempts remaining: %d", sk.serial, r))
 		p.Set("prompt", "Please enter your PIN:")
+		// optional PIN cache with yubikey-agent compatibility
+		p.Option("allow-external-password-cache")
+		p.Set("KEYINFO", fmt.Sprintf("--yubikey-id-%d", sk.serial))
 		pin, err := p.GetPin()
 		return string(pin), err
 	}
