@@ -97,13 +97,13 @@ func (a *Agent) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
 }
 
 func touchNotify(ctx context.Context) {
-	timer := time.NewTimer(4 * time.Second)
+	timer := time.NewTimer(8 * time.Second)
 	go func() {
 		select {
 		case <-ctx.Done():
 			timer.Stop()
 		case <-timer.C:
-			beeep.Notify("Security Key Agent", "Waiting for touch...", "")
+			beeep.Alert("Security Key Agent", "Waiting for touch...", "")
 		}
 	}()
 }
