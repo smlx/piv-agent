@@ -6,6 +6,9 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -22,10 +25,13 @@ type Agent struct {
 	securityKeys []securityKey
 	mutex        sync.Mutex
 	log          *zap.Logger
+	loadKeyfile  bool
 }
 
 // ErrNotImplemented is returned from any unimplemented method.
 var ErrNotImplemented = errors.New("not implemented in piv-agent")
+
+var passphrases = map[string][]byte{}
 
 // reopenSecurityKeys closes and attempts to re-open all avalable security keys
 func (a *Agent) reopenSecurityKeys() error {
@@ -54,8 +60,11 @@ func (a *Agent) List() ([]*agent.Key, error) {
 			return nil, fmt.Errorf("couldn't reload security keys: %w", err)
 		}
 	}
+	if len(a.securityKeys) == 0 {
+		return nil, fmt.Errorf("no compatible security keys found")
+	}
 	pubKeySpecs, err = getSSHPubKeys(a.securityKeys)
-	if err != nil || len(a.securityKeys) == 0 {
+	if err != nil {
 		return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
 	}
 	var pkss []*agent.Key
@@ -70,6 +79,32 @@ func (a *Agent) List() ([]*agent.Key, error) {
 				pks.slot.Key),
 		})
 	}
+	// also load keyfile, if enabled
+	if !a.loadKeyfile {
+		return pkss, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	keyPath := filepath.Join(home, ".ssh/id_ed25519.pub")
+	pubBytes, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		a.log.Debug("couldn't load keyfile", zap.String("path", keyPath),
+			zap.Error(err))
+		return pkss, nil
+	}
+	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(pubBytes)
+	if err != nil {
+		a.log.Debug("couldn't parse keyfile", zap.String("path", keyPath),
+			zap.Error(err))
+		return pkss, nil
+	}
+	pkss = append(pkss, &agent.Key{
+		Format:  pubKey.Type(),
+		Blob:    pubKey.Marshal(),
+		Comment: keyPath,
+	})
 	return pkss, nil
 }
 
@@ -91,6 +126,8 @@ func (a *Agent) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
 		defer cancel()
 		touchNotify(ctx)
 		// perform signature
+		a.log.Debug("signing",
+			zap.Binary("public key bytes", s.PublicKey().Marshal()))
 		return s.Sign(rand.Reader, data)
 	}
 	return nil, fmt.Errorf("requested signature of unknown key: %v", key)
@@ -165,5 +202,42 @@ func (a *Agent) signers() ([]ssh.Signer, error) {
 			signers = append(signers, s)
 		}
 	}
+	// also load keyfile, if enabled
+	if !a.loadKeyfile {
+		return signers, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	keyPath := filepath.Join(home, ".ssh/id_ed25519")
+	privBytes, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		a.log.Debug("couldn't load keyfile", zap.String("path", keyPath),
+			zap.Error(err))
+		return signers, nil
+	}
+	signer, err := ssh.ParsePrivateKey(privBytes)
+	if err != nil {
+		pmErr, ok := err.(*ssh.PassphraseMissingError)
+		if !ok {
+			return nil, err
+		}
+		passphrase := passphrases[string(pmErr.PublicKey.Marshal())]
+		if passphrase == nil {
+			passphrase, err = getPassphrase(pmErr.PublicKey.Marshal())
+			if err != nil {
+				return nil, err
+			}
+		}
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(privBytes, passphrase)
+		if err != nil {
+			return nil, err
+		}
+		a.log.Debug("loaded public key from disk",
+			zap.Binary("public key bytes", signer.PublicKey().Marshal()))
+		passphrases[string(signer.PublicKey().Marshal())] = passphrase
+	}
+	signers = append(signers, signer)
 	return signers, nil
 }

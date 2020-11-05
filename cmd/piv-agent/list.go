@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh"
@@ -26,11 +27,12 @@ func (cmd *ListCmd) Run() error {
 		return fmt.Errorf("couldn't get SSH public keys: %w", err)
 	}
 	for _, pks := range pubKeySpecs {
-		fmt.Printf("🔑 %v #%v, touch policy: %s\n",
-			pks.card,
-			pks.serial,
-			touchStringMap[pks.touchPolicy])
-		fmt.Printf(string(ssh.MarshalAuthorizedKey(pks.pubKey)))
+		fmt.Printf("%s %s\n",
+			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(pks.pubKey)), "\n"),
+			fmt.Sprintf("%v #%v, touch policy: %s",
+				pks.card,
+				pks.serial,
+				touchStringMap[pks.touchPolicy]))
 	}
 	return nil
 }

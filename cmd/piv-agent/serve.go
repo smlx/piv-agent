@@ -12,7 +12,8 @@ import (
 
 // ServeCmd represents the listen command.
 type ServeCmd struct {
-	Debug bool `kong:"help='Enable debug logging'"`
+	Debug       bool `kong:"help='Enable debug logging'"`
+	LoadKeyfile bool `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
 }
 
 // Run the listen command to start listening for ssh-agent requests.
@@ -40,7 +41,7 @@ func (cmd *ServeCmd) Run() error {
 			len(listeners))
 	}
 	// start serving connections
-	a := Agent{log: log}
+	a := Agent{log: log, loadKeyfile: cmd.LoadKeyfile}
 	for {
 		conn, err := listeners[0].Accept()
 		if err != nil {

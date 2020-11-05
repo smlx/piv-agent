@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -29,6 +30,7 @@ func getAllSecurityKeys(log *zap.Logger) ([]securityKey, error) {
 		if err != nil {
 			log.Debug("couldn't open card", zap.String("card", card), zap.Error(err))
 		} else {
+			log.Debug("opened card", zap.String("card", card))
 			// cache serial
 			serial, err := sk.Serial()
 			if err != nil {
@@ -118,4 +120,19 @@ func pinEntry(sk *securityKey) func() (string, error) {
 		pin, err := p.GetPin()
 		return string(pin), err
 	}
+}
+
+func getPassphrase(pubKey []byte) ([]byte, error) {
+	p, err := pinentry.New()
+	if err != nil {
+		return []byte{}, fmt.Errorf("couldn't get pinentry client: %w", err)
+	}
+	defer p.Close()
+	p.Set("title", "piv-agent Passphrase Prompt")
+	p.Set("prompt", "Please enter your passphrase:")
+	// optional PIN cache
+	p.Option("allow-external-password-cache")
+	p.Set("KEYINFO", fmt.Sprintf("--ed25519-key-%s",
+		base64.StdEncoding.EncodeToString(pubKey)))
+	return p.GetPin()
 }
