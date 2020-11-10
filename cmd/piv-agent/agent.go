@@ -60,24 +60,23 @@ func (a *Agent) List() ([]*agent.Key, error) {
 			return nil, fmt.Errorf("couldn't reload security keys: %w", err)
 		}
 	}
-	if len(a.securityKeys) == 0 {
-		return nil, fmt.Errorf("no compatible security keys found")
-	}
-	pubKeySpecs, err = getSSHPubKeys(a.securityKeys)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
-	}
 	var pkss []*agent.Key
-	for _, pks := range pubKeySpecs {
-		pkss = append(pkss, &agent.Key{
-			Format: pks.pubKey.Type(),
-			Blob:   pks.pubKey.Marshal(),
-			Comment: fmt.Sprintf(
-				`Security Key "%s" #%d PIV Slot %x`,
-				pks.card,
-				pks.serial,
-				pks.slot.Key),
-		})
+	if len(a.securityKeys) > 0 {
+		pubKeySpecs, err = getSSHPubKeys(a.securityKeys)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
+		}
+		for _, pks := range pubKeySpecs {
+			pkss = append(pkss, &agent.Key{
+				Format: pks.pubKey.Type(),
+				Blob:   pks.pubKey.Marshal(),
+				Comment: fmt.Sprintf(
+					`Security Key "%s" #%d PIV Slot %x`,
+					pks.card,
+					pks.serial,
+					pks.slot.Key),
+			})
+		}
 	}
 	// also load keyfile, if enabled
 	if !a.loadKeyfile {
