@@ -198,6 +198,8 @@ func (a *Agent) signers() ([]ssh.Signer, error) {
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get signer for key: %w", err)
 			}
+			a.log.Debug("loaded key from card",
+				zap.Binary("public key bytes", s.PublicKey().Marshal()))
 			signers = append(signers, s)
 		}
 	}
@@ -233,7 +235,7 @@ func (a *Agent) signers() ([]ssh.Signer, error) {
 		if err != nil {
 			return nil, err
 		}
-		a.log.Debug("loaded public key from disk",
+		a.log.Debug("loaded key from disk",
 			zap.Binary("public key bytes", signer.PublicKey().Marshal()))
 		passphrases[string(signer.PublicKey().Marshal())] = passphrase
 	}
