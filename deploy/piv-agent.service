@@ -1,0 +1,5 @@
+[Unit]
+Description=piv-agent service
+
+[Service]
+ExecStart=%h/dev/piv-agent/piv-agent serve --debug
