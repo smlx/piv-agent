@@ -15,6 +15,7 @@ I also added a couple of features that I wanted that yubikey-agent lacks, such a
 * support for multiple touch policies
 * a way to list existing SSH keys
 * systemd socket activation
+* support loading key files from disk
 
 ## Philosophy
 
@@ -33,17 +34,41 @@ Tested with:
 
 ## Platform support
 
-Currently requires Linux and systemd.
+Currently tested on Linux and systemd.
 
 ## Usage
 
+### Setup
+
 Currently requires systemd socket activation.
+Similar configuration may be possible on macOS(?)
+
+You will need to edit `piv-agent.service` to configure the correct path to the `piv-agent` binary on your system.
 
 ```
-// TODO
+cp deploy/piv-agent.{socket,service} ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable piv-agent.socket
+systemctl --user start piv-agent.socket
 ```
 
-## Testing
+### Prefer the SSH keys on the hardware token
+
+`piv-agent` supports loading SSH keys from disk.
+However to prefer the keys on the hardware token (to present these to the server first) it must be configured in SSH config.
+
+To do this, copy the public key to e.g. `~/.ssh/id_pivTouchCached.pub`, and add this line to your SSH config:
+
+```
+IdentityFile ~/.ssh/id_pivTouchCached
+```
+
+### Drop the transaction
+
+`piv-agent` takes a persistent transaction on the hardware token when it is run.
+To drop the transaction stop or restart the service.
+
+## Building / Testing
 
 The dbus variable is required for `pinentry` to use a graphical prompt.
 
