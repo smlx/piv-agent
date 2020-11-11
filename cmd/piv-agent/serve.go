@@ -34,7 +34,7 @@ func (cmd *ServeCmd) Run() error {
 	// use systemd socket activation
 	listeners, err := activation.Listeners()
 	if err != nil {
-		log.Error("cannot retrieve listeners", zap.Error(err))
+		return fmt.Errorf("cannot retrieve listeners: %w", err)
 	}
 	if len(listeners) != 1 {
 		return fmt.Errorf("unexpected number of sockets, expected: 1, received: %v",
