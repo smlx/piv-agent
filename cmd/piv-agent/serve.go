@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"time"
 
 	"github.com/coreos/go-systemd/activation"
 	"go.uber.org/zap"
@@ -12,9 +14,12 @@ import (
 
 // ServeCmd represents the listen command.
 type ServeCmd struct {
-	Debug       bool `kong:"help='Enable debug logging'"`
-	LoadKeyfile bool `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
+	Debug       bool          `kong:"help='Enable debug logging'"`
+	LoadKeyfile bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
+	ExitTimeout time.Duration `kong:"default=32m,help='Exit after this period to drop transaction and key file passphrase cache'"`
 }
+
+const exitTimeout = 32 * time.Minute
 
 // Run the listen command to start listening for ssh-agent requests.
 func (cmd *ServeCmd) Run() error {
@@ -40,18 +45,40 @@ func (cmd *ServeCmd) Run() error {
 		return fmt.Errorf("unexpected number of sockets, expected: 1, received: %v",
 			len(listeners))
 	}
+	// start the exit timer
+	exitTicker := time.NewTicker(cmd.ExitTimeout)
 	// start serving connections
+	newConns := make(chan net.Conn)
+	go func(l net.Listener, log *zap.Logger) {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				log.Error("accept error", zap.Error(err))
+				close(newConns)
+				return
+			}
+			newConns <- c
+		}
+	}(listeners[0], log)
+
 	a := Agent{log: log, loadKeyfile: cmd.LoadKeyfile}
 	for {
-		conn, err := listeners[0].Accept()
-		if err != nil {
-			return fmt.Errorf("accept error: %w", err)
-		}
-		if err = agent.ServeAgent(&a, conn); err != nil {
-			if errors.Is(err, io.EOF) {
-				continue
+		select {
+		case conn, ok := <-newConns:
+			if !ok {
+				return fmt.Errorf("listen socket closed")
 			}
-			return fmt.Errorf("serveAgent error: %w", err)
+			if err = agent.ServeAgent(&a, conn); err != nil {
+				if errors.Is(err, io.EOF) {
+					continue
+				}
+				return fmt.Errorf("serveAgent error: %w", err)
+			}
+			// reset the exit timeout
+			exitTicker.Reset(cmd.ExitTimeout)
+		case <-exitTicker.C:
+			log.Info("exit timeout")
+			return nil
 		}
 	}
 }
