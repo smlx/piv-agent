@@ -73,6 +73,8 @@ github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/gopasspw/gopass v1.10.1 h1:rg3iNYymLLIiBe5okW2KaT8BV1lptTU4mHtAQojLs4I=
 github.com/gopasspw/gopass v1.10.1/go.mod h1:E1u/gfTb4t/Bx6kXNmIAjvtkBHhP1PvZGACP2bkKOlc=
+github.com/gopasspw/gopass v1.10.2-0.20201105185611-36c5888f3a49 h1:TYQozLOq3HOQlFmjK0dCeY4i/qiFfRrHCYVqa3sXkNw=
+github.com/gopasspw/gopass v1.10.2-0.20201105185611-36c5888f3a49/go.mod h1:VHk8hArhmkRJqaySLCfstVyO2YPFaYNI9CYKFItYNWs=
 github.com/gopherjs/gopherjs v0.0.0-20180825215210-0210a2f0f73c/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gopherjs/gopherwasm v1.1.0/go.mod h1:SkZ8z7CWBz5VXbhJel8TxCmAcsQqzgWGR/8nMhyhZSI=
