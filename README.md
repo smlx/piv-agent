@@ -14,7 +14,7 @@ I also added a couple of features that I wanted that yubikey-agent lacks, such a
 * support for multiple slots in those keys
 * support for multiple touch policies
 * a way to list existing SSH keys
-* systemd socket activation
+* socket activation (systemd-compatible)
 * support loading key files from disk
 
 ## Philosophy
@@ -63,10 +63,20 @@ To do this, copy the public key to e.g. `~/.ssh/id_pivTouchCached.pub`, and add 
 IdentityFile ~/.ssh/id_pivTouchCached
 ```
 
-### Drop the transaction
+### PIN / Passphrase caching
 
-`piv-agent` takes a persistent transaction on the hardware token when it is run.
-To drop the transaction stop or restart the service.
+`piv-agent` is designed to minimise the need to store secret keys permanently in memory while also being highly usable:
+
+* it takes a persistent transaction on the hardware token, effectively caching the PIN.
+* it also caches passphrases for on-disk keys (i.e. `~/.ssh/id_ed25519`).
+
+After a period of inactivity (32 min by default) it exits, dropping both of these.
+Socket activation restarts it automatically.
+
+I recommend using the pinentry option to store the PIN, but not the passphrase.
+This somewhat addresses the threat model of someone accessing your laptop left unlocked in a cafe, but of course it doesn't address keyloggers etc.
+It also has the advantage of ensuring that you don't forget your passphrase.
+But you might forget your PIN, so maybe don't store that either if you're concerned about that possibility? 🤷
 
 ## Building / Testing
 
