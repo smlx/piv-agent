@@ -24,7 +24,9 @@ This agent should require no interaction and in general do the right thing when 
 It is highly opinionated:
 
 * Only supports elliptic curve crypto
-* Only supports 256-bit EC keys
+* Only supports 256-bit EC keys on hardware tokens
+* Only supports ed25519 ssh keys on disk
+* Assumes socket activation
 
 ## Security key support
 
