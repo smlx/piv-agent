@@ -53,7 +53,23 @@ func (a *Agent) reopenSecurityKeys() error {
 func (a *Agent) List() ([]*agent.Key, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	// try to get the list of SSH public keys, reopen the security keys on error
+	// get token identities first
+	tl, err := a.tokenList()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get token identities: %w", err)
+	}
+	if !a.loadKeyfile {
+		return tl, err
+	}
+	kl, err := a.keyfileList()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get keyfile identities: %w", err)
+	}
+	return append(tl, kl...), nil
+}
+
+// returns the identities from hardware tokens
+func (a *Agent) tokenList() ([]*agent.Key, error) {
 	pubKeySpecs, err := getSSHPubKeys(a.securityKeys)
 	if err != nil || len(a.securityKeys) == 0 {
 		a.log.Debug("reopening security keys", zap.Error(err),
@@ -81,10 +97,12 @@ func (a *Agent) List() ([]*agent.Key, error) {
 			})
 		}
 	}
-	// also load keyfile, if enabled
-	if !a.loadKeyfile {
-		return pkss, nil
-	}
+	return pkss, nil
+}
+
+// returns the identities from keyfiles on disk
+func (a *Agent) keyfileList() ([]*agent.Key, error) {
+	var pkss []*agent.Key
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -122,7 +140,7 @@ func (a *Agent) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
 	}
 	sig, err := a.signWithSigners(key, data, ts)
 	if err != nil {
-		if !errors.Is(err, ErrUnknownKey) {
+		if !errors.Is(err, ErrUnknownKey) || !a.loadKeyfile {
 			return nil, err
 		}
 	} else {
@@ -206,8 +224,7 @@ func (a *Agent) Signers() ([]ssh.Signer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get keyfile signers: %w", err)
 	}
-	signers := append(ts, ks...)
-	return signers, nil
+	return append(ts, ks...), nil
 }
 
 // get signers for all keys stored in hardware tokens
@@ -240,6 +257,7 @@ func (a *Agent) tokenSigners() ([]ssh.Signer, error) {
 	return signers, nil
 }
 
+// get signers for all keys stored in files on disk
 func (a *Agent) keyfileSigners() ([]ssh.Signer, error) {
 	var signers []ssh.Signer
 	home, err := os.UserHomeDir()
