@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/activation"
+	pivagent "github.com/smlx/piv-agent/internal/agent"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -61,14 +62,14 @@ func (cmd *ServeCmd) Run() error {
 		}
 	}(listeners[0], log)
 
-	a := Agent{log: log, loadKeyfile: cmd.LoadKeyfile}
+	a := pivagent.New(log, cmd.LoadKeyfile)
 	for {
 		select {
 		case conn, ok := <-newConns:
 			if !ok {
 				return fmt.Errorf("listen socket closed")
 			}
-			if err = agent.ServeAgent(&a, conn); err != nil {
+			if err = agent.ServeAgent(a, conn); err != nil {
 				if errors.Is(err, io.EOF) {
 					continue
 				}
