@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/ecdsa"
-	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -113,7 +112,7 @@ func pinEntry(sk *securityKey) func() (string, error) {
 		}
 		p.Set("desc",
 			fmt.Sprintf("serial number: %d, attempts remaining: %d", sk.serial, r))
-		p.Set("prompt", "Please enter your PIN:")
+		p.Set("prompt", "Please enter PIN:")
 		// optional PIN cache with yubikey-agent compatibility
 		p.Option("allow-external-password-cache")
 		p.Set("KEYINFO", fmt.Sprintf("--yubikey-id-%d", sk.serial))
@@ -122,17 +121,18 @@ func pinEntry(sk *securityKey) func() (string, error) {
 	}
 }
 
-func getPassphrase(pubKey []byte) ([]byte, error) {
+func getPassphrase(keyPath, fingerprint string) ([]byte, error) {
 	p, err := pinentry.New()
 	if err != nil {
 		return []byte{}, fmt.Errorf("couldn't get pinentry client: %w", err)
 	}
 	defer p.Close()
 	p.Set("title", "piv-agent Passphrase Prompt")
-	p.Set("prompt", "Please enter your passphrase:")
+	p.Set("prompt", "Please enter passphrase")
+	p.Set("desc", fmt.Sprintf("%s %s %s", keyPath,
+		fingerprint[:25], fingerprint[25:]))
 	// optional PIN cache
 	p.Option("allow-external-password-cache")
-	p.Set("KEYINFO", fmt.Sprintf("--ed25519-key-%s",
-		base64.StdEncoding.EncodeToString(pubKey)))
+	p.Set("KEYINFO", fingerprint)
 	return p.GetPin()
 }

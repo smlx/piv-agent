@@ -31,6 +31,9 @@ type Agent struct {
 // ErrNotImplemented is returned from any unimplemented method.
 var ErrNotImplemented = errors.New("not implemented in piv-agent")
 
+// ErrUnknownKey is returned when a signature is requested for an unknown key.
+var ErrUnknownKey = errors.New("requested signature of unknown key")
+
 var passphrases = map[string][]byte{}
 
 // reopenSecurityKeys closes and attempts to re-open all avalable security keys
@@ -112,10 +115,28 @@ func (a *Agent) List() ([]*agent.Key, error) {
 func (a *Agent) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	signers, err := a.signers()
+	// try token keys first
+	ts, err := a.tokenSigners()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get signers: %w", err)
+		return nil, fmt.Errorf("couldn't get token signers: %w", err)
 	}
+	sig, err := a.signWithSigners(key, data, ts)
+	if err != nil {
+		if !errors.Is(err, ErrUnknownKey) {
+			return nil, err
+		}
+	} else {
+		return sig, nil
+	}
+	// fall back to keyfile keys
+	ks, err := a.keyfileSigners()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get keyfile signers: %w", err)
+	}
+	return a.signWithSigners(key, data, ks)
+}
+
+func (a *Agent) signWithSigners(key ssh.PublicKey, data []byte, signers []ssh.Signer) (*ssh.Signature, error) {
 	for _, s := range signers {
 		if !bytes.Equal(s.PublicKey().Marshal(), key.Marshal()) {
 			continue
@@ -129,7 +150,7 @@ func (a *Agent) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
 			zap.Binary("public key bytes", s.PublicKey().Marshal()))
 		return s.Sign(rand.Reader, data)
 	}
-	return nil, fmt.Errorf("requested signature of unknown key: %v", key)
+	return nil, fmt.Errorf("%w: %v", ErrUnknownKey, key)
 }
 
 func touchNotify(ctx context.Context) {
@@ -174,10 +195,23 @@ func (a *Agent) Unlock(passphrase []byte) error {
 func (a *Agent) Signers() ([]ssh.Signer, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	return a.signers()
+	ts, err := a.tokenSigners()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get token signers: %w", err)
+	}
+	if !a.loadKeyfile {
+		return ts, nil
+	}
+	ks, err := a.keyfileSigners()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get keyfile signers: %w", err)
+	}
+	signers := append(ts, ks...)
+	return signers, nil
 }
 
-func (a *Agent) signers() ([]ssh.Signer, error) {
+// get signers for all keys stored in hardware tokens
+func (a *Agent) tokenSigners() ([]ssh.Signer, error) {
 	var signers []ssh.Signer
 	sshPubKeySpecs, err := getSSHPubKeys(a.securityKeys)
 	if err != nil {
@@ -203,10 +237,11 @@ func (a *Agent) signers() ([]ssh.Signer, error) {
 			signers = append(signers, s)
 		}
 	}
-	// also load keyfile, if enabled
-	if !a.loadKeyfile {
-		return signers, nil
-	}
+	return signers, nil
+}
+
+func (a *Agent) keyfileSigners() ([]ssh.Signer, error) {
+	var signers []ssh.Signer
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -226,7 +261,8 @@ func (a *Agent) signers() ([]ssh.Signer, error) {
 		}
 		passphrase := passphrases[string(pmErr.PublicKey.Marshal())]
 		if passphrase == nil {
-			passphrase, err = getPassphrase(pmErr.PublicKey.Marshal())
+			passphrase, err = getPassphrase(keyPath,
+				string(ssh.FingerprintSHA256(pmErr.PublicKey)))
 			if err != nil {
 				return nil, err
 			}

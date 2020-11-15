@@ -77,7 +77,7 @@ func (cmd *ServeCmd) Run() error {
 			// reset the exit timeout
 			exitTicker.Reset(cmd.ExitTimeout)
 		case <-exitTicker.C:
-			log.Info("exit timeout")
+			log.Debug("exit timeout")
 			return nil
 		}
 	}
