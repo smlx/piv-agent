@@ -69,14 +69,16 @@ func (cmd *ServeCmd) Run() error {
 			if !ok {
 				return fmt.Errorf("listen socket closed")
 			}
+			// reset the exit timer
+			exitTicker.Reset(cmd.ExitTimeout)
+			log.Debug("start serving connection")
 			if err = agent.ServeAgent(a, conn); err != nil {
 				if errors.Is(err, io.EOF) {
+					log.Debug("finish serving connection")
 					continue
 				}
 				return fmt.Errorf("serveAgent error: %w", err)
 			}
-			// reset the exit timeout
-			exitTicker.Reset(cmd.ExitTimeout)
 		case <-exitTicker.C:
 			log.Debug("exit timeout")
 			return nil
