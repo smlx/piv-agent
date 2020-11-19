@@ -1,5 +1,7 @@
 package gopass
 
+//go:generate protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative crypto/crypto.proto
+
 import (
 	"context"
 
@@ -13,6 +15,7 @@ type GPCrypto struct {
 
 // Keyring
 
+// ListIdentities returns a list of available keys.
 func (c *GPCrypto) ListIdentities(ctx context.Context) ([]string, error) {
 	return nil, nil
 }

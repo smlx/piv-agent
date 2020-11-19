@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+option go_package = "github.com/smlx/piv-agent/internal/gopass/crypto";
+
+service Crypto {
+  rpc ListIdentities(EmptyArgs) returns (Identities) {}
+  rpc GenerateIdentity(Identity) returns (EmptyReturn) {}
+  rpc Encrypt(EncryptArgs) returns (Ciphertext) {}
+  rpc Decrypt(DecryptArgs) returns (Cleartext) {}
+  rpc Name(EmptyArgs) returns (ServerName) {}
+  rpc Version(EmptyArgs) returns (ServerVersion) {}
+  rpc Initialized(EmptyArgs) returns (EmptyReturn) {}
+  rpc Ext(EmptyArgs) returns (Extension) {}
+  rpc IDFile(EmptyArgs) returns (IDFileName) {}
+}
+
+message EmptyArgs {}
+message EmptyReturn {}
+
+message Identities {
+  repeated string identities = 1;
+}
+
+message Identity {
+  string name       = 1;
+  string email      = 2;
+  string passphrase = 3;
+}
+
+message EncryptArgs {
+  bytes plaintext            = 1;
+  repeated string recipients = 2;
+}
+
+message DecryptArgs {
+  bytes ciphertext = 1;
+}
+
+message Ciphertext {
+  bytes ciphertext = 1;
+}
+
+message Cleartext {
+  bytes cleartext = 1;
+}
+
+message ServerName {
+  string name = 1;
+}
+
+message ServerVersion {
+  string version = 1;
+}
+
+message Extension {
+  string ext = 1;
+}
+
+message IDFileName {
+  string name = 1;
+}

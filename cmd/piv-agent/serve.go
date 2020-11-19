@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-systemd/activation"
@@ -38,43 +39,60 @@ func (cmd *ServeCmd) Run() error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("buildTime", buildTime))
 	// use systemd socket activation
-	listeners, err := activation.Listeners()
+	listeners, err := activation.ListenersWithNames()
 	if err != nil {
 		return fmt.Errorf("cannot retrieve listeners: %w", err)
 	}
-	if len(listeners) != 1 {
-		return fmt.Errorf("unexpected number of sockets, expected: 1, received: %v",
+	if len(listeners) > 2 {
+		return fmt.Errorf(
+			"unexpected number of listeners, expected: <=2, received: %v",
 			len(listeners))
 	}
 	// start the exit timer
 	exitTicker := time.NewTicker(cmd.ExitTimeout)
 	// start serving connections
-	newConns := make(chan net.Conn)
-	go func(l net.Listener, log *zap.Logger) {
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				log.Error("accept error", zap.Error(err))
-				close(newConns)
-				return
-			}
-			newConns <- c
+	sshConns := make(chan net.Conn)
+	gopassConns := make(chan net.Conn)
+	// unwrap the singular map key/value to the the array of sockets
+	for name, sock := range listeners {
+		if len(sock) != 1 {
+			return fmt.Errorf(
+				"unexpected number of sockets from %v. expected: 1, received: %v",
+				name, len(listeners))
 		}
-	}(listeners[0], log)
+		log.Debug("connection on socket", zap.String("name", name))
+		if strings.Contains(name, "gopass") {
+			go accept(sock[0], gopassConns, log)
+		} else {
+			go accept(sock[0], sshConns, log)
+		}
+	}
 
 	a := pivagent.New(log, cmd.LoadKeyfile)
 	for {
 		select {
-		case conn, ok := <-newConns:
+		case conn, ok := <-sshConns:
 			if !ok {
-				return fmt.Errorf("listen socket closed")
+				return fmt.Errorf("ssh listen socket closed")
 			}
-			// reset the exit timer
 			exitTicker.Reset(cmd.ExitTimeout)
-			log.Debug("start serving connection")
+			log.Debug("start serving ssh connection")
 			if err = agent.ServeAgent(a, conn); err != nil {
 				if errors.Is(err, io.EOF) {
-					log.Debug("finish serving connection")
+					log.Debug("finish serving ssh connection")
+					continue
+				}
+				return fmt.Errorf("serveAgent error: %w", err)
+			}
+		case conn, ok := <-gopassConns:
+			if !ok {
+				return fmt.Errorf("gopass listen socket closed")
+			}
+			exitTicker.Reset(cmd.ExitTimeout)
+			log.Debug("start serving gopass connection")
+			if err = agent.ServeAgent(a, conn); err != nil {
+				if errors.Is(err, io.EOF) {
+					log.Debug("finish serving gopass connection")
 					continue
 				}
 				return fmt.Errorf("serveAgent error: %w", err)
@@ -83,5 +101,17 @@ func (cmd *ServeCmd) Run() error {
 			log.Debug("exit timeout")
 			return nil
 		}
+	}
+}
+
+func accept(l net.Listener, conn chan<- net.Conn, log *zap.Logger) {
+	for {
+		c, err := l.Accept()
+		if err != nil {
+			log.Error("accept error", zap.Error(err))
+			close(conn)
+			return
+		}
+		conn <- c
 	}
 }
