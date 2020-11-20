@@ -5,8 +5,8 @@ package gopass
 import (
 	"context"
 
-	"github.com/blang/semver"
 	"github.com/smlx/piv-agent/internal/gopass/pb"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // GPCrypto implements the gopass backend crypto interface defined in
@@ -18,35 +18,35 @@ type GPCrypto struct {
 // Keyring
 
 // ListIdentities returns a list of available keys.
-func (c *GPCrypto) ListIdentities(ctx context.Context) ([]string, error) {
+func (c *GPCrypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Identities, error) {
 	return nil, nil
 }
 
-func (c *GPCrypto) GenerateIdentity(ctx context.Context, name, email, passphrase string) error {
-	return nil
+func (c *GPCrypto) GenerateIdentity(ctx context.Context, a *pb.Identity) (*emptypb.Empty, error) {
+	return nil, nil
 }
 
 // Crypto
 
-func (c *GPCrypto) Encrypt(ctx context.Context, plaintext []byte, recipients []string) ([]byte, error) {
+func (c *GPCrypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext, error) {
 	return nil, nil
 }
-func (c *GPCrypto) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
+func (c *GPCrypto) Decrypt(ctx context.Context, a *pb.DecryptArgs) (*pb.Cleartext, error) {
 	return nil, nil
 }
 
-func (c *GPCrypto) Name() string {
-	return ""
+func (c *GPCrypto) Name(ctx context.Context, _ *emptypb.Empty) (*pb.ServerName, error) {
+	return nil, nil
 }
-func (c *GPCrypto) Version(context.Context) semver.Version {
-	return semver.Version{}
+func (c *GPCrypto) Version(ctx context.Context, _ *emptypb.Empty) (*pb.ServerVersion, error) {
+	return nil, nil
 }
-func (c *GPCrypto) Initialized(ctx context.Context) error {
-	return nil
+func (c *GPCrypto) Initialized(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, nil
 }
-func (c *GPCrypto) Ext() string {
-	return ""
+func (c *GPCrypto) Ext(ctx context.Context, _ *emptypb.Empty) (*pb.Extension, error) {
+	return nil, nil
 }
-func (c *GPCrypto) IDFile() string {
-	return ""
+func (c *GPCrypto) IDFile(ctx context.Context, _ *emptypb.Empty) (*pb.IDFileName, error) {
+	return nil, nil
 }
