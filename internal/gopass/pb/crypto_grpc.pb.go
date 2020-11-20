@@ -7,6 +7,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -17,15 +18,15 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CryptoClient interface {
-	ListIdentities(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*Identities, error)
-	GenerateIdentity(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*EmptyReturn, error)
+	ListIdentities(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Identities, error)
+	GenerateIdentity(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Encrypt(ctx context.Context, in *EncryptArgs, opts ...grpc.CallOption) (*Ciphertext, error)
 	Decrypt(ctx context.Context, in *DecryptArgs, opts ...grpc.CallOption) (*Cleartext, error)
-	Name(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*ServerName, error)
-	Version(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*ServerVersion, error)
-	Initialized(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*EmptyReturn, error)
-	Ext(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*Extension, error)
-	IDFile(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*IDFileName, error)
+	Name(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerName, error)
+	Version(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerVersion, error)
+	Initialized(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Ext(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Extension, error)
+	IDFile(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*IDFileName, error)
 }
 
 type cryptoClient struct {
@@ -36,7 +37,7 @@ func NewCryptoClient(cc grpc.ClientConnInterface) CryptoClient {
 	return &cryptoClient{cc}
 }
 
-func (c *cryptoClient) ListIdentities(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*Identities, error) {
+func (c *cryptoClient) ListIdentities(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Identities, error) {
 	out := new(Identities)
 	err := c.cc.Invoke(ctx, "/Crypto/ListIdentities", in, out, opts...)
 	if err != nil {
@@ -45,8 +46,8 @@ func (c *cryptoClient) ListIdentities(ctx context.Context, in *EmptyArgs, opts .
 	return out, nil
 }
 
-func (c *cryptoClient) GenerateIdentity(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*EmptyReturn, error) {
-	out := new(EmptyReturn)
+func (c *cryptoClient) GenerateIdentity(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/Crypto/GenerateIdentity", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -72,7 +73,7 @@ func (c *cryptoClient) Decrypt(ctx context.Context, in *DecryptArgs, opts ...grp
 	return out, nil
 }
 
-func (c *cryptoClient) Name(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*ServerName, error) {
+func (c *cryptoClient) Name(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerName, error) {
 	out := new(ServerName)
 	err := c.cc.Invoke(ctx, "/Crypto/Name", in, out, opts...)
 	if err != nil {
@@ -81,7 +82,7 @@ func (c *cryptoClient) Name(ctx context.Context, in *EmptyArgs, opts ...grpc.Cal
 	return out, nil
 }
 
-func (c *cryptoClient) Version(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*ServerVersion, error) {
+func (c *cryptoClient) Version(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerVersion, error) {
 	out := new(ServerVersion)
 	err := c.cc.Invoke(ctx, "/Crypto/Version", in, out, opts...)
 	if err != nil {
@@ -90,8 +91,8 @@ func (c *cryptoClient) Version(ctx context.Context, in *EmptyArgs, opts ...grpc.
 	return out, nil
 }
 
-func (c *cryptoClient) Initialized(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*EmptyReturn, error) {
-	out := new(EmptyReturn)
+func (c *cryptoClient) Initialized(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/Crypto/Initialized", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -99,7 +100,7 @@ func (c *cryptoClient) Initialized(ctx context.Context, in *EmptyArgs, opts ...g
 	return out, nil
 }
 
-func (c *cryptoClient) Ext(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*Extension, error) {
+func (c *cryptoClient) Ext(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Extension, error) {
 	out := new(Extension)
 	err := c.cc.Invoke(ctx, "/Crypto/Ext", in, out, opts...)
 	if err != nil {
@@ -108,7 +109,7 @@ func (c *cryptoClient) Ext(ctx context.Context, in *EmptyArgs, opts ...grpc.Call
 	return out, nil
 }
 
-func (c *cryptoClient) IDFile(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*IDFileName, error) {
+func (c *cryptoClient) IDFile(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*IDFileName, error) {
 	out := new(IDFileName)
 	err := c.cc.Invoke(ctx, "/Crypto/IDFile", in, out, opts...)
 	if err != nil {
@@ -121,15 +122,15 @@ func (c *cryptoClient) IDFile(ctx context.Context, in *EmptyArgs, opts ...grpc.C
 // All implementations must embed UnimplementedCryptoServer
 // for forward compatibility
 type CryptoServer interface {
-	ListIdentities(context.Context, *EmptyArgs) (*Identities, error)
-	GenerateIdentity(context.Context, *Identity) (*EmptyReturn, error)
+	ListIdentities(context.Context, *emptypb.Empty) (*Identities, error)
+	GenerateIdentity(context.Context, *Identity) (*emptypb.Empty, error)
 	Encrypt(context.Context, *EncryptArgs) (*Ciphertext, error)
 	Decrypt(context.Context, *DecryptArgs) (*Cleartext, error)
-	Name(context.Context, *EmptyArgs) (*ServerName, error)
-	Version(context.Context, *EmptyArgs) (*ServerVersion, error)
-	Initialized(context.Context, *EmptyArgs) (*EmptyReturn, error)
-	Ext(context.Context, *EmptyArgs) (*Extension, error)
-	IDFile(context.Context, *EmptyArgs) (*IDFileName, error)
+	Name(context.Context, *emptypb.Empty) (*ServerName, error)
+	Version(context.Context, *emptypb.Empty) (*ServerVersion, error)
+	Initialized(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	Ext(context.Context, *emptypb.Empty) (*Extension, error)
+	IDFile(context.Context, *emptypb.Empty) (*IDFileName, error)
 	mustEmbedUnimplementedCryptoServer()
 }
 
@@ -137,10 +138,10 @@ type CryptoServer interface {
 type UnimplementedCryptoServer struct {
 }
 
-func (UnimplementedCryptoServer) ListIdentities(context.Context, *EmptyArgs) (*Identities, error) {
+func (UnimplementedCryptoServer) ListIdentities(context.Context, *emptypb.Empty) (*Identities, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListIdentities not implemented")
 }
-func (UnimplementedCryptoServer) GenerateIdentity(context.Context, *Identity) (*EmptyReturn, error) {
+func (UnimplementedCryptoServer) GenerateIdentity(context.Context, *Identity) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateIdentity not implemented")
 }
 func (UnimplementedCryptoServer) Encrypt(context.Context, *EncryptArgs) (*Ciphertext, error) {
@@ -149,19 +150,19 @@ func (UnimplementedCryptoServer) Encrypt(context.Context, *EncryptArgs) (*Cipher
 func (UnimplementedCryptoServer) Decrypt(context.Context, *DecryptArgs) (*Cleartext, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Decrypt not implemented")
 }
-func (UnimplementedCryptoServer) Name(context.Context, *EmptyArgs) (*ServerName, error) {
+func (UnimplementedCryptoServer) Name(context.Context, *emptypb.Empty) (*ServerName, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Name not implemented")
 }
-func (UnimplementedCryptoServer) Version(context.Context, *EmptyArgs) (*ServerVersion, error) {
+func (UnimplementedCryptoServer) Version(context.Context, *emptypb.Empty) (*ServerVersion, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
 }
-func (UnimplementedCryptoServer) Initialized(context.Context, *EmptyArgs) (*EmptyReturn, error) {
+func (UnimplementedCryptoServer) Initialized(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Initialized not implemented")
 }
-func (UnimplementedCryptoServer) Ext(context.Context, *EmptyArgs) (*Extension, error) {
+func (UnimplementedCryptoServer) Ext(context.Context, *emptypb.Empty) (*Extension, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ext not implemented")
 }
-func (UnimplementedCryptoServer) IDFile(context.Context, *EmptyArgs) (*IDFileName, error) {
+func (UnimplementedCryptoServer) IDFile(context.Context, *emptypb.Empty) (*IDFileName, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IDFile not implemented")
 }
 func (UnimplementedCryptoServer) mustEmbedUnimplementedCryptoServer() {}
@@ -178,7 +179,7 @@ func RegisterCryptoServer(s grpc.ServiceRegistrar, srv CryptoServer) {
 }
 
 func _Crypto_ListIdentities_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EmptyArgs)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -190,7 +191,7 @@ func _Crypto_ListIdentities_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: "/Crypto/ListIdentities",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CryptoServer).ListIdentities(ctx, req.(*EmptyArgs))
+		return srv.(CryptoServer).ListIdentities(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -250,7 +251,7 @@ func _Crypto_Decrypt_Handler(srv interface{}, ctx context.Context, dec func(inte
 }
 
 func _Crypto_Name_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EmptyArgs)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -262,13 +263,13 @@ func _Crypto_Name_Handler(srv interface{}, ctx context.Context, dec func(interfa
 		FullMethod: "/Crypto/Name",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CryptoServer).Name(ctx, req.(*EmptyArgs))
+		return srv.(CryptoServer).Name(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Crypto_Version_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EmptyArgs)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -280,13 +281,13 @@ func _Crypto_Version_Handler(srv interface{}, ctx context.Context, dec func(inte
 		FullMethod: "/Crypto/Version",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CryptoServer).Version(ctx, req.(*EmptyArgs))
+		return srv.(CryptoServer).Version(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Crypto_Initialized_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EmptyArgs)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -298,13 +299,13 @@ func _Crypto_Initialized_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: "/Crypto/Initialized",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CryptoServer).Initialized(ctx, req.(*EmptyArgs))
+		return srv.(CryptoServer).Initialized(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Crypto_Ext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EmptyArgs)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -316,13 +317,13 @@ func _Crypto_Ext_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		FullMethod: "/Crypto/Ext",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CryptoServer).Ext(ctx, req.(*EmptyArgs))
+		return srv.(CryptoServer).Ext(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Crypto_IDFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EmptyArgs)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -334,7 +335,7 @@ func _Crypto_IDFile_Handler(srv interface{}, ctx context.Context, dec func(inter
 		FullMethod: "/Crypto/IDFile",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CryptoServer).IDFile(ctx, req.(*EmptyArgs))
+		return srv.(CryptoServer).IDFile(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

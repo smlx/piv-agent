@@ -9,7 +9,7 @@ var opts []grpc.ServerOption
 
 func test() {
 	grpcServer := grpc.NewServer(opts...)
-	gpc := &pb.CryptoService{}
-	pb.RegisterCryptoService(grpcServer, gpc)
+	gpc := &GPCrypto{}
+	pb.RegisterCryptoServer(grpcServer, gpc)
 	grpcServer.Serve(lis)
 }

@@ -1,21 +1,20 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 option go_package = "github.com/smlx/piv-agent/internal/gopass/pb";
 
 service Crypto {
-  rpc ListIdentities(EmptyArgs) returns (Identities) {}
-  rpc GenerateIdentity(Identity) returns (EmptyReturn) {}
-  rpc Encrypt(EncryptArgs) returns (Ciphertext) {}
-  rpc Decrypt(DecryptArgs) returns (Cleartext) {}
-  rpc Name(EmptyArgs) returns (ServerName) {}
-  rpc Version(EmptyArgs) returns (ServerVersion) {}
-  rpc Initialized(EmptyArgs) returns (EmptyReturn) {}
-  rpc Ext(EmptyArgs) returns (Extension) {}
-  rpc IDFile(EmptyArgs) returns (IDFileName) {}
+  rpc ListIdentities(google.protobuf.Empty) returns (Identities) {}
+  rpc GenerateIdentity(Identity)            returns (google.protobuf.Empty) {}
+  rpc Encrypt(EncryptArgs)                  returns (Ciphertext) {}
+  rpc Decrypt(DecryptArgs)                  returns (Cleartext) {}
+  rpc Name(google.protobuf.Empty)           returns (ServerName) {}
+  rpc Version(google.protobuf.Empty)        returns (ServerVersion) {}
+  rpc Initialized(google.protobuf.Empty)    returns (google.protobuf.Empty) {}
+  rpc Ext(google.protobuf.Empty)            returns (Extension) {}
+  rpc IDFile(google.protobuf.Empty)         returns (IDFileName) {}
 }
-
-message EmptyArgs {}
-message EmptyReturn {}
 
 message Identities {
   repeated string identities = 1;

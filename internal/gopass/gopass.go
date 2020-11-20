@@ -12,7 +12,7 @@ import (
 // GPCrypto implements the gopass backend crypto interface defined in
 // https://github.com/gopasspw/gopass/blob/master/internal/backend/crypto.go
 type GPCrypto struct {
-	pb.CryptoService // returns unimplemented
+	pb.UnimplementedCryptoServer
 }
 
 // Keyring
