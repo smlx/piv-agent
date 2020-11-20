@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/smlx/piv-agent/internal/gopass/crypto";
+option go_package = "github.com/smlx/piv-agent/internal/gopass/pb";
 
 service Crypto {
   rpc ListIdentities(EmptyArgs) returns (Identities) {}

@@ -1,16 +1,18 @@
 package gopass
 
-//go:generate protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative crypto/crypto.proto
+//go:generate protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative pb/crypto.proto
 
 import (
 	"context"
 
 	"github.com/blang/semver"
+	"github.com/smlx/piv-agent/internal/gopass/pb"
 )
 
 // GPCrypto implements the gopass backend crypto interface defined in
 // https://github.com/gopasspw/gopass/blob/master/internal/backend/crypto.go
 type GPCrypto struct {
+	pb.CryptoService // returns unimplemented
 }
 
 // Keyring
