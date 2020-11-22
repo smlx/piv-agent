@@ -3,6 +3,7 @@ module github.com/smlx/piv-agent
 go 1.15
 
 require (
+	github.com/aead/ecdh v0.2.0
 	github.com/alecthomas/binary v0.0.0-20190922233330-fb1b1d9c299c // indirect
 	github.com/alecthomas/kong v0.2.11
 	github.com/apex/log v1.9.0

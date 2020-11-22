@@ -16,12 +16,12 @@ service Crypto {
 }
 
 message Identities {
-  repeated string identities = 1;
+  repeated bytes identities = 1;
 }
 
 message EncryptArgs {
-  bytes plaintext            = 1;
-  repeated string recipients = 2;
+  bytes plaintext           = 1;
+  repeated bytes recipients = 2;
 }
 
 message DecryptArgs {
