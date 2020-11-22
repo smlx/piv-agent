@@ -10,8 +10,11 @@ import (
 
 	"github.com/coreos/go-systemd/activation"
 	pivagent "github.com/smlx/piv-agent/internal/agent"
+	"github.com/smlx/piv-agent/internal/gopass"
+	"github.com/smlx/piv-agent/internal/gopass/pb"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh/agent"
+	"google.golang.org/grpc"
 )
 
 // ServeCmd represents the listen command.
@@ -52,7 +55,6 @@ func (cmd *ServeCmd) Run() error {
 	exitTicker := time.NewTicker(cmd.ExitTimeout)
 	// start serving connections
 	sshConns := make(chan net.Conn)
-	gopassConns := make(chan net.Conn)
 	// unwrap the singular map key/value to the the array of sockets
 	for name, sock := range listeners {
 		if len(sock) != 1 {
@@ -62,7 +64,14 @@ func (cmd *ServeCmd) Run() error {
 		}
 		log.Debug("connection on socket", zap.String("name", name))
 		if strings.Contains(name, "gopass") {
-			go accept(sock[0], gopassConns, log)
+			var opts []grpc.ServerOption
+			grpcServer := grpc.NewServer(opts...)
+			defer grpcServer.Stop()
+			gpc := &gopass.GPCrypto{
+				ExitTicker: exitTicker,
+			}
+			pb.RegisterCryptoServer(grpcServer, gpc)
+			go serve(sock[0], grpcServer, log)
 		} else {
 			go accept(sock[0], sshConns, log)
 		}
@@ -75,7 +84,6 @@ func (cmd *ServeCmd) Run() error {
 			if !ok {
 				return fmt.Errorf("ssh listen socket closed")
 			}
-			exitTicker.Reset(cmd.ExitTimeout)
 			log.Debug("start serving ssh connection")
 			if err = agent.ServeAgent(a, conn); err != nil {
 				if errors.Is(err, io.EOF) {
@@ -84,19 +92,7 @@ func (cmd *ServeCmd) Run() error {
 				}
 				return fmt.Errorf("serveAgent error: %w", err)
 			}
-		case conn, ok := <-gopassConns:
-			if !ok {
-				return fmt.Errorf("gopass listen socket closed")
-			}
 			exitTicker.Reset(cmd.ExitTimeout)
-			log.Debug("start serving gopass connection")
-			if err = agent.ServeAgent(a, conn); err != nil {
-				if errors.Is(err, io.EOF) {
-					log.Debug("finish serving gopass connection")
-					continue
-				}
-				return fmt.Errorf("serveAgent error: %w", err)
-			}
 		case <-exitTicker.C:
 			log.Debug("exit timeout")
 			return nil
@@ -113,5 +109,12 @@ func accept(l net.Listener, conn chan<- net.Conn, log *zap.Logger) {
 			return
 		}
 		conn <- c
+	}
+}
+
+func serve(l net.Listener, gs *grpc.Server, log *zap.Logger) {
+	log.Debug("start the gopass grpc server")
+	if err := gs.Serve(l); err != nil {
+		log.Error("grpcServer error", zap.Error(err))
 	}
 }

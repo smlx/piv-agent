@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/alecthomas/binary v0.0.0-20190922233330-fb1b1d9c299c // indirect
 	github.com/alecthomas/kong v0.2.11
+	github.com/apex/log v1.9.0
 	github.com/blang/semver v0.0.0-20190414182527-1a9109f8c4a1
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/davecgh/go-spew v1.1.1

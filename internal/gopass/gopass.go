@@ -4,6 +4,7 @@ package gopass
 
 import (
 	"context"
+	"time"
 
 	"github.com/smlx/piv-agent/internal/gopass/pb"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -13,6 +14,8 @@ import (
 // https://github.com/gopasspw/gopass/blob/master/internal/backend/crypto.go
 type GPCrypto struct {
 	pb.UnimplementedCryptoServer
+
+	ExitTicker *time.Ticker
 }
 
 // Keyring
