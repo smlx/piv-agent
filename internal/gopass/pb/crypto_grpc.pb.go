@@ -19,7 +19,6 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CryptoClient interface {
 	ListIdentities(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Identities, error)
-	GenerateIdentity(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Encrypt(ctx context.Context, in *EncryptArgs, opts ...grpc.CallOption) (*Ciphertext, error)
 	Decrypt(ctx context.Context, in *DecryptArgs, opts ...grpc.CallOption) (*Cleartext, error)
 	Name(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServerName, error)
@@ -40,15 +39,6 @@ func NewCryptoClient(cc grpc.ClientConnInterface) CryptoClient {
 func (c *cryptoClient) ListIdentities(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Identities, error) {
 	out := new(Identities)
 	err := c.cc.Invoke(ctx, "/Crypto/ListIdentities", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *cryptoClient) GenerateIdentity(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/Crypto/GenerateIdentity", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +113,6 @@ func (c *cryptoClient) IDFile(ctx context.Context, in *emptypb.Empty, opts ...gr
 // for forward compatibility
 type CryptoServer interface {
 	ListIdentities(context.Context, *emptypb.Empty) (*Identities, error)
-	GenerateIdentity(context.Context, *Identity) (*emptypb.Empty, error)
 	Encrypt(context.Context, *EncryptArgs) (*Ciphertext, error)
 	Decrypt(context.Context, *DecryptArgs) (*Cleartext, error)
 	Name(context.Context, *emptypb.Empty) (*ServerName, error)
@@ -140,9 +129,6 @@ type UnimplementedCryptoServer struct {
 
 func (UnimplementedCryptoServer) ListIdentities(context.Context, *emptypb.Empty) (*Identities, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListIdentities not implemented")
-}
-func (UnimplementedCryptoServer) GenerateIdentity(context.Context, *Identity) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GenerateIdentity not implemented")
 }
 func (UnimplementedCryptoServer) Encrypt(context.Context, *EncryptArgs) (*Ciphertext, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Encrypt not implemented")
@@ -192,24 +178,6 @@ func _Crypto_ListIdentities_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CryptoServer).ListIdentities(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Crypto_GenerateIdentity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Identity)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CryptoServer).GenerateIdentity(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Crypto/GenerateIdentity",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CryptoServer).GenerateIdentity(ctx, req.(*Identity))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -347,10 +315,6 @@ var _Crypto_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListIdentities",
 			Handler:    _Crypto_ListIdentities_Handler,
-		},
-		{
-			MethodName: "GenerateIdentity",
-			Handler:    _Crypto_GenerateIdentity_Handler,
 		},
 		{
 			MethodName: "Encrypt",

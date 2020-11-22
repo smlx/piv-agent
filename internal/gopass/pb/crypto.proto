@@ -6,7 +6,6 @@ option go_package = "github.com/smlx/piv-agent/internal/gopass/pb";
 
 service Crypto {
   rpc ListIdentities(google.protobuf.Empty) returns (Identities) {}
-  rpc GenerateIdentity(Identity)            returns (google.protobuf.Empty) {}
   rpc Encrypt(EncryptArgs)                  returns (Ciphertext) {}
   rpc Decrypt(DecryptArgs)                  returns (Cleartext) {}
   rpc Name(google.protobuf.Empty)           returns (ServerName) {}
@@ -18,12 +17,6 @@ service Crypto {
 
 message Identities {
   repeated string identities = 1;
-}
-
-message Identity {
-  string name       = 1;
-  string email      = 2;
-  string passphrase = 3;
 }
 
 message EncryptArgs {

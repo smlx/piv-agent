@@ -35,12 +35,21 @@ func NewCrypto(et *time.Ticker, log *zap.Logger) *GPCrypto {
 
 // ListIdentities returns a list of available keys.
 func (c *GPCrypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Identities, error) {
-	return nil, nil
-}
-
-// GenerateIdentity will create a new keypair in batch mode.
-func (c *GPCrypto) GenerateIdentity(ctx context.Context, a *pb.Identity) (*emptypb.Empty, error) {
-	return nil, nil
+	sks, err := token.List(c.log)
+	if err != nil {
+		c.log.Error("couldn't get security keys", zap.Error(err))
+		return nil, fmt.Errorf("couldn't get security keys: %w", err)
+	}
+	sshKeySpecs, err := token.SSHKeySpecs(sks)
+	if err != nil {
+		c.log.Error("couldn't get SSH public keys", zap.Error(err))
+		return nil, fmt.Errorf("couldn't get SSH public keys: %w", err)
+	}
+	var ids pb.Identities
+	for _, sks := range sshKeySpecs {
+		ids.Identities = append(ids.Identities, string(ssh.FingerprintSHA256(sks.PubKey)))
+	}
+	return &ids, nil
 }
 
 // Crypto

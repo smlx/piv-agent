@@ -3,6 +3,9 @@ package gopass
 import (
 	"context"
 	"errors"
+
+	"github.com/smlx/piv-agent/internal/gopass/pb"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // ErrNotImplemented is returned from any functions which are required to
@@ -11,6 +14,10 @@ import (
 var ErrNotImplemented = errors.New("not implemented in piv-agent crypto backend")
 
 // Keyring
+
+func (c *GPCrypto) GenerateIdentity(ctx context.Context, a *pb.Identity) (*emptypb.Empty, error) {
+	return nil, nil
+}
 
 func (c *GPCrypto) ImportPublicKey(ctx context.Context, key []byte) error {
 	return ErrNotImplemented
