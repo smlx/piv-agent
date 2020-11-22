@@ -67,10 +67,7 @@ func (cmd *ServeCmd) Run() error {
 			var opts []grpc.ServerOption
 			grpcServer := grpc.NewServer(opts...)
 			defer grpcServer.Stop()
-			gpc := &gopass.GPCrypto{
-				ExitTicker: exitTicker,
-			}
-			pb.RegisterCryptoServer(grpcServer, gpc)
+			pb.RegisterCryptoServer(grpcServer, gopass.NewCrypto(exitTicker, log))
 			go serve(sock[0], grpcServer, log)
 		} else {
 			go accept(sock[0], sshConns, log)

@@ -4,9 +4,13 @@ package gopass
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/smlx/piv-agent/internal/gopass/pb"
+	"github.com/smlx/piv-agent/internal/token"
+	"go.uber.org/zap"
+	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -15,7 +19,16 @@ import (
 type GPCrypto struct {
 	pb.UnimplementedCryptoServer
 
-	ExitTicker *time.Ticker
+	exitTicker *time.Ticker
+	log        *zap.Logger
+}
+
+// NewCrypto constructs a new gopass crypto grpc server.
+func NewCrypto(et *time.Ticker, log *zap.Logger) *GPCrypto {
+	return &GPCrypto{
+		exitTicker: et,
+		log:        log,
+	}
 }
 
 // Keyring
