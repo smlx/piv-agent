@@ -19,4 +19,5 @@ require (
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	google.golang.org/grpc v1.33.2
 	google.golang.org/protobuf v1.25.0
+	sigs.k8s.io/yaml v1.2.0
 )

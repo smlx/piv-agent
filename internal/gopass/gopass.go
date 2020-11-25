@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/aead/ecdh"
+	pivagent "github.com/smlx/piv-agent/internal/agent"
 	"github.com/smlx/piv-agent/internal/gopass/pb"
 	"github.com/smlx/piv-agent/internal/token"
 	"github.com/vmihailenco/msgpack/v5"
@@ -23,6 +24,7 @@ import (
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"sigs.k8s.io/yaml"
 )
 
 // ECDSAPubKeyParams contains the parameters for an ECDSA public key.
@@ -34,9 +36,11 @@ type ECDSAPubKeyParams struct {
 // Secret contains the secret with all required parameters for decryption.
 type Secret struct {
 	Ciphertext []byte
-	Nonce      [24]byte
 	KeyType    string
+	Nonce      [24]byte
 	PubKey     []byte
+	Recipient  []byte
+	Salt       []byte
 }
 
 // GPCrypto implements the gopass backend crypto interface defined in
@@ -44,13 +48,15 @@ type Secret struct {
 type GPCrypto struct {
 	pb.UnimplementedCryptoServer
 
+	agent      *pivagent.Agent
 	exitTicker *time.Ticker
 	log        *zap.Logger
 }
 
 // NewCrypto constructs a new gopass crypto grpc server.
-func NewCrypto(et *time.Ticker, log *zap.Logger) *GPCrypto {
+func NewCrypto(a *pivagent.Agent, et *time.Ticker, log *zap.Logger) *GPCrypto {
 	return &GPCrypto{
+		agent:      a,
 		exitTicker: et,
 		log:        log,
 	}
@@ -60,19 +66,19 @@ func NewCrypto(et *time.Ticker, log *zap.Logger) *GPCrypto {
 
 // ListIdentities returns a list of available keys.
 func (c *GPCrypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Identities, error) {
-	sks, err := token.List(c.log)
+	securityKeys, err := token.List(c.log)
 	if err != nil {
 		c.log.Error("couldn't get security keys", zap.Error(err))
 		return nil, fmt.Errorf("couldn't get security keys: %w", err)
 	}
-	sshKeySpecs, err := token.SSHKeySpecs(sks)
+	sshKeySpecs, err := token.SSHKeySpecs(securityKeys)
 	if err != nil {
 		c.log.Error("couldn't get SSH public keys", zap.Error(err))
 		return nil, fmt.Errorf("couldn't get SSH public keys: %w", err)
 	}
 	var ids pb.Identities
 	for _, sks := range sshKeySpecs {
-		ids.Identities = append(ids.Identities, bytes.TrimSpace(ssh.MarshalAuthorizedKey(sks.PubKey)))
+		ids.Identities = append(ids.Identities, bytes.TrimSpace(ssh.MarshalAuthorizedKey(sks.PublicKey)))
 	}
 	return &ids, nil
 }
@@ -81,7 +87,7 @@ func (c *GPCrypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Id
 
 // Encrypt will encrypt the given content for the recipients.
 func (c *GPCrypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext, error) {
-	ct := map[string]Secret{}
+	secretList := []Secret{}
 	for _, recipient := range a.Recipients {
 		// Unmarshal the public key
 		pubKey, _, _, _, err := ssh.ParseAuthorizedKey(recipient)
@@ -98,7 +104,9 @@ func (c *GPCrypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Cipherte
 		}
 		var secretKey [32]byte
 		es := Secret{
-			KeyType: pubKey.Type(),
+			KeyType:   pubKey.Type(),
+			Recipient: recipient,
+			Salt:      salt,
 		}
 		switch pubKey.Type() {
 		case "ecdsa-sha2-nistp256":
@@ -148,20 +156,52 @@ func (c *GPCrypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Cipherte
 		if _, err := io.ReadFull(rand.Reader, es.Nonce[:]); err != nil {
 			return nil, fmt.Errorf("couldn't generate nonce: %w", err)
 		}
-		// generate a nacl.secretbox
-		es.Ciphertext = secretbox.Seal(es.Nonce[:], a.Plaintext, &es.Nonce, &secretKey)
-		// TODO: figure out the correct data structure for this.
-		// []byte key is not allowed, string is. could convert but messy.
-		// maybe a list is better than a map?
-		ct[recipient] = es
+		// assign a nacl.secretbox to es.Ciphertext
+		_ = secretbox.Seal(es.Ciphertext, a.Plaintext, &es.Nonce, &secretKey)
+		// append encrypted Secret to the list
+		secretList = append(secretList, es)
 	}
 	// marshal to yaml
-	// return
-	return ct, nil
+	y, err := yaml.Marshal(secretList)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't marshal yaml: %w", err)
+	}
+	// return yaml ciphertext
+	return &pb.Ciphertext{
+		Ciphertext: y,
+	}, nil
 }
 
 // Decrypt will try to decrypt the given data.
-func (c *GPCrypto) Decrypt(ctx context.Context, a *pb.DecryptArgs) (*pb.Cleartext, error) {
+func (c *GPCrypto) Decrypt(
+	ctx context.Context, a *pb.DecryptArgs) (*pb.Cleartext, error) {
+	// unmarshal YAML to secretList
+	var secretList []Secret
+	if err := yaml.Unmarshal(a.Ciphertext, secretList); err != nil {
+		return nil, fmt.Errorf("couldn't unmarshal secretList: %w", err)
+	}
+	// get the available public keys
+	pubKeys, err := c.agent.PublicKeys()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get public keys from agent: %w", err)
+	}
+
+	// check each recipient in the secretList for a match
+	for _, pubKey := range pubKeys {
+		for _, s := range secretList {
+			if bytes.Equal(s.Recipient,
+				bytes.TrimSpace(ssh.MarshalAuthorizedKey(pubKey))) {
+				// TODO:
+				// implement functionality in the agent to get the private key at this
+				// point. it needs to know how to map back to the right securityKey
+				// securityKeys[0].Key.PrivateKey() ...
+
+				// then decrypt the matching secret
+			}
+		}
+	}
+	//
+	// return the cleartext
 	return nil, nil
 }
 

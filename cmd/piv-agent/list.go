@@ -44,7 +44,7 @@ func (cmd *ListCmd) Run() error {
 	}
 	for _, sks := range sshKeySpecs {
 		fmt.Printf("%s %s\n",
-			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(sks.PubKey)), "\n"),
+			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(sks.PublicKey)), "\n"),
 			fmt.Sprintf("%v #%v, touch policy: %s",
 				sks.Card,
 				sks.Serial,

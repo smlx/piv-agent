@@ -29,6 +29,12 @@ type Agent struct {
 	loadKeyfile  bool
 }
 
+// KeyfileSpec stores information about an SSH keyfile.
+type KeyfileSpec struct {
+	PublicKey ssh.PublicKey
+	Path      string
+}
+
 // ErrNotImplemented is returned from any unimplemented method.
 var ErrNotImplemented = errors.New("not implemented in piv-agent")
 
@@ -77,6 +83,26 @@ func (a *Agent) List() ([]*agent.Key, error) {
 
 // returns the identities from hardware tokens
 func (a *Agent) tokenList() ([]*agent.Key, error) {
+	sshKeySpecs, err := a.tokenSSHKeySpecs()
+	if err != nil {
+		return nil, err
+	}
+	var keys []*agent.Key
+	for _, sks := range sshKeySpecs {
+		keys = append(keys, &agent.Key{
+			Format: sks.PublicKey.Type(),
+			Blob:   sks.PublicKey.Marshal(),
+			Comment: fmt.Sprintf(
+				`Security Key "%s" #%d PIV Slot %x`,
+				sks.SecurityKey.Card,
+				sks.SecurityKey.Serial,
+				sks.KeySpec.Slot),
+		})
+	}
+	return keys, nil
+}
+
+func (a *Agent) tokenSSHKeySpecs() ([]token.SSHKeySpec, error) {
 	sshKeySpecs, err := token.SSHKeySpecs(a.securityKeys)
 	if err != nil || len(a.securityKeys) == 0 {
 		a.log.Debug("reopening security keys", zap.Error(err),
@@ -85,31 +111,35 @@ func (a *Agent) tokenList() ([]*agent.Key, error) {
 		if err != nil {
 			return nil, fmt.Errorf("couldn't reload security keys: %w", err)
 		}
-	}
-	var keys []*agent.Key
-	if len(a.securityKeys) > 0 {
+		if len(a.securityKeys) == 0 {
+			return nil, nil
+		}
 		sshKeySpecs, err = token.SSHKeySpecs(a.securityKeys)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
 		}
-		for _, sks := range sshKeySpecs {
-			keys = append(keys, &agent.Key{
-				Format: sks.PubKey.Type(),
-				Blob:   sks.PubKey.Marshal(),
-				Comment: fmt.Sprintf(
-					`Security Key "%s" #%d PIV Slot %x`,
-					sks.Card,
-					sks.Serial,
-					sks.Slot.Key),
-			})
-		}
 	}
-	return keys, nil
+	return sshKeySpecs, nil
 }
 
 // returns the identities from keyfiles on disk
 func (a *Agent) keyfileList() ([]*agent.Key, error) {
+	kfss, err := a.keyfileSpecs()
+	if err != nil {
+		return nil, err
+	}
 	var pkss []*agent.Key
+	for _, kfs := range kfss {
+		pkss = append(pkss, &agent.Key{
+			Format:  kfs.PublicKey.Type(),
+			Blob:    kfs.PublicKey.Marshal(),
+			Comment: kfs.Path,
+		})
+	}
+	return pkss, nil
+}
+
+func (a *Agent) keyfileSpecs() ([]KeyfileSpec, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -119,20 +149,20 @@ func (a *Agent) keyfileList() ([]*agent.Key, error) {
 	if err != nil {
 		a.log.Debug("couldn't load keyfile", zap.String("path", keyPath),
 			zap.Error(err))
-		return pkss, nil
+		return nil, nil
 	}
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(pubBytes)
 	if err != nil {
 		a.log.Debug("couldn't parse keyfile", zap.String("path", keyPath),
 			zap.Error(err))
-		return pkss, nil
+		return nil, nil
 	}
-	pkss = append(pkss, &agent.Key{
-		Format:  pubKey.Type(),
-		Blob:    pubKey.Marshal(),
-		Comment: keyPath,
-	})
-	return pkss, nil
+	return []KeyfileSpec{
+		{
+			PublicKey: pubKey,
+			Path:      keyPath,
+		},
+	}, nil
 }
 
 // Sign has the agent sign the data using a protocol 2 key as defined
@@ -244,13 +274,13 @@ func (a *Agent) tokenSigners() ([]ssh.Signer, error) {
 	for _, sk := range a.securityKeys {
 		for _, sks := range sshKeySpecs {
 			privKey, err := sk.Key.PrivateKey(
-				sks.Slot,
-				sks.PubKey.(ssh.CryptoPublicKey).CryptoPublicKey(),
+				sks.KeySpec.Slot,
+				sks.PublicKey.(ssh.CryptoPublicKey).CryptoPublicKey(),
 				piv.KeyAuth{PINPrompt: pinEntry(&sk)},
 			)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get private key for slot %x: %w",
-					sks.Slot.Key, err)
+					sks.KeySpec.Slot, err)
 			}
 			s, err := ssh.NewSignerFromKey(privKey)
 			if err != nil {

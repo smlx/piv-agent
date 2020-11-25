@@ -41,6 +41,8 @@ func (cmd *ServeCmd) Run() error {
 	defer log.Sync()
 	log.Info("startup", zap.String("version", version),
 		zap.String("buildTime", buildTime))
+	// initialise the agent
+	a := pivagent.New(log, cmd.LoadKeyfile)
 	// use systemd socket activation
 	listeners, err := activation.ListenersWithNames()
 	if err != nil {
@@ -67,14 +69,13 @@ func (cmd *ServeCmd) Run() error {
 			var opts []grpc.ServerOption
 			grpcServer := grpc.NewServer(opts...)
 			defer grpcServer.Stop()
-			pb.RegisterCryptoServer(grpcServer, gopass.NewCrypto(exitTicker, log))
+			pb.RegisterCryptoServer(grpcServer, gopass.NewCrypto(a, exitTicker, log))
 			go serve(sock[0], grpcServer, log)
 		} else {
 			go accept(sock[0], sshConns, log)
 		}
 	}
 
-	a := pivagent.New(log, cmd.LoadKeyfile)
 	for {
 		select {
 		case conn, ok := <-sshConns:

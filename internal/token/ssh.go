@@ -11,18 +11,16 @@ import (
 
 // SSHKeySpec represents an SSH key stored on a security key / hardware token.
 type SSHKeySpec struct {
-	PubKey      ssh.PublicKey
-	Slot        piv.Slot
-	TouchPolicy piv.TouchPolicy
-	Card        string
-	Serial      uint32
+	PublicKey   ssh.PublicKey
+	KeySpec     KeySpec
+	SecurityKey SecurityKey
 }
 
 // SSHKeySpecs returns all the SSHKeySpecs available on the given list of
 // SecurityKeys.
-func SSHKeySpecs(sks []SecurityKey) ([]SSHKeySpec, error) {
+func SSHKeySpecs(securityKeys []SecurityKey) ([]SSHKeySpec, error) {
 	var pubKeys []SSHKeySpec
-	for _, sk := range sks {
+	for _, sk := range securityKeys {
 		for _, keySpec := range AllKeySpecs {
 			cert, err := sk.Key.Certificate(keySpec.Slot)
 			if err != nil {
@@ -41,11 +39,9 @@ func SSHKeySpecs(sks []SecurityKey) ([]SSHKeySpec, error) {
 				return nil, fmt.Errorf("couldn't convert public key: %w", err)
 			}
 			pubKeys = append(pubKeys, SSHKeySpec{
-				PubKey:      pub,
-				Slot:        keySpec.Slot,
-				TouchPolicy: keySpec.TouchPolicy,
-				Card:        sk.Card,
-				Serial:      sk.Serial,
+				PublicKey:   pub,
+				KeySpec:     keySpec,
+				SecurityKey: sk,
 			})
 		}
 	}
