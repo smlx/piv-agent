@@ -14,6 +14,7 @@ require (
 	github.com/go-piv/piv-go v1.6.0
 	github.com/golang/protobuf v1.4.2
 	github.com/gopasspw/gopass v1.10.2-0.20201105185611-36c5888f3a49
+	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/vmihailenco/msgpack/v5 v5.0.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a

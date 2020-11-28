@@ -191,18 +191,37 @@ func (c *GPCrypto) Decrypt(
 		for _, s := range secretList {
 			if bytes.Equal(s.Recipient,
 				bytes.TrimSpace(ssh.MarshalAuthorizedKey(pubKey))) {
-				// TODO:
-				// implement functionality in the agent to get the private key at this
-				// point. it needs to know how to map back to the right securityKey
-				// securityKeys[0].Key.PrivateKey() ...
-
+				// unmarshal the peer to get the public key
+				pubKeyParams := ECDSAPubKeyParams{}
+				if err = msgpack.Unmarshal(s.PubKey, &pubKeyParams); err != nil {
+					return nil, fmt.Errorf("couldn't unmarshal peer pubkey params: %w", err)
+				}
+				ecdsaPubKey := ecdsa.PublicKey{
+					Curve: elliptic.P256(),
+					X:     pubKeyParams.X,
+					Y:     pubKeyParams.Y,
+				}
+				sharedKey, err := c.agent.SharedKey(s.Recipient, ecdsaPubKey)
+				if err != nil {
+					return nil, fmt.Errorf("agent couldn't compute shared key: %w", err)
+				}
 				// then decrypt the matching secret
+				keyBytes, err := scrypt.Key(sharedKey, s.Salt, 1<<20, 8, 1, 32)
+				if err != nil {
+					return nil, fmt.Errorf("scrypt KDF error: %w", err)
+				}
+				var secretKey [32]byte
+				copy(secretKey[:], keyBytes)
+				resp := pb.Cleartext{}
+				_, ok := secretbox.Open(resp.Cleartext, s.Ciphertext, &s.Nonce, &secretKey)
+				if !ok {
+					return nil, fmt.Errorf("couldn't decrypt secretbox")
+				}
+				return &resp, nil
 			}
 		}
 	}
-	//
-	// return the cleartext
-	return nil, nil
+	return nil, fmt.Errorf("no key matching a recipient available")
 }
 
 // Name returns "piv-agent".
