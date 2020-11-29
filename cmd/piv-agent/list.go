@@ -46,9 +46,9 @@ func (cmd *ListCmd) Run() error {
 		fmt.Printf("%s %s\n",
 			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(sks.PublicKey)), "\n"),
 			fmt.Sprintf("%v #%v, touch policy: %s",
-				sks.Card,
-				sks.Serial,
-				touchStringMap[sks.TouchPolicy]))
+				sks.SecurityKey.Card,
+				sks.SecurityKey.Serial,
+				touchStringMap[sks.KeySpec.TouchPolicy]))
 	}
 	return nil
 }

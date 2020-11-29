@@ -1,12 +1,15 @@
 package gopass_test
 
 import (
+	"context"
+	"encoding/base64"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/smlx/piv-agent/internal/gopass"
+	"github.com/smlx/piv-agent/internal/gopass/pb"
 	"github.com/smlx/piv-agent/internal/mock"
 	"go.uber.org/zap"
 )
@@ -15,10 +18,15 @@ import (
 
 func TestEncrypt(t *testing.T) {
 	var testCases = map[string]struct {
-		input  string
-		expect string
+		plaintext  []byte
+		recipients [][]byte
 	}{
-		"case_description": {input: "foo", expect: "bar"},
+		"case_description": {
+			plaintext: []byte("ACollectionOfDiplomaticHistorySince_1966_ToThe_PresentDay#"),
+			recipients: [][]byte{
+				[]byte("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOK4b6vRLO6wHpPcy7Mh5ui7k5vIYl/KOGG2GgzNKghCXemPc6z3jHi6p49jbTzXhJzSQO3lt2ElDhdUvyBC5N8= scott@thinky"),
+			},
+		},
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(tt *testing.T) {
@@ -35,11 +43,20 @@ func TestEncrypt(t *testing.T) {
 			defer log.Sync()
 
 			mockAgent := mock.NewMockAgent(mockCtrl)
-			mockAgent.EXPECT().PublicKeys().Return()
+
+			// mockAgent is not actually used in Decrypt()
 
 			crypto := gopass.NewCrypto(mockAgent, exitTicker, log, "test")
 
-			crypto.Encrypt()
+			ciphertext, err := crypto.Encrypt(context.TODO(), &pb.EncryptArgs{
+				Plaintext:  tc.plaintext,
+				Recipients: tc.recipients,
+			})
+			if err != nil {
+				tt.Fatal(err)
+			} else {
+				tt.Log(base64.StdEncoding.EncodeToString(ciphertext.Ciphertext))
+			}
 		})
 	}
 }

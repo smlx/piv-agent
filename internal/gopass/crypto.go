@@ -15,11 +15,11 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/aead/ecdh"
 	"github.com/smlx/piv-agent/internal/gopass/pb"
 	"github.com/smlx/piv-agent/internal/token"
 	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/crypto/ssh"
@@ -102,6 +102,10 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext
 		if err != nil {
 			return nil, fmt.Errorf("invalid recipient: %w", err)
 		}
+		cPubKey, ok := pubKey.(ssh.CryptoPublicKey)
+		if !ok {
+			return nil, fmt.Errorf("couldn't cast to ssh.CryptoPublicKey")
+		}
 		// Figure out what kind of key it is
 		// Generate an ephemeral keypair of the correct type
 		// Perform ECDH to generate a shared secret
@@ -118,8 +122,12 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext
 		}
 		switch pubKey.Type() {
 		case "ecdsa-sha2-nistp256":
-			p256 := ecdh.Generic(elliptic.P256())
-			if err = p256.Check(pubKey); err != nil {
+			ecdsaPubKey, ok := cPubKey.CryptoPublicKey().(*ecdsa.PublicKey)
+			if !ok {
+				return nil, fmt.Errorf("couldn't cast to *ecdsa.PublicKey")
+			}
+			curve := elliptic.P256()
+			if !curve.IsOnCurve(ecdsaPubKey.X, ecdsaPubKey.Y) {
 				return nil, fmt.Errorf("public key not on nistp256 curve: %w", err)
 			}
 			privEphemeral, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -133,26 +141,32 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext
 			if err != nil {
 				return nil, fmt.Errorf("couldn't marshal ecdsa pub key: %w", err)
 			}
-			// params from https://blog.filippo.io/the-scrypt-parameters/
+			// generate shared secret as per
+			// https://tools.ietf.org/html/rfc6090#section-4
+			sX, _ := curve.ScalarMult(ecdsaPubKey.X, ecdsaPubKey.Y, privEphemeral.D.Bytes())
 			// Use scrypt as a KDF from the shared secret
-			keyBytes, err := scrypt.Key(
-				p256.ComputeSecret(privEphemeral, pubKey), salt, 1<<20, 8, 1, 32)
+			// params from https://blog.filippo.io/the-scrypt-parameters/
+			keyBytes, err := scrypt.Key(sX.Bytes(), salt, 1<<20, 8, 1, 32)
 			if err != nil {
 				return nil, fmt.Errorf("scrypt KDF error: %w", err)
 			}
 			copy(secretKey[:], keyBytes)
 		case "ssh-ed25519":
-			c25519 := ecdh.X25519()
-			if err = c25519.Check(pubKey); err != nil {
-				return nil, fmt.Errorf("public key not on ed25519 curve: %w", err)
+			ed25519PubKey, ok := cPubKey.CryptoPublicKey().(ed25519.PublicKey)
+			if !ok {
+				return nil, fmt.Errorf("couldn't cast to *ed25519.PublicKey")
 			}
 			pubEphemeral, privEphemeral, err := ed25519.GenerateKey(rand.Reader)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't generate ed25519 key: %w", err)
 			}
 			es.PubKey = pubEphemeral
-			keyBytes, err := scrypt.Key(
-				c25519.ComputeSecret(privEphemeral, pubKey), salt, 1<<20, 8, 1, 32)
+			// generate shared secret
+			ss, err := curve25519.X25519(privEphemeral, ed25519PubKey)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't perform scalar multiplication: %w", err)
+			}
+			keyBytes, err := scrypt.Key(ss, salt, 1<<20, 8, 1, 32)
 			if err != nil {
 				return nil, fmt.Errorf("scrypt KDF error: %w", err)
 			}
