@@ -5,6 +5,7 @@ package gopass
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"github.com/aead/ecdh"
-	pivagent "github.com/smlx/piv-agent/internal/agent"
 	"github.com/smlx/piv-agent/internal/gopass/pb"
 	"github.com/smlx/piv-agent/internal/token"
 	"github.com/vmihailenco/msgpack/v5"
@@ -43,29 +43,37 @@ type Secret struct {
 	Salt       []byte
 }
 
-// GPCrypto implements the gopass backend crypto interface defined in
+// Crypto implements the gopass backend crypto interface defined in
 // https://github.com/gopasspw/gopass/blob/master/internal/backend/crypto.go
-type GPCrypto struct {
+type Crypto struct {
 	pb.UnimplementedCryptoServer
 
-	agent      *pivagent.Agent
+	agent      Agent
 	exitTicker *time.Ticker
 	log        *zap.Logger
+	version    string
+}
+
+// Agent represents a crypto agent.
+type Agent interface {
+	PublicKeys() ([]ssh.PublicKey, error)
+	SharedKey(recipient []byte, peer crypto.PublicKey) ([]byte, error)
 }
 
 // NewCrypto constructs a new gopass crypto grpc server.
-func NewCrypto(a *pivagent.Agent, et *time.Ticker, log *zap.Logger) *GPCrypto {
-	return &GPCrypto{
+func NewCrypto(a Agent, et *time.Ticker, log *zap.Logger, version string) *Crypto {
+	return &Crypto{
 		agent:      a,
 		exitTicker: et,
 		log:        log,
+		version:    version,
 	}
 }
 
 // Keyring
 
 // ListIdentities returns a list of available keys.
-func (c *GPCrypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Identities, error) {
+func (c *Crypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Identities, error) {
 	securityKeys, err := token.List(c.log)
 	if err != nil {
 		c.log.Error("couldn't get security keys", zap.Error(err))
@@ -86,7 +94,7 @@ func (c *GPCrypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Id
 // Crypto
 
 // Encrypt will encrypt the given content for the recipients.
-func (c *GPCrypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext, error) {
+func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext, error) {
 	secretList := []Secret{}
 	for _, recipient := range a.Recipients {
 		// Unmarshal the public key
@@ -173,7 +181,7 @@ func (c *GPCrypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Cipherte
 }
 
 // Decrypt will try to decrypt the given data.
-func (c *GPCrypto) Decrypt(
+func (c *Crypto) Decrypt(
 	ctx context.Context, a *pb.DecryptArgs) (*pb.Cleartext, error) {
 	// unmarshal YAML to secretList
 	var secretList []Secret
@@ -225,26 +233,26 @@ func (c *GPCrypto) Decrypt(
 }
 
 // Name returns "piv-agent".
-func (c *GPCrypto) Name(ctx context.Context, _ *emptypb.Empty) (*pb.ServerName, error) {
-	return nil, nil
+func (c *Crypto) Name(ctx context.Context, _ *emptypb.Empty) (*pb.ServerName, error) {
+	return &pb.ServerName{Name: "piv-agent"}, nil
 }
 
 // Version will return piv-agent version information.
-func (c *GPCrypto) Version(ctx context.Context, _ *emptypb.Empty) (*pb.ServerVersion, error) {
-	return nil, nil
+func (c *Crypto) Version(ctx context.Context, _ *emptypb.Empty) (*pb.ServerVersion, error) {
+	return &pb.ServerVersion{Version: c.version}, nil
 }
 
 // Initialized always returns nil.
-func (c *GPCrypto) Initialized(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, nil
+func (c *Crypto) Initialized(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 // Ext returns the file extension used by this backend: "piv".
-func (c *GPCrypto) Ext(ctx context.Context, _ *emptypb.Empty) (*pb.Extension, error) {
-	return nil, nil
+func (c *Crypto) Ext(ctx context.Context, _ *emptypb.Empty) (*pb.Extension, error) {
+	return &pb.Extension{Ext: "pa"}, nil
 }
 
 // IDFile returns the name of the recipients file used by this backend: ".piv-id".
-func (c *GPCrypto) IDFile(ctx context.Context, _ *emptypb.Empty) (*pb.IDFileName, error) {
-	return nil, nil
+func (c *Crypto) IDFile(ctx context.Context, _ *emptypb.Empty) (*pb.IDFileName, error) {
+	return &pb.IDFileName{Name: ".piv-agent-id"}, nil
 }
