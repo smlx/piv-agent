@@ -37,7 +37,7 @@ type ECDSAPubKeyParams struct {
 type Secret struct {
 	Ciphertext []byte
 	KeyType    string
-	Nonce      [24]byte
+	Nonce      []byte
 	PubKey     []byte
 	Recipient  []byte
 	Salt       []byte
@@ -175,11 +175,17 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext
 			return nil, fmt.Errorf("invalid recipient keytype: %v", pubKey.Type())
 		}
 		// Generate a nonce
-		if _, err := io.ReadFull(rand.Reader, es.Nonce[:]); err != nil {
+		nonce := [24]byte{}
+		n, err := io.ReadFull(rand.Reader, nonce[:])
+		if err != nil {
 			return nil, fmt.Errorf("couldn't generate nonce: %w", err)
 		}
+		c.log.Debug("copied bytes into nonce", zap.Int("n", n))
+		es.Nonce = make([]byte, 24)
+		copy(es.Nonce, nonce[:])
 		// assign a nacl.secretbox to es.Ciphertext
-		_ = secretbox.Seal(es.Ciphertext, a.Plaintext, &es.Nonce, &secretKey)
+		es.Ciphertext = secretbox.Seal(nil, a.Plaintext, &nonce, &secretKey)
+		c.log.Debug("wrote ciphertext", zap.Binary("ciphertext", es.Ciphertext))
 		// append encrypted Secret to the list
 		secretList = append(secretList, es)
 	}
@@ -211,7 +217,7 @@ func (c *Crypto) Decrypt(
 	// check each recipient in the secretList for a match
 	for _, pubKey := range pubKeys {
 		for _, s := range secretList {
-			if bytes.Equal(s.Recipient,
+			if bytes.Equal(bytes.TrimSpace(s.Recipient),
 				bytes.TrimSpace(ssh.MarshalAuthorizedKey(pubKey))) {
 				// unmarshal the peer to get the public key
 				pubKeyParams := ECDSAPubKeyParams{}
@@ -234,8 +240,10 @@ func (c *Crypto) Decrypt(
 				}
 				var secretKey [32]byte
 				copy(secretKey[:], keyBytes)
+				var nonce [24]byte
+				copy(nonce[:], s.Nonce)
 				resp := pb.Cleartext{}
-				_, ok := secretbox.Open(resp.Cleartext, s.Ciphertext, &s.Nonce, &secretKey)
+				_, ok := secretbox.Open(resp.Cleartext, s.Ciphertext, &nonce, &secretKey)
 				if !ok {
 					return nil, fmt.Errorf("couldn't decrypt secretbox")
 				}
