@@ -69,7 +69,7 @@ func TestDecrypt(t *testing.T) {
 		recipientPubKey  []byte
 	}{
 		"ecdsa decrypt": {
-			ciphertext: `LSBDaXBoZXJ0ZXh0OiBGM1pmY3c1a2t2QmVNdzBBN21KMUFON1hreU1BRVJlZGI3WEtHaWZCMnlJaGgzSlVIbTBqazl0WDBwZmttbmVObDB5akRweExmb2NLV0tkTHBvdktwSmxzQktWb2tZRkM2RzQ9CiAgS2V5VHlwZTogZWNkc2Etc2hhMi1uaXN0cDI1NgogIE5vbmNlOiBtR3Q3bkZXWThtcExnTXlvK1JIUEdRcytNTlpGdDB6RAogIFB1YktleTogWldOa2MyRXRjMmhoTWkxdWFYTjBjREkxTmlCQlFVRkJSVEpXYWxwSVRtaE1XRTV2V1ZSSmRHSnRiSHBrU0VGNVRsUlpRVUZCUVVsaWJXeDZaRWhCZVU1VVdVRkJRVUpDUWtsU1dITmlUVmc1Y2xCT2RIUlBVMkpCWjJodksxQkdXVFpwV21KU2NuQlNlRXRXTjFaMU5VZHFUV2hKVDI5a1QzWlNVVFZyVldGbmIyMUdURnB0TkdKMGEwZEpTMHROTXpReGVXeEdiakJFU2trMlZYVnpQUW89CiAgUmVjaXBpZW50OiBaV05rYzJFdGMyaGhNaTF1YVhOMGNESTFOaUJCUVVGQlJUSldhbHBJVG1oTVdFNXZXVlJKZEdKdGJIcGtTRUY1VGxSWlFVRkJRVWxpYld4NlpFaEJlVTVVV1VGQlFVSkNRa3RMYzNkVU9XbENSMFZ4UkRsMFlXWklWa04yV1hCU2MyUlJhemxzZVZWeVlqTmxlVVJKTm1jeWFIZE1OR3d6ZWs5dmVuQlhkRU51VkhGWlVVa3hUVTlPY3k5Vkt5OTRWV3hVU0hOc05ESkxkRGN6WkU4MFBRbz0KICBTYWx0OiBpbHMzY0RrV3craDJ1eXZtOFpMNXdnTzBteFE9Cg==`,
+			ciphertext: `LSBDaXBoZXJ0ZXh0OiBaK2ZvejNCUGRiOUhRc0REZy9VdTBtUG0yckVXRHRjS3RFMXpmdnFmYWNETTFEM0ZWU1ZzSjZQUUhJeHh5d1lUR1E3bU5xc2x0OG1YV3hTS2dCSXZQb1B6T3JvZWJ5VURieWs9CiAgS2V5VHlwZTogZWNkc2Etc2hhMi1uaXN0cDI1NgogIE5vbmNlOiAydTc0R2wzRWxUUFVURm1TWUp5UWYxV2hYK1RtTnZ0TwogIFB1YktleTogWldOa2MyRXRjMmhoTWkxdWFYTjBjREkxTmlCQlFVRkJSVEpXYWxwSVRtaE1XRTV2V1ZSSmRHSnRiSHBrU0VGNVRsUlpRVUZCUVVsaWJXeDZaRWhCZVU1VVdVRkJRVUpDUWtWbUsycEJNazFtT0doa00ySjFjRzlDZUdGR1RVTnlOMlZsYkdkVmJWQnZkaTk1UW01b2FHc3dVMmxHWVUxcWNXbDRhM0o1UVVOa1Ztb3lZbXBMZFhGVFQzTjVWMVpLWm10aVJsbzJaa3hvYzJSNVVuQTBQUW89CiAgUmVjaXBpZW50OiBaV05rYzJFdGMyaGhNaTF1YVhOMGNESTFOaUJCUVVGQlJUSldhbHBJVG1oTVdFNXZXVlJKZEdKdGJIcGtTRUY1VGxSWlFVRkJRVWxpYld4NlpFaEJlVTVVV1VGQlFVSkNRa3RMYzNkVU9XbENSMFZ4UkRsMFlXWklWa04yV1hCU2MyUlJhemxzZVZWeVlqTmxlVVJKTm1jeWFIZE1OR3d6ZWs5dmVuQlhkRU51VkhGWlVVa3hUVTlPY3k5Vkt5OTRWV3hVU0hOc05ESkxkRGN6WkU4MFBRbz0KICBTYWx0OiBGMUtEZ2w1dXNvc3QzeDFpaktxMEE2YVV0Z2s9Cg==`,
 			recipientPrivKey: `-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAaAAAABNlY2RzYS
 1zaGEyLW5pc3RwMjU2AAAACG5pc3RwMjU2AAAAQQSirME/YgRhKg/bWnx1Qr2KUbHUJPZc
@@ -102,8 +102,12 @@ eQECAw==
 			if err != nil {
 				tt.Fatal(err)
 			}
-			tt.Log("recipient pub key", base64.StdEncoding.EncodeToString(ssh.MarshalAuthorizedKey(pubKey)))
+			tt.Log("recipient pub key",
+				base64.StdEncoding.EncodeToString(ssh.MarshalAuthorizedKey(pubKey)))
 			mockAgent.EXPECT().PublicKeys().Return([]ssh.PublicKey{pubKey}, nil)
+			mockAgent.EXPECT().SharedKey(gomock.Any(), gomock.Any()).
+				Return(base64.StdEncoding.DecodeString(
+					"IV0XVp1IlgjfIizW/DOrPFKL9V+w8jCCLDaIZFXY1XQ="))
 
 			crypto := gopass.NewCrypto(mockAgent, exitTicker, log, name)
 
@@ -119,7 +123,7 @@ eQECAw==
 			if err != nil {
 				tt.Fatal(err)
 			} else {
-				tt.Log(cleartext.Cleartext)
+				tt.Log(string(cleartext.Cleartext))
 			}
 		})
 	}

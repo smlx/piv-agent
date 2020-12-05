@@ -10,6 +10,7 @@ import (
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"math/big"
@@ -94,7 +95,7 @@ func (c *Crypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Iden
 
 // Encrypt will encrypt the given content for the recipients.
 func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext, error) {
-	secretList := []Secret{}
+	var secretList []Secret
 	for _, recipient := range a.Recipients {
 		// Unmarshal the public key
 		pubKey, _, _, _, err := ssh.ParseAuthorizedKey(recipient)
@@ -144,6 +145,7 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext
 			// generate shared secret as per
 			// https://tools.ietf.org/html/rfc6090#section-4
 			sX, _ := curve.ScalarMult(ecdsaPubKey.X, ecdsaPubKey.Y, privEphemeral.D.Bytes())
+			c.log.Debug("ECDH shared secret", zap.Binary("secret", sX.Bytes()))
 			// Use scrypt as a KDF from the shared secret
 			// params from https://blog.filippo.io/the-scrypt-parameters/
 			keyBytes, err := scrypt.Key(sX.Bytes(), salt, 1<<20, 8, 1, 32)
@@ -184,6 +186,9 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext
 		es.Nonce = make([]byte, 24)
 		copy(es.Nonce, nonce[:])
 		// assign a nacl.secretbox to es.Ciphertext
+		c.log.Debug("encrypting",
+			zap.String("secretKey", base64.StdEncoding.EncodeToString(secretKey[:])),
+			zap.String("nonce", base64.StdEncoding.EncodeToString(es.Nonce)))
 		es.Ciphertext = secretbox.Seal(nil, a.Plaintext, &nonce, &secretKey)
 		c.log.Debug("wrote ciphertext", zap.Binary("ciphertext", es.Ciphertext))
 		// append encrypted Secret to the list
@@ -205,7 +210,8 @@ func (c *Crypto) Decrypt(
 	ctx context.Context, a *pb.DecryptArgs) (*pb.Cleartext, error) {
 	// unmarshal YAML to secretList
 	var secretList []Secret
-	if err := yaml.Unmarshal(a.Ciphertext, secretList); err != nil {
+	c.log.Debug("secretList", zap.ByteString("YAML", a.Ciphertext))
+	if err := yaml.Unmarshal(a.Ciphertext, &secretList); err != nil {
 		return nil, fmt.Errorf("couldn't unmarshal secretList: %w", err)
 	}
 	// get the available public keys
@@ -214,8 +220,10 @@ func (c *Crypto) Decrypt(
 		return nil, fmt.Errorf("couldn't get public keys from agent: %w", err)
 	}
 
+	c.log.Debug("number of secrets", zap.Int("n", len(secretList)))
 	// iterate the secret list
 	for _, s := range secretList {
+		c.log.Debug("secret", zap.String("recipient", string(s.Recipient)))
 		recipientSSHPubKey, _, _, _, err := ssh.ParseAuthorizedKey(s.Recipient)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse ephemeral public key")
@@ -277,7 +285,10 @@ func (c *Crypto) Decrypt(
 			var nonce [24]byte
 			copy(nonce[:], s.Nonce)
 			resp := pb.Cleartext{}
-			_, ok = secretbox.Open(resp.Cleartext, s.Ciphertext, &nonce, &secretKey)
+			c.log.Debug("decrypting",
+				zap.String("secretKey", base64.StdEncoding.EncodeToString(secretKey[:])),
+				zap.String("nonce", base64.StdEncoding.EncodeToString(s.Nonce)))
+			resp.Cleartext, ok = secretbox.Open(nil, s.Ciphertext, &nonce, &secretKey)
 			if !ok {
 				return nil, fmt.Errorf("couldn't decrypt secretbox")
 			}
