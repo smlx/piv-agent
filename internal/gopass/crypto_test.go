@@ -14,7 +14,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-//go:generate mockgen -source=gopass.go -destination ../mock/mock_gopass.go -package mock
+//go:generate mockgen -source=crypto.go -destination ../mock/mock_crypto.go -package mock
 
 func TestEncrypt(t *testing.T) {
 	var testCases = map[string]struct {
@@ -24,7 +24,7 @@ func TestEncrypt(t *testing.T) {
 		"ecdsa encrypt": {
 			plaintext: []byte("ACollectionOfDiplomaticHistorySince_1966_ToThe_PresentDay#"),
 			recipients: [][]byte{
-				[]byte("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGRI872xXZQBh1xScAcLZ2Lk41tUylsWhCDcEcpCtGGVC1TdtrPZ8uciYE5P5xBuwI8kT+PbR33op87pjKsye5M= scott@thinky"),
+				[]byte(`ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKKswT9iBGEqD9tafHVCvYpRsdQk9lyUrb3eyDI6g2hwL4l3zOozpWtCnTqYQI1MONs/U+/xUlTHsl42Kt73dO4= scott@thinky`),
 			},
 		},
 	}
@@ -69,18 +69,17 @@ func TestDecrypt(t *testing.T) {
 		recipientPubKey  []byte
 	}{
 		"ecdsa decrypt": {
-			ciphertext: "LSBDaXBoZXJ0ZXh0OiBZTmtwWFcwQUdUMjIzL3JTREQ5eHZQK2pLSzlFM3QzQTRVMVlQU2tEWWFieTR3Ukd4K2RHSlc1NTIxbnZlN2IrSnlIdWtWWHdhc3RnUTNOcTlSY2w1c2wwRjl0aGhvajFEcVk9CiAgS2V5VHlwZTogZWNkc2Etc2hhMi1uaXN0cDI1NgogIE5vbmNlOiBSTWdEaS9LZ1dxWCtmUVV1cmRJbFpSV3JjVGsrRzE5cwogIFB1YktleTogZ3FGWXhFd3lNelF5T1Rnek5qazFPVEE1TlRVME5UWXhPVFU0TlRJME5EazVOVFF6TmpJeU5qZzBNelEyTXpBNU56QTVPVFUwT0RnNE5EWTFOREExTVRFMU5USXpNRFE0T1RRNE5EQTBNREk1b1ZuRVRUSTVOelUzTkRrd01qTTJNVEUxTWpJNE16TTNNRFkzTXpnek1UVTBOVGd6TlRnMU5ETXhNVFUxTlRNNE5EYzVPVFEzTmpVek5qVXlPREV6TnpBME5UUTJNREV4Tnpnd05EQTVNakF4CiAgUmVjaXBpZW50OiBaV05rYzJFdGMyaGhNaTF1YVhOMGNESTFOaUJCUVVGQlJUSldhbHBJVG1oTVdFNXZXVlJKZEdKdGJIcGtTRUY1VGxSWlFVRkJRVWxpYld4NlpFaEJlVTVVV1VGQlFVSkNRa2RTU1RnM01uaFlXbEZDYURGNFUyTkJZMHhhTWt4ck5ERjBWWGxzYzFkb1EwUmpSV053UTNSSFIxWkRNVlJrZEhKUVdqaDFZMmxaUlRWUU5YaENkWGRKT0d0VUsxQmlVak16YjNBNE4zQnFTM041WlRWTlBTQnpZMjkwZEVCMGFHbHVhM2s9CiAgU2FsdDogVzVGNTJqeGd6V2h5b0g4WVFoRCtxTFZ2akhFPQo=",
+			ciphertext: `LSBDaXBoZXJ0ZXh0OiBGM1pmY3c1a2t2QmVNdzBBN21KMUFON1hreU1BRVJlZGI3WEtHaWZCMnlJaGgzSlVIbTBqazl0WDBwZmttbmVObDB5akRweExmb2NLV0tkTHBvdktwSmxzQktWb2tZRkM2RzQ9CiAgS2V5VHlwZTogZWNkc2Etc2hhMi1uaXN0cDI1NgogIE5vbmNlOiBtR3Q3bkZXWThtcExnTXlvK1JIUEdRcytNTlpGdDB6RAogIFB1YktleTogWldOa2MyRXRjMmhoTWkxdWFYTjBjREkxTmlCQlFVRkJSVEpXYWxwSVRtaE1XRTV2V1ZSSmRHSnRiSHBrU0VGNVRsUlpRVUZCUVVsaWJXeDZaRWhCZVU1VVdVRkJRVUpDUWtsU1dITmlUVmc1Y2xCT2RIUlBVMkpCWjJodksxQkdXVFpwV21KU2NuQlNlRXRXTjFaMU5VZHFUV2hKVDI5a1QzWlNVVFZyVldGbmIyMUdURnB0TkdKMGEwZEpTMHROTXpReGVXeEdiakJFU2trMlZYVnpQUW89CiAgUmVjaXBpZW50OiBaV05rYzJFdGMyaGhNaTF1YVhOMGNESTFOaUJCUVVGQlJUSldhbHBJVG1oTVdFNXZXVlJKZEdKdGJIcGtTRUY1VGxSWlFVRkJRVWxpYld4NlpFaEJlVTVVV1VGQlFVSkNRa3RMYzNkVU9XbENSMFZ4UkRsMFlXWklWa04yV1hCU2MyUlJhemxzZVZWeVlqTmxlVVJKTm1jeWFIZE1OR3d6ZWs5dmVuQlhkRU51VkhGWlVVa3hUVTlPY3k5Vkt5OTRWV3hVU0hOc05ESkxkRGN6WkU4MFBRbz0KICBTYWx0OiBpbHMzY0RrV3craDJ1eXZtOFpMNXdnTzBteFE9Cg==`,
 			recipientPrivKey: `-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAaAAAABNlY2RzYS
-1zaGEyLW5pc3RwMjU2AAAACG5pc3RwMjU2AAAAQQRkSPO9sV2UAYdcUnAHC2di5ONbVMpb
-FoQg3BHKQrRhlQtU3baz2fLnImBOT+cQbsCPJE/j20d96KfO6YyrMnuTAAAAqD04GEY9OB
-hGAAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGRI872xXZQBh1xS
-cAcLZ2Lk41tUylsWhCDcEcpCtGGVC1TdtrPZ8uciYE5P5xBuwI8kT+PbR33op87pjKsye5
-MAAAAgOjmf0Xj+TslpG/iDQA7M985bZdIN2JRmpqWmijsDb4EAAAAMc2NvdHRAdGhpbmt5
-AQIDBA==
------END OPENSSH PRIVATE KEY-----
-`,
-			recipientPubKey: []byte(`ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGRI872xXZQBh1xScAcLZ2Lk41tUylsWhCDcEcpCtGGVC1TdtrPZ8uciYE5P5xBuwI8kT+PbR33op87pjKsye5M= scott@thinky`),
+1zaGEyLW5pc3RwMjU2AAAACG5pc3RwMjU2AAAAQQSirME/YgRhKg/bWnx1Qr2KUbHUJPZc
+lK293sgyOoNocC+Jd8zqM6VrQp06mECNTDjbP1Pv8VJUx7JeNire93TuAAAAqAMd6qcDHe
+qnAAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKKswT9iBGEqD9ta
+fHVCvYpRsdQk9lyUrb3eyDI6g2hwL4l3zOozpWtCnTqYQI1MONs/U+/xUlTHsl42Kt73dO
+4AAAAhANbGYPozS3Clxxs0h64uzRWKU12d6Xm/ZNtLpa/wW2V1AAAADHNjb3R0QHRoaW5r
+eQECAw==
+-----END OPENSSH PRIVATE KEY-----`,
+			recipientPubKey: []byte(`ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKKswT9iBGEqD9tafHVCvYpRsdQk9lyUrb3eyDI6g2hwL4l3zOozpWtCnTqYQI1MONs/U+/xUlTHsl42Kt73dO4= scott@thinky`),
 		},
 	}
 	for name, tc := range testCases {
@@ -103,7 +102,7 @@ AQIDBA==
 			if err != nil {
 				tt.Fatal(err)
 			}
-			tt.Log(base64.StdEncoding.EncodeToString(ssh.MarshalAuthorizedKey(pubKey)))
+			tt.Log("recipient pub key", base64.StdEncoding.EncodeToString(ssh.MarshalAuthorizedKey(pubKey)))
 			mockAgent.EXPECT().PublicKeys().Return([]ssh.PublicKey{pubKey}, nil)
 
 			crypto := gopass.NewCrypto(mockAgent, exitTicker, log, name)
