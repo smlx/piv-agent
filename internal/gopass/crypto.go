@@ -12,7 +12,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"math/big"
 	"time"
 
@@ -36,8 +35,6 @@ type ECDSAPubKeyParams struct {
 // Secret contains the secret with all required parameters for decryption.
 type Secret struct {
 	Ciphertext []byte
-	KeyType    string
-	Nonce      []byte
 	PubKey     []byte
 	Recipient  []byte
 	Salt       []byte
@@ -111,8 +108,7 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext
 		// secretKey is the shared secret used to seal the secretbox
 		var secretKey [32]byte
 		es := Secret{
-			KeyType: pubKey.Type(),
-			Salt:    salt,
+			Salt: salt,
 		}
 		// figure out what kind of key it is
 		cPubKey, ok := pubKey.(ssh.CryptoPublicKey)
@@ -174,21 +170,14 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext
 			}
 			copy(secretKey[:], keyBytes)
 		default:
-			return nil, fmt.Errorf("invalid recipient keytype: %v", pubKey.Type())
+			return nil, fmt.Errorf("invalid recipient key type: %T",
+				cPubKey.CryptoPublicKey())
 		}
-		// Generate a nonce
+		// Use a nonce of all zeroes since the ephemeral key is only used once
 		nonce := [24]byte{}
-		n, err := io.ReadFull(rand.Reader, nonce[:])
-		if err != nil {
-			return nil, fmt.Errorf("couldn't generate nonce: %w", err)
-		}
-		c.log.Debug("copied bytes into nonce", zap.Int("n", n))
-		es.Nonce = make([]byte, 24)
-		copy(es.Nonce, nonce[:])
 		// assign a nacl.secretbox to es.Ciphertext
 		c.log.Debug("encrypting",
-			zap.String("secretKey", base64.StdEncoding.EncodeToString(secretKey[:])),
-			zap.String("nonce", base64.StdEncoding.EncodeToString(es.Nonce)))
+			zap.String("secretKey", base64.StdEncoding.EncodeToString(secretKey[:])))
 		es.Ciphertext = secretbox.Seal(nil, a.Plaintext, &nonce, &secretKey)
 		c.log.Debug("wrote ciphertext", zap.Binary("ciphertext", es.Ciphertext))
 		// append encrypted Secret to the list
@@ -282,12 +271,10 @@ func (c *Crypto) Decrypt(
 			}
 			var secretKey [32]byte
 			copy(secretKey[:], keyBytes)
-			var nonce [24]byte
-			copy(nonce[:], s.Nonce)
+			nonce := [24]byte{}
 			resp := pb.Cleartext{}
 			c.log.Debug("decrypting",
-				zap.String("secretKey", base64.StdEncoding.EncodeToString(secretKey[:])),
-				zap.String("nonce", base64.StdEncoding.EncodeToString(s.Nonce)))
+				zap.String("secretKey", base64.StdEncoding.EncodeToString(secretKey[:])))
 			resp.Cleartext, ok = secretbox.Open(nil, s.Ciphertext, &nonce, &secretKey)
 			if !ok {
 				return nil, fmt.Errorf("couldn't decrypt secretbox")
