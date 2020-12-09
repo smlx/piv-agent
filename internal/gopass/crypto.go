@@ -11,9 +11,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
-	"math/big"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/smlx/piv-agent/internal/gopass/pb"
 	"github.com/smlx/piv-agent/internal/token"
 	"go.uber.org/zap"
@@ -24,12 +24,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"sigs.k8s.io/yaml"
 )
-
-// ECDSAPubKeyParams contains the parameters for an ECDSA public key.
-type ECDSAPubKeyParams struct {
-	X *big.Int
-	Y *big.Int
-}
 
 // Secret contains the secret with all required parameters for decryption.
 type Secret struct {
@@ -90,43 +84,43 @@ func (c *Crypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Iden
 // Crypto
 
 // Encrypt will encrypt the given content for the recipients.
-func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (*pb.Ciphertext, error) {
+func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (
+	*pb.Ciphertext, error) {
 	var secretList []Secret
 	for _, recipient := range a.Recipients {
-		// Unmarshal the public key
-		pubKey, _, _, _, err := ssh.ParseAuthorizedKey(recipient)
+		recipientCPK, err := parseSSHAuthorizedKey(recipient)
 		if err != nil {
-			return nil, fmt.Errorf("invalid recipient: %w", err)
+			return nil, fmt.Errorf("couldn't parse recipient public key")
 		}
 		// Generate a salt
-		salt := make([]byte, 20)
-		_, err = rand.Read(salt)
+		es := Secret{Salt: make([]byte, 20)}
+		spew.Dump(es.Salt)
+		_, err = rand.Read(es.Salt)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't read salt: %w", err)
 		}
+		spew.Dump(es.Salt)
 		// secretKey is the shared secret used to seal the secretbox
 		var secretKey [32]byte
-		es := Secret{
-			Salt: salt,
-		}
-		// figure out what kind of key it is
-		cPubKey, ok := pubKey.(ssh.CryptoPublicKey)
-		if !ok {
-			return nil, fmt.Errorf("couldn't cast to ssh.CryptoPublicKey")
-		}
 		// handle each key type
-		switch cPubKey.CryptoPublicKey().(type) {
+		switch recipientCPK.(type) {
 		case *ecdsa.PublicKey:
-			ecdsaPubKey, ok := cPubKey.CryptoPublicKey().(*ecdsa.PublicKey)
-			if !ok {
-				return nil, fmt.Errorf("couldn't cast to *ecdsa.PublicKey")
-			}
+			recipientECDSAPubKey := recipientCPK.(*ecdsa.PublicKey)
 			curve := elliptic.P256()
-			if !curve.IsOnCurve(ecdsaPubKey.X, ecdsaPubKey.Y) {
-				return nil, fmt.Errorf("public key not on nistp256 curve: %w", err)
+			if !curve.IsOnCurve(recipientECDSAPubKey.X, recipientECDSAPubKey.Y) {
+				return nil, fmt.Errorf("recipient public key not on nistp256 curve")
 			}
 			// recipient is a valid key
-			es.Recipient = bytes.TrimSpace(ssh.MarshalAuthorizedKey(pubKey))
+			rAuthKeyParts := bytes.Fields(recipient)
+			rBuf := bytes.Buffer{}
+			_, err := fmt.Fprintf(&rBuf, "%s %s", rAuthKeyParts[0], rAuthKeyParts[1])
+			if err != nil {
+				return nil, fmt.Errorf("couldn't write to buffer: %w", err)
+			}
+			es.Recipient = rBuf.Bytes()
+			//
+			// TODO: continue cleanup below...
+			//
 			// Generate an ephemeral key of the correct type
 			privEphemeral, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 			if err != nil {
@@ -198,80 +192,59 @@ func (c *Crypto) Decrypt(
 		return nil, fmt.Errorf("couldn't unmarshal secretList: %w", err)
 	}
 	// get the available public keys
-	pubKeys, err := c.agent.PublicKeys()
+	localPubKeys, err := c.agent.PublicKeys()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get public keys from agent: %w", err)
 	}
 
-	// iterate the secret list
+	// check each secret for a matching local key
 	for _, s := range secretList {
-		recipientSSHPubKey, _, _, _, err := ssh.ParseAuthorizedKey(s.Recipient)
+		recipientCPK, err := parseSSHAuthorizedKey(s.Recipient)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't parse ephemeral public key")
+			return nil, fmt.Errorf("couldn't parse recipient public key")
 		}
-		cRecipientSSHPubKey, ok := recipientSSHPubKey.(ssh.CryptoPublicKey)
-		if !ok {
-			return nil, fmt.Errorf("couldn't cast to ssh.CryptoPublicKey")
-		}
-		switch cRecipientSSHPubKey.CryptoPublicKey().(type) {
+		switch recipientCPK.(type) {
 		case *ecdsa.PublicKey:
-			recipientPubKey, ok :=
-				cRecipientSSHPubKey.CryptoPublicKey().(*ecdsa.PublicKey)
-			if !ok {
-				return nil, fmt.Errorf("couldn't cast to *ecdsa.PublicKey")
-			}
-			// check each recipient in the secretList for a match against a local pubkey
-			var recipientMatchedPubKey *ecdsa.PublicKey
-			for _, pubKey := range pubKeys {
-				cPubKey, ok := pubKey.(ssh.CryptoPublicKey)
+			recipientECDSAPubKey := recipientCPK.(*ecdsa.PublicKey)
+			// check each recipient for a match against a local pubkey
+			var matchedPubKey *ecdsa.PublicKey
+			for _, localPubKey := range localPubKeys {
+				localCPK, ok := localPubKey.(ssh.CryptoPublicKey)
 				if !ok {
 					return nil, fmt.Errorf("couldn't cast to ssh.CryptoPublicKey")
 				}
 				// convert the pubkey to an ecdsa pubkey
-				ecdsaPubKey, ok := cPubKey.CryptoPublicKey().(*ecdsa.PublicKey)
+				localECDSAPubKey, ok := localCPK.CryptoPublicKey().(*ecdsa.PublicKey)
 				if !ok {
 					continue // key type mismatch
 				}
 
-				if ecdsaPubKey.Equal(recipientPubKey) {
-					recipientMatchedPubKey = recipientPubKey
-					break
+				if localECDSAPubKey.Equal(recipientECDSAPubKey) {
+					matchedPubKey = localECDSAPubKey
+					break // success!
 				}
 			}
-			if recipientMatchedPubKey == nil {
+			if matchedPubKey == nil {
 				continue // no matching pubKey
 			}
 
-			// TODO extract this logic into a function
-			peerSSHPubKey, _, _, _, err := ssh.ParseAuthorizedKey(s.PubKey)
+			peerCPK, err := parseSSHAuthorizedKey(s.PubKey)
 			if err != nil {
-				return nil, fmt.Errorf("couldn't parse peer pub key: %w", err)
-			}
-			cPeerSSHPubKey, ok := peerSSHPubKey.(ssh.CryptoPublicKey)
-			if !ok {
-				return nil, fmt.Errorf("couldn't cast to ssh.CryptoPublicKey")
+				return nil, fmt.Errorf("couldn't parse peer public key")
 			}
 
-			sharedKey, err := c.agent.SharedKey(recipientMatchedPubKey, cPeerSSHPubKey)
+			sharedKey, err := c.agent.SharedKey(matchedPubKey, peerCPK)
 			if err != nil {
 				return nil, fmt.Errorf("agent couldn't compute shared key: %w", err)
 			}
-			// then decrypt the matching secret
-			keyBytes, err := scrypt.Key(sharedKey, s.Salt, 1<<20, 8, 1, 32)
+			plaintext, err := decrypt(s.Ciphertext, sharedKey, s.Salt)
 			if err != nil {
-				return nil, fmt.Errorf("scrypt KDF error: %w", err)
+				return nil, fmt.Errorf("couldn't decrypt secret: %w", err)
 			}
-			var secretKey [32]byte
-			copy(secretKey[:], keyBytes)
-			resp := pb.Cleartext{}
-			resp.Cleartext, ok = secretbox.Open(nil, s.Ciphertext, &[24]byte{}, &secretKey)
-			if !ok {
-				return nil, fmt.Errorf("couldn't decrypt secretbox")
-			}
-			return &resp, nil
+			return &pb.Cleartext{Cleartext: plaintext}, nil
 		}
 	}
-	return nil, fmt.Errorf("no key matching a recipient available")
+	return nil, fmt.Errorf("no local key matching any recipient")
 }
 
 // Name returns "piv-agent".
