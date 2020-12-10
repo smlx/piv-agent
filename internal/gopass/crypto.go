@@ -191,7 +191,9 @@ func (c *Crypto) Decrypt(ctx context.Context,
 	}
 
 	// check each secret for a matching local key
-	for _, s := range secretList {
+	var s Secret
+	var matchedPubKey crypto.PublicKey
+	for _, s = range secretList {
 		recipientCPK, err := parseSSHAuthorizedKey(s.Recipient)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse recipient public key")
@@ -200,7 +202,6 @@ func (c *Crypto) Decrypt(ctx context.Context,
 		case *ecdsa.PublicKey:
 			recipientECDSAPubKey := recipientCPK.(*ecdsa.PublicKey)
 			// check each recipient for a match against a local pubkey
-			var matchedPubKey *ecdsa.PublicKey
 			for _, localPubKey := range localPubKeys {
 				localCPK, ok := localPubKey.(ssh.CryptoPublicKey)
 				if !ok {
@@ -211,7 +212,6 @@ func (c *Crypto) Decrypt(ctx context.Context,
 				if !ok {
 					continue // key type mismatch
 				}
-
 				if localECDSAPubKey.Equal(recipientECDSAPubKey) {
 					matchedPubKey = localECDSAPubKey
 					break // success!
@@ -220,24 +220,47 @@ func (c *Crypto) Decrypt(ctx context.Context,
 			if matchedPubKey == nil {
 				continue // no matching pubKey
 			}
-
-			peerCPK, err := parseSSHAuthorizedKey(s.PubKey)
-			if err != nil {
-				return nil, fmt.Errorf("couldn't parse peer public key")
+		case ed25519.PublicKey:
+			recipientPubKey := recipientCPK.(ed25519.PublicKey)
+			// check each recipient for a match against a local pubkey
+			for _, localSSHPubKey := range localPubKeys {
+				localCPK, ok := localSSHPubKey.(ssh.CryptoPublicKey)
+				if !ok {
+					return nil, fmt.Errorf("couldn't cast to ssh.CryptoPublicKey")
+				}
+				// convert the pubkey to an ecdsa pubkey
+				localPubKey, ok := localCPK.CryptoPublicKey().(ed25519.PublicKey)
+				if !ok {
+					continue // key type mismatch
+				}
+				if localPubKey.Equal(recipientPubKey) {
+					matchedPubKey = localPubKey
+					break // success!
+				}
 			}
-
-			sharedKey, err := c.agent.SharedKey(matchedPubKey, peerCPK)
-			if err != nil {
-				return nil, fmt.Errorf("agent couldn't compute shared key: %w", err)
+			if matchedPubKey == nil {
+				continue // no matching pubKey
 			}
-			plaintext, err := decrypt(s.Ciphertext, sharedKey, s.Salt)
-			if err != nil {
-				return nil, fmt.Errorf("couldn't decrypt secret: %w", err)
-			}
-			return &pb.Cleartext{Cleartext: plaintext}, nil
+		default:
+			return nil, fmt.Errorf("invalid recipient key type: %T", recipientCPK)
 		}
 	}
-	return nil, fmt.Errorf("no local key matching any recipient")
+	if matchedPubKey == nil {
+		return nil, fmt.Errorf("no local key matching any recipient")
+	}
+	peerCPK, err := parseSSHAuthorizedKey(s.PubKey)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse peer public key")
+	}
+	sharedKey, err := c.agent.SharedKey(matchedPubKey, peerCPK)
+	if err != nil {
+		return nil, fmt.Errorf("agent couldn't compute shared key: %w", err)
+	}
+	plaintext, err := decrypt(s.Ciphertext, sharedKey, s.Salt)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't decrypt secret: %w", err)
+	}
+	return &pb.Cleartext{Cleartext: plaintext}, nil
 }
 
 // Name returns "piv-agent".
