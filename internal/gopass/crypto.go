@@ -51,7 +51,8 @@ type Agent interface {
 }
 
 // NewCrypto constructs a new gopass crypto grpc server.
-func NewCrypto(a Agent, et *time.Ticker, log *zap.Logger, version string) *Crypto {
+func NewCrypto(a Agent, et *time.Ticker, log *zap.Logger,
+	version string) *Crypto {
 	return &Crypto{
 		agent:      a,
 		exitTicker: et,
@@ -63,7 +64,8 @@ func NewCrypto(a Agent, et *time.Ticker, log *zap.Logger, version string) *Crypt
 // Keyring
 
 // ListIdentities returns a list of available keys.
-func (c *Crypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Identities, error) {
+func (c *Crypto) ListIdentities(ctx context.Context,
+	_ *emptypb.Empty) (*pb.Identities, error) {
 	securityKeys, err := token.List(c.log)
 	if err != nil {
 		c.log.Error("couldn't get security keys", zap.Error(err))
@@ -76,7 +78,8 @@ func (c *Crypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Iden
 	}
 	var ids pb.Identities
 	for _, sks := range sshKeySpecs {
-		ids.Identities = append(ids.Identities, bytes.TrimSpace(ssh.MarshalAuthorizedKey(sks.PublicKey)))
+		ids.Identities = append(ids.Identities,
+			bytes.TrimSpace(ssh.MarshalAuthorizedKey(sks.PublicKey)))
 	}
 	return &ids, nil
 }
@@ -84,8 +87,8 @@ func (c *Crypto) ListIdentities(ctx context.Context, _ *emptypb.Empty) (*pb.Iden
 // Crypto
 
 // Encrypt will encrypt the given content for the recipients.
-func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (
-	*pb.Ciphertext, error) {
+func (c *Crypto) Encrypt(ctx context.Context,
+	a *pb.EncryptArgs) (*pb.Ciphertext, error) {
 	var secretList []Secret
 	for _, recipient := range a.Recipients {
 		recipientCPK, err := parseSSHAuthorizedKey(recipient)
@@ -100,14 +103,14 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (
 			return nil, fmt.Errorf("couldn't read salt: %w", err)
 		}
 		spew.Dump(es.Salt)
-		// secretKey is the shared secret used to seal the secretbox
-		var secretKey [32]byte
+		// sharedSecret is the ECDH shared secret
+		var sharedSecret []byte
 		// handle each key type
 		switch recipientCPK.(type) {
 		case *ecdsa.PublicKey:
-			recipientECDSAPubKey := recipientCPK.(*ecdsa.PublicKey)
+			recipientPubKey := recipientCPK.(*ecdsa.PublicKey)
 			curve := elliptic.P256()
-			if !curve.IsOnCurve(recipientECDSAPubKey.X, recipientECDSAPubKey.Y) {
+			if !curve.IsOnCurve(recipientPubKey.X, recipientPubKey.Y) {
 				return nil, fmt.Errorf("recipient public key not on nistp256 curve")
 			}
 			// recipient is a valid key
@@ -118,54 +121,46 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (
 				return nil, fmt.Errorf("couldn't write to buffer: %w", err)
 			}
 			es.Recipient = rBuf.Bytes()
-			//
-			// TODO: continue cleanup below...
-			//
 			// Generate an ephemeral key of the correct type
-			privEphemeral, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			ephPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 			if err != nil {
-				return nil, fmt.Errorf("couldn't generate ecdsa key: %w", err)
+				return nil, fmt.Errorf("couldn't generate ephemeral ecdsa key: %w", err)
 			}
-			ephSSHPubKey, err := ssh.NewPublicKey(&privEphemeral.PublicKey)
+			ephSSHPubKey, err := ssh.NewPublicKey(&ephPrivKey.PublicKey)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't convert to ssh key type: %w", err)
 			}
 			es.PubKey = bytes.TrimSpace(ssh.MarshalAuthorizedKey(ephSSHPubKey))
 			// generate shared secret as per
 			// https://tools.ietf.org/html/rfc6090#section-4
-			sX, _ := curve.ScalarMult(ecdsaPubKey.X, ecdsaPubKey.Y, privEphemeral.D.Bytes())
-			c.log.Debug("ECDH shared secret", zap.Binary("secret", sX.Bytes()))
-			// Use scrypt as a KDF from the shared secret
-			// params from https://blog.filippo.io/the-scrypt-parameters/
-			keyBytes, err := scrypt.Key(sX.Bytes(), salt, 1<<20, 8, 1, 32)
-			if err != nil {
-				return nil, fmt.Errorf("scrypt KDF error: %w", err)
-			}
-			copy(secretKey[:], keyBytes)
+			sX, _ := curve.ScalarMult(recipientPubKey.X, recipientPubKey.Y,
+				ephPrivKey.D.Bytes())
+			sharedSecret = sX.Bytes()
 		case ed25519.PublicKey:
-			ed25519PubKey, ok := cPubKey.CryptoPublicKey().(ed25519.PublicKey)
-			if !ok {
-				return nil, fmt.Errorf("couldn't cast to *ed25519.PublicKey")
-			}
-			pubEphemeral, privEphemeral, err := ed25519.GenerateKey(rand.Reader)
+			recipientPubKey := recipientCPK.(ed25519.PublicKey)
+			ephPubKey, ephPrivKey, err := ed25519.GenerateKey(rand.Reader)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't generate ed25519 key: %w", err)
 			}
-			es.PubKey = pubEphemeral
+			es.PubKey = ephPubKey
 			// generate shared secret
-			ss, err := curve25519.X25519(privEphemeral, ed25519PubKey)
+			sharedSecret, err = curve25519.X25519(ephPrivKey, recipientPubKey)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't perform scalar multiplication: %w", err)
 			}
-			keyBytes, err := scrypt.Key(ss, salt, 1<<20, 8, 1, 32)
-			if err != nil {
-				return nil, fmt.Errorf("scrypt KDF error: %w", err)
-			}
-			copy(secretKey[:], keyBytes)
 		default:
-			return nil, fmt.Errorf("invalid recipient key type: %T",
-				cPubKey.CryptoPublicKey())
+			return nil, fmt.Errorf("invalid recipient key type: %T", recipientCPK)
 		}
+		c.log.Debug("ECDH shared secret", zap.Binary("secret", sharedSecret))
+		// Use scrypt as a KDF from the shared secret
+		// params from https://blog.filippo.io/the-scrypt-parameters/
+		keyBytes, err := scrypt.Key(sharedSecret, es.Salt, 1<<20, 8, 1, 32)
+		if err != nil {
+			return nil, fmt.Errorf("scrypt KDF error: %w", err)
+		}
+		// secretKey is the shared secret used to seal the secretbox
+		var secretKey [32]byte
+		copy(secretKey[:], keyBytes)
 		// Assign a nacl.secretbox to es.Ciphertext.
 		// Use a nonce of all zeroes since the ephemeral key is only used once.
 		es.Ciphertext = secretbox.Seal(nil, a.Plaintext, &[24]byte{}, &secretKey)
@@ -178,14 +173,12 @@ func (c *Crypto) Encrypt(ctx context.Context, a *pb.EncryptArgs) (
 		return nil, fmt.Errorf("couldn't marshal yaml: %w", err)
 	}
 	// return yaml ciphertext
-	return &pb.Ciphertext{
-		Ciphertext: y,
-	}, nil
+	return &pb.Ciphertext{Ciphertext: y}, nil
 }
 
 // Decrypt will try to decrypt the given data.
-func (c *Crypto) Decrypt(
-	ctx context.Context, a *pb.DecryptArgs) (*pb.Cleartext, error) {
+func (c *Crypto) Decrypt(ctx context.Context,
+	a *pb.DecryptArgs) (*pb.Cleartext, error) {
 	// unmarshal YAML to secretList
 	var secretList []Secret
 	if err := yaml.Unmarshal(a.Ciphertext, &secretList); err != nil {
@@ -248,26 +241,31 @@ func (c *Crypto) Decrypt(
 }
 
 // Name returns "piv-agent".
-func (c *Crypto) Name(ctx context.Context, _ *emptypb.Empty) (*pb.ServerName, error) {
+func (c *Crypto) Name(ctx context.Context,
+	_ *emptypb.Empty) (*pb.ServerName, error) {
 	return &pb.ServerName{Name: "piv-agent"}, nil
 }
 
 // Version will return piv-agent version information.
-func (c *Crypto) Version(ctx context.Context, _ *emptypb.Empty) (*pb.ServerVersion, error) {
+func (c *Crypto) Version(ctx context.Context,
+	_ *emptypb.Empty) (*pb.ServerVersion, error) {
 	return &pb.ServerVersion{Version: c.version}, nil
 }
 
 // Initialized always returns nil.
-func (c *Crypto) Initialized(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+func (c *Crypto) Initialized(ctx context.Context,
+	_ *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 
 // Ext returns the file extension used by this backend: "piv".
-func (c *Crypto) Ext(ctx context.Context, _ *emptypb.Empty) (*pb.Extension, error) {
+func (c *Crypto) Ext(ctx context.Context,
+	_ *emptypb.Empty) (*pb.Extension, error) {
 	return &pb.Extension{Ext: "pa"}, nil
 }
 
 // IDFile returns the name of the recipients file used by this backend: ".piv-id".
-func (c *Crypto) IDFile(ctx context.Context, _ *emptypb.Empty) (*pb.IDFileName, error) {
+func (c *Crypto) IDFile(ctx context.Context,
+	_ *emptypb.Empty) (*pb.IDFileName, error) {
 	return &pb.IDFileName{Name: ".piv-agent-id"}, nil
 }
