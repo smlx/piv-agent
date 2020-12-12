@@ -3,9 +3,14 @@ package agent
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"fmt"
+	"io/ioutil"
+	"strings"
 
 	"github.com/go-piv/piv-go/piv"
+	"go.uber.org/zap"
+	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -41,6 +46,20 @@ func (a *Agent) PublicKeys() ([]ssh.PublicKey, error) {
 func (a *Agent) SharedKey(recipient, peer crypto.PublicKey) ([]byte, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
+	sk, err := a.tokenSharedKey(recipient, peer)
+	if err == nil {
+		return sk, nil
+	}
+	a.log.Debug("no token key match", zap.Error(err))
+	sk, err = a.keyfileSharedKey(recipient, peer)
+	if err == nil {
+		return sk, nil
+	}
+	a.log.Debug("no keyfile key match", zap.Error(err))
+	return nil, fmt.Errorf("couldn't find local key matching recipient")
+}
+
+func (a *Agent) tokenSharedKey(recipient, peer crypto.PublicKey) ([]byte, error) {
 	sshKeySpecs, err := a.tokenSSHKeySpecs()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get token keys: %w", err)
@@ -77,10 +96,64 @@ func (a *Agent) SharedKey(recipient, peer crypto.PublicKey) ([]byte, error) {
 			return ecPrivKey.SharedKey(ecPubKey)
 		}
 	}
-	// TODO
-	// keyfileSpecs, err := a.keyfileSpecs()
-	// if err != nil {
-	// 	return nil, fmt.Errorf("couldn't get keyfile keys: %w", err)
-	// }
-	return nil, fmt.Errorf("couldn't find matching key")
+	return nil, fmt.Errorf("no matching token key")
+}
+
+func (a *Agent) keyfileSharedKey(recipient, peer crypto.PublicKey) ([]byte, error) {
+	peerEdPubKey, ok := peer.(ed25519.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("couldn't cast peer public key to ed25519")
+	}
+	keyfileSpecs, err := a.keyfileSpecs()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get keyfile keys: %w", err)
+	}
+	for _, ks := range keyfileSpecs {
+		cPubKey, ok := ks.PublicKey.(ssh.CryptoPublicKey)
+		if !ok {
+			return nil, fmt.Errorf("couldn't cast to ssh.CryptoPublicKey")
+		}
+		ed25519PubKey, ok := cPubKey.CryptoPublicKey().(ed25519.PublicKey)
+		if !ok {
+			continue // key type mismatch
+		}
+		if ed25519PubKey.Equal(recipient) {
+			// get the private key
+			keyPath := strings.TrimSuffix(ks.Path, ".pub")
+			privBytes, err := ioutil.ReadFile(keyPath)
+			if err != nil {
+				return nil, fmt.Errorf("coulnd't read private keyfile: %w", err)
+			}
+			privKey, err := ssh.ParseRawPrivateKey(privBytes)
+			if err != nil {
+				pmErr, ok := err.(*ssh.PassphraseMissingError)
+				if !ok {
+					return nil, err
+				}
+				passphrase := passphrases[string(pmErr.PublicKey.Marshal())]
+				if passphrase == nil {
+					passphrase, err = getPassphrase(keyPath,
+						string(ssh.FingerprintSHA256(pmErr.PublicKey)))
+					if err != nil {
+						return nil, err
+					}
+				}
+				privKey, err = ssh.ParseRawPrivateKeyWithPassphrase(privBytes, passphrase)
+				if err != nil {
+					return nil, err
+				}
+				passphrases[string(ks.PublicKey.Marshal())] = passphrase
+			}
+			ed25519PrivKey, ok := privKey.(ed25519.PrivateKey)
+			if !ok {
+				return nil, fmt.Errorf("couldn't cast private keyfile to ed25519")
+			}
+			sharedSecret, err := curve25519.X25519(ed25519PrivKey, peerEdPubKey)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't perform scalar multiplication: %w", err)
+			}
+			return sharedSecret, nil
+		}
+	}
+	return nil, fmt.Errorf("no matching keyfile key")
 }
