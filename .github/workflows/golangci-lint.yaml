@@ -1,0 +1,15 @@
+name: golangci-lint
+on: pull_request
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Install Dependencies
+      run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: latest
