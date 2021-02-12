@@ -15,24 +15,12 @@ import (
 
 // ServeCmd represents the listen command.
 type ServeCmd struct {
-	Debug       bool          `kong:"help='Enable debug logging'"`
 	LoadKeyfile bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
 	ExitTimeout time.Duration `kong:"default=32m,help='Exit after this period to drop transaction and key file passphrase cache'"`
 }
 
 // Run the listen command to start listening for ssh-agent requests.
-func (cmd *ServeCmd) Run() error {
-	var log *zap.Logger
-	var err error
-	if cmd.Debug {
-		log, err = zap.NewDevelopment()
-	} else {
-		log, err = zap.NewProduction()
-	}
-	if err != nil {
-		return fmt.Errorf("couldn't init logger: %w", err)
-	}
-	defer log.Sync()
+func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("buildTime", buildTime))
 	// use systemd socket activation

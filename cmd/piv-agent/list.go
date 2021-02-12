@@ -11,9 +11,7 @@ import (
 )
 
 // ListCmd represents the list command.
-type ListCmd struct {
-	Debug bool `kong:"help='Enable debug logging'"`
-}
+type ListCmd struct{}
 
 var touchStringMap = map[piv.TouchPolicy]string{
 	piv.TouchPolicyNever:  "never",
@@ -22,18 +20,7 @@ var touchStringMap = map[piv.TouchPolicy]string{
 }
 
 // Run the list command.
-func (cmd *ListCmd) Run() error {
-	var log *zap.Logger
-	var err error
-	if cmd.Debug {
-		log, err = zap.NewDevelopment()
-	} else {
-		log, err = zap.NewProduction()
-	}
-	if err != nil {
-		return fmt.Errorf("couldn't init logger: %w", err)
-	}
-	defer log.Sync()
+func (cmd *ListCmd) Run(log *zap.Logger) error {
 	sks, err := token.List(log)
 	if err != nil {
 		return fmt.Errorf("couldn't get security keys: %w", err)
