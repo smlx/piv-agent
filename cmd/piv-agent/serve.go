@@ -20,8 +20,6 @@ type ServeCmd struct {
 	ExitTimeout time.Duration `kong:"default=32m,help='Exit after this period to drop transaction and key file passphrase cache'"`
 }
 
-const exitTimeout = 32 * time.Minute
-
 // Run the listen command to start listening for ssh-agent requests.
 func (cmd *ServeCmd) Run() error {
 	var log *zap.Logger
