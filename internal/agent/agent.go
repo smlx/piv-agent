@@ -83,14 +83,16 @@ func (a *Agent) tokenList() ([]*agent.Key, error) {
 			zap.Int("number of security keys", len(a.securityKeys)))
 		err = a.reopenSecurityKeys()
 		if err != nil {
-			return nil, fmt.Errorf("couldn't reload security keys: %w", err)
+			return nil, fmt.Errorf("couldn't reopen security keys: %w", err)
 		}
 	}
 	var keys []*agent.Key
 	if len(a.securityKeys) > 0 {
-		sshKeySpecs, err = token.SSHKeySpecs(a.securityKeys)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
+		if sshKeySpecs == nil {
+			sshKeySpecs, err = token.SSHKeySpecs(a.securityKeys)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
+			}
 		}
 		for _, sks := range sshKeySpecs {
 			keys = append(keys, &agent.Key{
