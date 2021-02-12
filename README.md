@@ -2,7 +2,9 @@
 
 An SSH agent which you can use with your PIV smartcard / security key.
 
-`piv-agent` is based almost entirely on ideas from https://github.com/FiloSottile/yubikey-agent.
+`piv-agent` is based almost entirely on ideas and cryptography from https://github.com/FiloSottile/yubikey-agent.
+
+**IMPORTANT NOTE**: I am not a cryptographer and I make no assertion about the security or otherwise of this software.
 
 ## What is wrong with yubikey-agent?
 
@@ -40,8 +42,6 @@ Currently tested on Linux and systemd.
 
 ## Usage
 
-### Setup
-
 Currently requires systemd socket activation.
 Similar configuration may be possible on macOS(?? if you know how to do this please open an issue or PR!)
 
@@ -57,13 +57,12 @@ systemctl --user start piv-agent.socket
 
 ### Prefer the SSH keys on the hardware token
 
-`piv-agent` supports loading SSH keys from disk.
-However to prefer the keys on the hardware token (to present these to the server first) it must be configured in SSH config.
-
-To do this, copy the public key to e.g. `~/.ssh/id_pivTouchCached.pub`, and add this line to your SSH config:
+`ssh` will offer keyfiles it finds on disk _before_ those from the agent.
+This is a problem because `piv-agent` is designed to offer keys from the hardware token first, and only fall back to local keyfiles if token keys are refused.
+To get `ssh` to ignore local keyfiles and only talk to `piv-agent`, add this line to your `ssh_config`.
 
 ```
-IdentityFile ~/.ssh/id_pivTouchCached
+IdentityFile /dev/null
 ```
 
 ### PIN / Passphrase caching
@@ -74,14 +73,14 @@ IdentityFile ~/.ssh/id_pivTouchCached
 * it also caches passphrases for on-disk keys (i.e. `~/.ssh/id_ed25519`).
 
 After a period of inactivity (32 min by default) it exits, dropping both of these.
-Socket activation restarts it automatically.
+Socket activation restarts it automatically as required.
 
 I recommend using the pinentry option to store the PIN, but not the passphrase.
 This somewhat addresses the threat model of someone accessing your laptop left unlocked in a cafe, but of course it doesn't address keyloggers etc.
 It also has the advantage of ensuring that you don't forget your passphrase.
 But you might forget your PIN, so maybe don't store that either if you're concerned about that possibility? 🤷
 
-## Building / Testing
+## Build / Test
 
 The dbus variable is required for `pinentry` to use a graphical prompt.
 
