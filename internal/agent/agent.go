@@ -171,7 +171,7 @@ func (a *Agent) signWithSigners(key ssh.PublicKey, data []byte, signers []ssh.Si
 		// (possibly) send a notification
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		touchNotify(ctx)
+		a.touchNotify(ctx)
 		// perform signature
 		a.log.Debug("signing",
 			zap.Binary("public key bytes", s.PublicKey().Marshal()))
@@ -180,14 +180,17 @@ func (a *Agent) signWithSigners(key ssh.PublicKey, data []byte, signers []ssh.Si
 	return nil, fmt.Errorf("%w: %v", ErrUnknownKey, key)
 }
 
-func touchNotify(ctx context.Context) {
+func (a *Agent) touchNotify(ctx context.Context) {
 	timer := time.NewTimer(8 * time.Second)
 	go func() {
 		select {
 		case <-ctx.Done():
 			timer.Stop()
 		case <-timer.C:
-			beeep.Alert("Security Key Agent", "Waiting for touch...", "")
+			err := beeep.Alert("Security Key Agent", "Waiting for touch...", "")
+			if err != nil {
+				a.log.Warn("couldn't send touch notification", zap.Error(err))
+			}
 		}
 	}()
 }
