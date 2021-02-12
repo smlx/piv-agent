@@ -2,4 +2,4 @@
 Description=piv-agent service
 
 [Service]
-ExecStart=%h/dev/piv-agent/piv-agent serve --debug
+ExecStart=%h/go/bin/piv-agent serve --debug

@@ -43,9 +43,10 @@ Currently tested on Linux and systemd.
 ### Setup
 
 Currently requires systemd socket activation.
-Similar configuration may be possible on macOS(?)
+Similar configuration may be possible on macOS(?? if you know how to do this please open an issue or PR!)
 
-You will need to edit `piv-agent.service` to configure the correct path to the `piv-agent` binary on your system.
+`piv-agent.service` looks for `$HOME/go/bin/piv-agent` by default.
+If the binary is in a different location you'll have to edit the service file.
 
 ```
 cp deploy/piv-agent.{socket,service} ~/.config/systemd/user/
