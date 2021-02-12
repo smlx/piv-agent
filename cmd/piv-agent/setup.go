@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/smlx/piv-agent/internal/token"
-	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -45,12 +44,8 @@ func interactivePIN() (uint64, error) {
 
 // Run the setup command to configure a security key.
 func (cmd *SetupCmd) Run() error {
-	log, err := zap.NewDevelopment()
-	if err != nil {
-		return fmt.Errorf("couldn't init logger: %w", err)
-	}
-	defer log.Sync()
 	// if PIN has not been specified, ask interactively
+	var err error
 	if cmd.PIN == 0 {
 		cmd.PIN, err = interactivePIN()
 		if err != nil {

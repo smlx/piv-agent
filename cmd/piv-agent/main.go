@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/alecthomas/kong"
+	"go.uber.org/zap"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 
 // CLI represents the command-line interface.
 type CLI struct {
+	Debug bool     `kong:"help='Enable debug logging'"`
 	Serve ServeCmd `kong:"cmd,default=1,help='(default) Listen for signing requests'"`
 	Setup SetupCmd `kong:"cmd,help='Set up the security key for use with SSH'"`
 	List  ListCmd  `kong:"cmd,help='List SSH keys available on each security key'"`
@@ -22,5 +24,18 @@ func main() {
 	kctx := kong.Parse(&cli,
 		kong.UsageOnError(),
 	)
-	kctx.FatalIfErrorf(kctx.Run())
+	// init logger
+	var log *zap.Logger
+	var err error
+	if cli.Debug {
+		log, err = zap.NewDevelopment()
+	} else {
+		log, err = zap.NewProduction()
+	}
+	if err != nil {
+		panic(err)
+	}
+	defer log.Sync() //nolint:errcheck
+	// execute CLI
+	kctx.FatalIfErrorf(kctx.Run(log))
 }
