@@ -20,7 +20,8 @@ jobs:
       with:
         go-version: "^1.15"
     - name: Install ccv
-      run: go get github.com/smlx/ccv
+      working-directory: /
+      run: GO111MODULE=on go get github.com/smlx/ccv
     - name: Bump tag if necessary
       id: tag
       run: |
