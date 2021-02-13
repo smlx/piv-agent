@@ -22,7 +22,7 @@ type ServeCmd struct {
 // Run the listen command to start listening for ssh-agent requests.
 func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
-		zap.String("buildTime", buildTime))
+		zap.String("build date", date))
 	// use systemd socket activation
 	listeners, err := activation.Listeners()
 	if err != nil {
