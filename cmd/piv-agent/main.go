@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	version   string
-	buildTime string
+	version string
+	date    string
 )
 
 // CLI represents the command-line interface.
