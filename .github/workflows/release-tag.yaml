@@ -1,8 +1,6 @@
 name: Tag and Release
 on:
   push:
-    branches:
-    - main
     tags:
     - v*
 jobs:
@@ -21,19 +19,7 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: "^1.15"
-    - name: Install ccv
-      working-directory: /
-      run: GO111MODULE=on go get github.com/smlx/ccv
-    - name: Bump tag if necessary
-      id: tag
-      run: |
-        if [ -z $(git tag -l $(ccv)) ]; then
-          git tag $(ccv)
-          git push --tags
-          echo "::set-output name=new::true"
-        fi
     - name: Run GoReleaser
-      if: steps.tag.outputs.new == 'true'
       uses: goreleaser/goreleaser-action@v2
       with:
         version: latest
