@@ -1,5 +1,7 @@
 # PIV Agent
 
+![Tag and release on merge](https://github.com/smlx/piv-agent/workflows/Tag%20and%20release%20on%20merge/badge.svg)
+
 An SSH agent which you can use with your PIV smartcard / security key.
 
 `piv-agent` is based almost entirely on ideas and cryptography from https://github.com/FiloSottile/yubikey-agent.
@@ -16,8 +18,9 @@ I also added a couple of features that I wanted that yubikey-agent lacks, such a
 * support for multiple slots in those keys
 * support for multiple touch policies
 * a way to list existing SSH keys
-* socket activation (systemd-compatible)
 * support loading key files from disk
+* socket activation (systemd-compatible)
+  * as a result, automatically drop the transaction on the security key after some period of disuse
 
 ## Philosophy
 
@@ -27,7 +30,7 @@ It is highly opinionated:
 
 * Only supports elliptic curve crypto
 * Only supports 256-bit EC keys on hardware tokens
-* Only supports ed25519 ssh keys on disk
+* Only supports ed25519 ssh keys on disk (`~/.ssh/id_ed25519`)
 * Assumes socket activation
 
 ## Security key support
@@ -43,7 +46,7 @@ Currently tested on Linux and systemd.
 ## Usage
 
 Currently requires systemd socket activation.
-Similar configuration may be possible on macOS(?? if you know how to do this please open an issue or PR!)
+Similar configuration may be possible on macOS (see [issue #12](https://github.com/smlx/piv-agent/issues/12)) or other systems. PRs welcome!
 
 `piv-agent.service` looks for `$HOME/go/bin/piv-agent` by default.
 If the binary is in a different location you'll have to edit the service file.
@@ -57,7 +60,7 @@ systemctl --user start piv-agent.socket
 
 ### Prefer the SSH keys on the hardware token
 
-`ssh` will offer keyfiles it finds on disk _before_ those from the agent.
+By default, `ssh` will offer keyfiles it finds on disk _before_ those from the agent.
 This is a problem because `piv-agent` is designed to offer keys from the hardware token first, and only fall back to local keyfiles if token keys are refused.
 To get `ssh` to ignore local keyfiles and only talk to `piv-agent`, add this line to your `ssh_config`.
 
