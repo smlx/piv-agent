@@ -1,0 +1,6 @@
+builds:
+- dir: cmd/piv-agent
+  goos:
+  - linux
+  goarch:
+  - amd64
