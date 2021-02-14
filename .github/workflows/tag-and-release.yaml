@@ -6,6 +6,8 @@ on:
 jobs:
   tag:
     runs-on: ubuntu-latest
+    outputs:
+      new-tag: ${{ steps.bump-tag.outputs.new }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -23,7 +25,7 @@ jobs:
       working-directory: /
       run: GO111MODULE=on go get github.com/smlx/ccv
     - name: Bump tag if necessary
-      id: tag
+      id: bump-tag
       run: |
         if [ -z $(git tag -l $(ccv)) ]; then
           git tag $(ccv)
@@ -32,7 +34,7 @@ jobs:
         fi
   release:
     needs: tag
-    if: needs.tag.outputs.new == 'true'
+    if: needs.tag.outputs.new-tag == 'true'
     strategy:
       # avoid concurrent goreleaser runs
       max-parallel: 1
