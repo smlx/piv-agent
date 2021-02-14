@@ -1,13 +1,8 @@
-name: Release tag
-on:
-  push:
-    tags:
-    - v*
+name: Build
+on: pull_request
 jobs:
-  tag:
+  build:
     strategy:
-      # avoid concurrent goreleaser runs
-      max-parallel: 1
       matrix:
         os:
         - ubuntu-latest
@@ -27,6 +22,4 @@ jobs:
       uses: goreleaser/goreleaser-action@v2
       with:
         version: latest
-        args: release --rm-dist --config .goreleaser.${{ matrix.os }}.yml
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        args: build --snapshot --rm-dist --config .goreleaser.${{ matrix.os }}.yml

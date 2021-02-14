@@ -1,7 +1,7 @@
-name: golangci-lint
+name: Lint
 on: pull_request
 jobs:
-  golangci:
+  golangci-lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
@@ -13,3 +13,12 @@ jobs:
       uses: golangci/golangci-lint-action@v2
       with:
         version: latest
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Lint commit messages
+      uses: wagoid/commitlint-github-action@v2

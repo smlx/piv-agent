@@ -3,7 +3,8 @@
 FROM golang:1-buster
 RUN apt-get update \
     && apt-get install -y libpcsclite-dev \
-    && apt-get clean
+    && apt-get clean \
+    && curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
 WORKDIR /src
 COPY . .
-RUN go build ./cmd/piv-agent
+RUN goreleaser build --snapshot --rm-dist --config .goreleaser.ubuntu-latest.yml
