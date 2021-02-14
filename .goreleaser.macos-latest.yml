@@ -2,3 +2,5 @@ builds:
 - dir: cmd/piv-agent
   goos:
   - darwin
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_darwin_checksums.txt"

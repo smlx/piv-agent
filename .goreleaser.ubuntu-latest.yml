@@ -4,3 +4,5 @@ builds:
   - linux
   goarch:
   - amd64
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_linux_checksums.txt"
