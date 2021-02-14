@@ -21,14 +21,19 @@ var touchStringMap = map[piv.TouchPolicy]string{
 
 // Run the list command.
 func (cmd *ListCmd) Run(log *zap.Logger) error {
-	sks, err := token.List(log)
+	securityKeys, err := token.List(log)
 	if err != nil {
 		return fmt.Errorf("couldn't get security keys: %w", err)
 	}
-	sshKeySpecs, err := token.SSHKeySpecs(sks)
+	fmt.Println("security keys (cards):")
+	for _, sk := range securityKeys {
+		fmt.Println(sk.Card)
+	}
+	sshKeySpecs, err := token.SSHKeySpecs(securityKeys)
 	if err != nil {
 		return fmt.Errorf("couldn't get SSH public keys: %w", err)
 	}
+	fmt.Println("ssh keys:")
 	for _, sks := range sshKeySpecs {
 		fmt.Printf("%s %s\n",
 			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(sks.PubKey)), "\n"),
