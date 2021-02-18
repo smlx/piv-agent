@@ -4,43 +4,51 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-piv/piv-go/piv"
-	"github.com/smlx/piv-agent/internal/token"
+	"github.com/smlx/piv-agent/internal/pivservice"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/ssh"
 )
 
 // ListCmd represents the list command.
-type ListCmd struct{}
-
-var touchStringMap = map[piv.TouchPolicy]string{
-	piv.TouchPolicyNever:  "never",
-	piv.TouchPolicyAlways: "always",
-	piv.TouchPolicyCached: "cached",
+type ListCmd struct {
+	KeyFormats []string `kong:"default='ssh',enum='ssh,gpg',help='Key formats to list (ssh, gpg)'"`
+	PGPName    string   `kong:"default='piv-agent',help='Name set on synthesized PGP identities'"`
+	PGPEmail   string   `kong:"default='noreply@example.com',help='Email set on synthesized PGP identities'"`
 }
 
 // Run the list command.
-func (cmd *ListCmd) Run(log *zap.Logger) error {
-	securityKeys, err := token.List(log)
+func (cmd *ListCmd) Run(l *zap.Logger) error {
+	p := pivservice.New(l)
+	securityKeys, err := p.SecurityKeys()
 	if err != nil {
 		return fmt.Errorf("couldn't get security keys: %w", err)
 	}
-	fmt.Println("security keys (cards):")
-	for _, sk := range securityKeys {
-		fmt.Println(sk.Card)
+	fmt.Println("Security keys (cards):")
+	for _, k := range securityKeys {
+		fmt.Println(k.Card())
 	}
-	sshKeySpecs, err := token.SSHKeySpecs(securityKeys)
-	if err != nil {
-		return fmt.Errorf("couldn't get SSH public keys: %w", err)
+	keyformats := map[string]bool{}
+	for _, f := range cmd.KeyFormats {
+		keyformats[f] = true
 	}
-	fmt.Println("ssh keys:")
-	for _, sks := range sshKeySpecs {
-		fmt.Printf("%s %s\n",
-			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(sks.PubKey)), "\n"),
-			fmt.Sprintf("%v #%v, touch policy: %s",
-				sks.Card,
-				sks.Serial,
-				touchStringMap[sks.TouchPolicy]))
+	if keyformats["ssh"] {
+		fmt.Println("\nSSH keys:")
+		for _, k := range securityKeys {
+			for _, s := range k.StringsSSH() {
+				fmt.Println(strings.TrimSpace(s))
+			}
+		}
+	}
+	if keyformats["gpg"] {
+		fmt.Println("\nGPG keys:")
+		for _, k := range securityKeys {
+			ss, err := k.StringsGPG(cmd.PGPName, cmd.PGPEmail)
+			if err != nil {
+				return fmt.Errorf("couldn't get GPG keys as strings: %v", err)
+			}
+			for _, s := range ss {
+				fmt.Println(s)
+			}
+		}
 	}
 	return nil
 }

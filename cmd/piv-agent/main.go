@@ -15,7 +15,7 @@ type CLI struct {
 	Debug bool     `kong:"help='Enable debug logging'"`
 	Serve ServeCmd `kong:"cmd,default=1,help='(default) Listen for signing requests'"`
 	Setup SetupCmd `kong:"cmd,help='Set up the security key for use with SSH'"`
-	List  ListCmd  `kong:"cmd,help='List SSH keys available on each security key'"`
+	List  ListCmd  `kong:"cmd,help='List signing keys available on each security key'"`
 }
 
 func main() {
