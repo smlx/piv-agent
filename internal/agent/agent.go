@@ -23,7 +23,7 @@ import (
 // Agent implements the Agent interface
 // https://pkg.go.dev/golang.org/x/crypto/ssh/agent#Agent
 type Agent struct {
-	securityKeys []token.SecurityKey
+	securityKeys []token.Token
 	mutex        sync.Mutex
 	log          *zap.Logger
 	loadKeyfile  bool
@@ -77,7 +77,7 @@ func (a *Agent) List() ([]*agent.Key, error) {
 
 // returns the identities from hardware tokens
 func (a *Agent) tokenList() ([]*agent.Key, error) {
-	sshKeySpecs, err := token.SSHKeySpecs(a.securityKeys)
+	sshKeySpecs, err := token.SigningKeys(a.securityKeys)
 	if err != nil || len(a.securityKeys) == 0 {
 		a.log.Debug("reopening security keys", zap.Error(err),
 			zap.Int("number of security keys", len(a.securityKeys)))
@@ -89,18 +89,18 @@ func (a *Agent) tokenList() ([]*agent.Key, error) {
 	var keys []*agent.Key
 	if len(a.securityKeys) > 0 {
 		if sshKeySpecs == nil {
-			sshKeySpecs, err = token.SSHKeySpecs(a.securityKeys)
+			sshKeySpecs, err = token.SigningKeys(a.securityKeys)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
 			}
 		}
 		for _, sks := range sshKeySpecs {
 			keys = append(keys, &agent.Key{
-				Format: sks.PubKey.Type(),
-				Blob:   sks.PubKey.Marshal(),
+				Format: sks.PubSSH.Type(),
+				Blob:   sks.PubSSH.Marshal(),
 				Comment: fmt.Sprintf(
 					`Security Key "%s" #%d PIV Slot %x`,
-					sks.Card,
+					sks.PubSSH,
 					sks.Serial,
 					sks.Slot.Key),
 			})
@@ -242,7 +242,7 @@ func (a *Agent) Signers() ([]ssh.Signer, error) {
 // get signers for all keys stored in hardware tokens
 func (a *Agent) tokenSigners() ([]ssh.Signer, error) {
 	var signers []ssh.Signer
-	sshKeySpecs, err := token.SSHKeySpecs(a.securityKeys)
+	sshKeySpecs, err := token.SigningKeys(a.securityKeys)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get public keys: %w", err)
 	}
@@ -250,7 +250,7 @@ func (a *Agent) tokenSigners() ([]ssh.Signer, error) {
 		for _, sks := range sshKeySpecs {
 			privKey, err := sk.Key.PrivateKey(
 				sks.Slot,
-				sks.PubKey.(ssh.CryptoPublicKey).CryptoPublicKey(),
+				sks.PubSSH.(ssh.CryptoPublicKey).CryptoPublicKey(),
 				piv.KeyAuth{PINPrompt: pinEntry(&sk)},
 			)
 			if err != nil {

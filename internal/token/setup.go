@@ -47,11 +47,11 @@ func Setup(k *piv.YubiKey, pin, version string, reset, allTouchPolicies bool) er
 	if err = k.SetPUK(piv.DefaultPUK, pin); err != nil {
 		return fmt.Errorf("couldn't set PUK: %w", err)
 	}
-	keySpecs := []KeySpec{
+	keySpecs := []SlotSpec{
 		{Slot: piv.SlotAuthentication, TouchPolicy: piv.TouchPolicyCached},
 	}
 	if allTouchPolicies {
-		keySpecs = AllKeySpecs
+		keySpecs = SignSlotSpecs
 	}
 	for _, ks := range keySpecs {
 		if err = configureSlot(k, mk, ks.Slot, ks.TouchPolicy, version); err != nil {

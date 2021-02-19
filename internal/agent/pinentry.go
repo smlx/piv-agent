@@ -7,7 +7,7 @@ import (
 	"github.com/smlx/piv-agent/internal/token"
 )
 
-func pinEntry(sk *token.SecurityKey) func() (string, error) {
+func pinEntry(sk *token.Token) func() (string, error) {
 	return func() (string, error) {
 		p, err := pinentry.New()
 		if err != nil {
