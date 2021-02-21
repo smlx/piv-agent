@@ -59,12 +59,20 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	defer cancel()
 	exit := time.NewTicker(cmd.ExitTimeout)
 	g := errgroup.Group{}
-	s := server.NewSSH(log)
-	a := ssh.NewAgent(log, cmd.LoadKeyfile)
 	// start SSH agent if given in agent-type flag
 	if _, ok := cmd.AgentTypes["ssh"]; ok {
 		g.Go(func() error {
+			s := server.NewSSH(log)
+			a := ssh.NewAgent(log, cmd.LoadKeyfile)
 			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], exit, cmd.ExitTimeout)
+			cancel()
+			return err
+		})
+	}
+	if _, ok := cmd.AgentTypes["gpg"]; ok {
+		g.Go(func() error {
+			s := server.NewGPG(log)
+			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], exit, cmd.ExitTimeout)
 			cancel()
 			return err
 		})

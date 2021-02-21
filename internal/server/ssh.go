@@ -25,29 +25,12 @@ func NewSSH(l *zap.Logger) *SSH {
 	}
 }
 
-// accept connections in a goroutine and return them on a channel
-func (s *SSH) accept(ctx context.Context, l net.Listener) <-chan net.Conn {
-	conns := make(chan net.Conn)
-	go func() {
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				s.log.Error("accept error", zap.Error(err))
-				close(conns)
-				return
-			}
-			conns <- c
-		}
-	}()
-	return conns
-}
-
 // Serve starts serving signing requests, and returns when the request socket
 // is closed, the context is cancelled, or an error occurs.
 func (s *SSH) Serve(ctx context.Context, a *ssh.Agent, l net.Listener,
 	exit *time.Ticker, timeout time.Duration) error {
 	// start serving connections
-	conns := s.accept(ctx, l)
+	conns := accept(ctx, s.log, l)
 	for {
 		select {
 		case conn, ok := <-conns:
