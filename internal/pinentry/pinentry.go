@@ -1,4 +1,4 @@
-package agent
+package pinentry
 
 import (
 	"fmt"
@@ -7,7 +7,8 @@ import (
 	"github.com/smlx/piv-agent/internal/token"
 )
 
-func pinEntry(sk *token.Token) func() (string, error) {
+// GetPin uses pinentry to get the pin of the given token.
+func GetPin(sk *token.Token) func() (string, error) {
 	return func() (string, error) {
 		p, err := pinentry.New()
 		if err != nil {
@@ -45,7 +46,8 @@ func pinEntry(sk *token.Token) func() (string, error) {
 	}
 }
 
-func getPassphrase(keyPath, fingerprint string) ([]byte, error) {
+// GetPassphrase uses pinentry to get the passphrase of the given key file.
+func GetPassphrase(keyPath, fingerprint string) ([]byte, error) {
 	p, err := pinentry.New()
 	if err != nil {
 		return []byte{}, fmt.Errorf("couldn't get pinentry client: %w", err)

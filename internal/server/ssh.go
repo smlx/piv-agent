@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	pivagent "github.com/smlx/piv-agent/internal/agent"
+	"github.com/smlx/piv-agent/internal/ssh"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -44,7 +44,7 @@ func (s *SSH) accept(ctx context.Context, l net.Listener) <-chan net.Conn {
 
 // Serve starts serving signing requests, and returns when the request socket
 // is closed, the context is cancelled, or an error occurs.
-func (s *SSH) Serve(ctx context.Context, a *pivagent.SSH, l net.Listener,
+func (s *SSH) Serve(ctx context.Context, a *ssh.Agent, l net.Listener,
 	exit *time.Ticker, timeout time.Duration) error {
 	// start serving connections
 	conns := s.accept(ctx, l)

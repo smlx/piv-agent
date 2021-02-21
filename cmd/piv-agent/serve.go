@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/activation"
-	"github.com/smlx/piv-agent/internal/agent"
 	"github.com/smlx/piv-agent/internal/server"
+	"github.com/smlx/piv-agent/internal/ssh"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -35,11 +35,11 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	exit := time.NewTicker(cmd.ExitTimeout)
 	g := errgroup.Group{}
-	ssh := server.NewSSH(log)
-	a := agent.New(log, cmd.LoadKeyfile)
+	s := server.NewSSH(log)
+	a := ssh.NewAgent(log, cmd.LoadKeyfile)
 
 	g.Go(func() error {
-		err := ssh.Serve(ctx, a, ls[0], exit, cmd.ExitTimeout)
+		err := s.Serve(ctx, a, ls[0], exit, cmd.ExitTimeout)
 		cancel()
 		return err
 	})

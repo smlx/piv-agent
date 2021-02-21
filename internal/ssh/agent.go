@@ -1,4 +1,4 @@
-package agent
+package ssh
 
 import (
 	"bytes"
@@ -14,15 +14,16 @@ import (
 
 	"github.com/gen2brain/beeep"
 	"github.com/go-piv/piv-go/piv"
+	pinentry "github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/token"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/ssh"
+	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
 
-// SSH implements the crypto/ssh SSH interface
-// https://pkg.go.dev/golang.org/x/crypto/ssh/agent#SSH
-type SSH struct {
+// Agent implements the crypto/ssh Agent interface
+// https://pkg.go.dev/golang.org/x/crypto/ssh/agent#Agent
+type Agent struct {
 	securityKeys []token.Token
 	mutex        sync.Mutex
 	log          *zap.Logger
@@ -38,13 +39,13 @@ var ErrUnknownKey = errors.New("requested signature of unknown key")
 // passphrases caches passphrases for keyfiles
 var passphrases = map[string][]byte{}
 
-// New returns a new Agent.
-func New(log *zap.Logger, loadKeyfile bool) *SSH {
-	return &SSH{log: log, loadKeyfile: loadKeyfile}
+// NewAgent returns a new Agent.
+func NewAgent(log *zap.Logger, loadKeyfile bool) *Agent {
+	return &Agent{log: log, loadKeyfile: loadKeyfile}
 }
 
 // reopenSecurityKeys closes and attempts to re-open all avalable security keys
-func (a *SSH) reopenSecurityKeys() error {
+func (a *Agent) reopenSecurityKeys() error {
 	for _, sk := range a.securityKeys {
 		_ = sk.Key.Close()
 	}
@@ -57,7 +58,7 @@ func (a *SSH) reopenSecurityKeys() error {
 }
 
 // List returns the identities known to the agent.
-func (a *SSH) List() ([]*agent.Key, error) {
+func (a *Agent) List() ([]*agent.Key, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	// get token identities first
@@ -76,7 +77,7 @@ func (a *SSH) List() ([]*agent.Key, error) {
 }
 
 // returns the identities from hardware tokens
-func (a *SSH) tokenList() ([]*agent.Key, error) {
+func (a *Agent) tokenList() ([]*agent.Key, error) {
 	sshKeySpecs, err := token.SigningKeys(a.securityKeys)
 	if err != nil || len(a.securityKeys) == 0 {
 		a.log.Debug("reopening security keys", zap.Error(err),
@@ -110,7 +111,7 @@ func (a *SSH) tokenList() ([]*agent.Key, error) {
 }
 
 // returns the identities from keyfiles on disk
-func (a *SSH) keyfileList() ([]*agent.Key, error) {
+func (a *Agent) keyfileList() ([]*agent.Key, error) {
 	var pkss []*agent.Key
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -123,7 +124,7 @@ func (a *SSH) keyfileList() ([]*agent.Key, error) {
 			zap.Error(err))
 		return pkss, nil
 	}
-	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(pubBytes)
+	pubKey, _, _, _, err := gossh.ParseAuthorizedKey(pubBytes)
 	if err != nil {
 		a.log.Debug("couldn't parse keyfile", zap.String("path", keyPath),
 			zap.Error(err))
@@ -139,7 +140,7 @@ func (a *SSH) keyfileList() ([]*agent.Key, error) {
 
 // Sign has the agent sign the data using a protocol 2 key as defined
 // in [PROTOCOL.agent] section 2.6.2.
-func (a *SSH) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
+func (a *Agent) Sign(key gossh.PublicKey, data []byte) (*gossh.Signature, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	// try token keys first
@@ -163,7 +164,7 @@ func (a *SSH) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
 	return a.signWithSigners(key, data, ks)
 }
 
-func (a *SSH) signWithSigners(key ssh.PublicKey, data []byte, signers []ssh.Signer) (*ssh.Signature, error) {
+func (a *Agent) signWithSigners(key gossh.PublicKey, data []byte, signers []gossh.Signer) (*gossh.Signature, error) {
 	for _, s := range signers {
 		if !bytes.Equal(s.PublicKey().Marshal(), key.Marshal()) {
 			continue
@@ -180,7 +181,7 @@ func (a *SSH) signWithSigners(key ssh.PublicKey, data []byte, signers []ssh.Sign
 	return nil, fmt.Errorf("%w: %v", ErrUnknownKey, key)
 }
 
-func (a *SSH) touchNotify(ctx context.Context) {
+func (a *Agent) touchNotify(ctx context.Context) {
 	timer := time.NewTimer(8 * time.Second)
 	go func() {
 		select {
@@ -196,33 +197,33 @@ func (a *SSH) touchNotify(ctx context.Context) {
 }
 
 // Add adds a private key to the agent.
-func (a *SSH) Add(key agent.AddedKey) error {
+func (a *Agent) Add(key agent.AddedKey) error {
 	return ErrNotImplemented
 }
 
 // Remove removes all identities with the given public key.
-func (a *SSH) Remove(key ssh.PublicKey) error {
+func (a *Agent) Remove(key gossh.PublicKey) error {
 	return ErrNotImplemented
 }
 
 // RemoveAll removes all identities.
-func (a *SSH) RemoveAll() error {
+func (a *Agent) RemoveAll() error {
 	return ErrNotImplemented
 }
 
 // Lock locks the agent. Sign and Remove will fail, and List will empty an
 // empty list.
-func (a *SSH) Lock(passphrase []byte) error {
+func (a *Agent) Lock(passphrase []byte) error {
 	return ErrNotImplemented
 }
 
 // Unlock undoes the effect of Lock
-func (a *SSH) Unlock(passphrase []byte) error {
+func (a *Agent) Unlock(passphrase []byte) error {
 	return ErrNotImplemented
 }
 
 // Signers returns signers for all the known keys.
-func (a *SSH) Signers() ([]ssh.Signer, error) {
+func (a *Agent) Signers() ([]gossh.Signer, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	ts, err := a.tokenSigners()
@@ -240,8 +241,8 @@ func (a *SSH) Signers() ([]ssh.Signer, error) {
 }
 
 // get signers for all keys stored in hardware tokens
-func (a *SSH) tokenSigners() ([]ssh.Signer, error) {
-	var signers []ssh.Signer
+func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
+	var signers []gossh.Signer
 	sshKeySpecs, err := token.SigningKeys(a.securityKeys)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get public keys: %w", err)
@@ -250,14 +251,14 @@ func (a *SSH) tokenSigners() ([]ssh.Signer, error) {
 		for _, sks := range sshKeySpecs {
 			privKey, err := sk.Key.PrivateKey(
 				sks.Slot,
-				sks.PubSSH.(ssh.CryptoPublicKey).CryptoPublicKey(),
-				piv.KeyAuth{PINPrompt: pinEntry(&sk)},
+				sks.PubSSH.(gossh.CryptoPublicKey).CryptoPublicKey(),
+				piv.KeyAuth{PINPrompt: pinentry.GetPin(&sk)},
 			)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get private key for slot %x: %w",
 					sks.Slot.Key, err)
 			}
-			s, err := ssh.NewSignerFromKey(privKey)
+			s, err := gossh.NewSignerFromKey(privKey)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get signer for key: %w", err)
 			}
@@ -270,8 +271,8 @@ func (a *SSH) tokenSigners() ([]ssh.Signer, error) {
 }
 
 // get signers for all keys stored in files on disk
-func (a *SSH) keyfileSigners() ([]ssh.Signer, error) {
-	var signers []ssh.Signer
+func (a *Agent) keyfileSigners() ([]gossh.Signer, error) {
+	var signers []gossh.Signer
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -283,21 +284,21 @@ func (a *SSH) keyfileSigners() ([]ssh.Signer, error) {
 			zap.Error(err))
 		return signers, nil
 	}
-	signer, err := ssh.ParsePrivateKey(privBytes)
+	signer, err := gossh.ParsePrivateKey(privBytes)
 	if err != nil {
-		pmErr, ok := err.(*ssh.PassphraseMissingError)
+		pmErr, ok := err.(*gossh.PassphraseMissingError)
 		if !ok {
 			return nil, err
 		}
 		passphrase := passphrases[string(pmErr.PublicKey.Marshal())]
 		if passphrase == nil {
-			passphrase, err = getPassphrase(keyPath,
-				string(ssh.FingerprintSHA256(pmErr.PublicKey)))
+			passphrase, err = pinentry.GetPassphrase(keyPath,
+				string(gossh.FingerprintSHA256(pmErr.PublicKey)))
 			if err != nil {
 				return nil, err
 			}
 		}
-		signer, err = ssh.ParsePrivateKeyWithPassphrase(privBytes, passphrase)
+		signer, err = gossh.ParsePrivateKeyWithPassphrase(privBytes, passphrase)
 		if err != nil {
 			return nil, err
 		}
