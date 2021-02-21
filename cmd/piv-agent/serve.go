@@ -1,16 +1,15 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"io"
-	"net"
 	"time"
 
 	"github.com/coreos/go-systemd/activation"
-	pivagent "github.com/smlx/piv-agent/internal/agent"
+	"github.com/smlx/piv-agent/internal/agent"
+	"github.com/smlx/piv-agent/internal/server"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/sync/errgroup"
 )
 
 // ServeCmd represents the listen command.
@@ -24,50 +23,37 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("build date", date))
 	// use systemd socket activation
-	listeners, err := activation.Listeners()
+	ls, err := activation.Listeners()
 	if err != nil {
 		return fmt.Errorf("cannot retrieve listeners: %w", err)
 	}
-	if len(listeners) != 1 {
-		return fmt.Errorf("unexpected number of sockets, expected: 1, received: %v",
-			len(listeners))
+	if len(ls) != 2 {
+		return fmt.Errorf("wrong number of sockets, expected: 2, received: %v",
+			len(ls))
 	}
-	// start the exit timer
-	exitTicker := time.NewTicker(cmd.ExitTimeout)
-	// start serving connections
-	newConns := make(chan net.Conn)
-	go func(l net.Listener, log *zap.Logger) {
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				log.Error("accept error", zap.Error(err))
-				close(newConns)
-				return
-			}
-			newConns <- c
-		}
-	}(listeners[0], log)
 
-	a := pivagent.New(log, cmd.LoadKeyfile)
+	ctx, cancel := context.WithCancel(context.Background())
+	exit := time.NewTicker(cmd.ExitTimeout)
+	g := errgroup.Group{}
+	ssh := server.NewSSH(log)
+	a := agent.New(log, cmd.LoadKeyfile)
+
+	g.Go(func() error {
+		err := ssh.Serve(ctx, a, ls[0], exit, cmd.ExitTimeout)
+		cancel()
+		return err
+	})
+
+loop:
 	for {
 		select {
-		case conn, ok := <-newConns:
-			if !ok {
-				return fmt.Errorf("listen socket closed")
-			}
-			// reset the exit timer
-			exitTicker.Reset(cmd.ExitTimeout)
-			log.Debug("start serving connection")
-			if err = agent.ServeAgent(a, conn); err != nil {
-				if errors.Is(err, io.EOF) {
-					log.Debug("finish serving connection")
-					continue
-				}
-				return fmt.Errorf("serveAgent error: %w", err)
-			}
-		case <-exitTicker.C:
+		case <-ctx.Done():
+			break loop
+		case <-exit.C:
 			log.Debug("exit timeout")
-			return nil
+			cancel()
+			break loop
 		}
 	}
+	return g.Wait()
 }

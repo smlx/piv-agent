@@ -20,9 +20,9 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
-// Agent implements the Agent interface
-// https://pkg.go.dev/golang.org/x/crypto/ssh/agent#Agent
-type Agent struct {
+// SSH implements the crypto/ssh SSH interface
+// https://pkg.go.dev/golang.org/x/crypto/ssh/agent#SSH
+type SSH struct {
 	securityKeys []token.Token
 	mutex        sync.Mutex
 	log          *zap.Logger
@@ -39,12 +39,12 @@ var ErrUnknownKey = errors.New("requested signature of unknown key")
 var passphrases = map[string][]byte{}
 
 // New returns a new Agent.
-func New(log *zap.Logger, loadKeyfile bool) *Agent {
-	return &Agent{log: log, loadKeyfile: loadKeyfile}
+func New(log *zap.Logger, loadKeyfile bool) *SSH {
+	return &SSH{log: log, loadKeyfile: loadKeyfile}
 }
 
 // reopenSecurityKeys closes and attempts to re-open all avalable security keys
-func (a *Agent) reopenSecurityKeys() error {
+func (a *SSH) reopenSecurityKeys() error {
 	for _, sk := range a.securityKeys {
 		_ = sk.Key.Close()
 	}
@@ -57,7 +57,7 @@ func (a *Agent) reopenSecurityKeys() error {
 }
 
 // List returns the identities known to the agent.
-func (a *Agent) List() ([]*agent.Key, error) {
+func (a *SSH) List() ([]*agent.Key, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	// get token identities first
@@ -76,7 +76,7 @@ func (a *Agent) List() ([]*agent.Key, error) {
 }
 
 // returns the identities from hardware tokens
-func (a *Agent) tokenList() ([]*agent.Key, error) {
+func (a *SSH) tokenList() ([]*agent.Key, error) {
 	sshKeySpecs, err := token.SigningKeys(a.securityKeys)
 	if err != nil || len(a.securityKeys) == 0 {
 		a.log.Debug("reopening security keys", zap.Error(err),
@@ -110,7 +110,7 @@ func (a *Agent) tokenList() ([]*agent.Key, error) {
 }
 
 // returns the identities from keyfiles on disk
-func (a *Agent) keyfileList() ([]*agent.Key, error) {
+func (a *SSH) keyfileList() ([]*agent.Key, error) {
 	var pkss []*agent.Key
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -139,7 +139,7 @@ func (a *Agent) keyfileList() ([]*agent.Key, error) {
 
 // Sign has the agent sign the data using a protocol 2 key as defined
 // in [PROTOCOL.agent] section 2.6.2.
-func (a *Agent) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
+func (a *SSH) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	// try token keys first
@@ -163,7 +163,7 @@ func (a *Agent) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
 	return a.signWithSigners(key, data, ks)
 }
 
-func (a *Agent) signWithSigners(key ssh.PublicKey, data []byte, signers []ssh.Signer) (*ssh.Signature, error) {
+func (a *SSH) signWithSigners(key ssh.PublicKey, data []byte, signers []ssh.Signer) (*ssh.Signature, error) {
 	for _, s := range signers {
 		if !bytes.Equal(s.PublicKey().Marshal(), key.Marshal()) {
 			continue
@@ -180,7 +180,7 @@ func (a *Agent) signWithSigners(key ssh.PublicKey, data []byte, signers []ssh.Si
 	return nil, fmt.Errorf("%w: %v", ErrUnknownKey, key)
 }
 
-func (a *Agent) touchNotify(ctx context.Context) {
+func (a *SSH) touchNotify(ctx context.Context) {
 	timer := time.NewTimer(8 * time.Second)
 	go func() {
 		select {
@@ -196,33 +196,33 @@ func (a *Agent) touchNotify(ctx context.Context) {
 }
 
 // Add adds a private key to the agent.
-func (a *Agent) Add(key agent.AddedKey) error {
+func (a *SSH) Add(key agent.AddedKey) error {
 	return ErrNotImplemented
 }
 
 // Remove removes all identities with the given public key.
-func (a *Agent) Remove(key ssh.PublicKey) error {
+func (a *SSH) Remove(key ssh.PublicKey) error {
 	return ErrNotImplemented
 }
 
 // RemoveAll removes all identities.
-func (a *Agent) RemoveAll() error {
+func (a *SSH) RemoveAll() error {
 	return ErrNotImplemented
 }
 
 // Lock locks the agent. Sign and Remove will fail, and List will empty an
 // empty list.
-func (a *Agent) Lock(passphrase []byte) error {
+func (a *SSH) Lock(passphrase []byte) error {
 	return ErrNotImplemented
 }
 
 // Unlock undoes the effect of Lock
-func (a *Agent) Unlock(passphrase []byte) error {
+func (a *SSH) Unlock(passphrase []byte) error {
 	return ErrNotImplemented
 }
 
 // Signers returns signers for all the known keys.
-func (a *Agent) Signers() ([]ssh.Signer, error) {
+func (a *SSH) Signers() ([]ssh.Signer, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	ts, err := a.tokenSigners()
@@ -240,7 +240,7 @@ func (a *Agent) Signers() ([]ssh.Signer, error) {
 }
 
 // get signers for all keys stored in hardware tokens
-func (a *Agent) tokenSigners() ([]ssh.Signer, error) {
+func (a *SSH) tokenSigners() ([]ssh.Signer, error) {
 	var signers []ssh.Signer
 	sshKeySpecs, err := token.SigningKeys(a.securityKeys)
 	if err != nil {
@@ -270,7 +270,7 @@ func (a *Agent) tokenSigners() ([]ssh.Signer, error) {
 }
 
 // get signers for all keys stored in files on disk
-func (a *Agent) keyfileSigners() ([]ssh.Signer, error) {
+func (a *SSH) keyfileSigners() ([]ssh.Signer, error) {
 	var signers []ssh.Signer
 	home, err := os.UserHomeDir()
 	if err != nil {

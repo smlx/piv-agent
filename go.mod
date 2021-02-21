@@ -10,4 +10,5 @@ require (
 	github.com/gopasspw/gopass v1.10.2-0.20201105185611-36c5888f3a49
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 )
