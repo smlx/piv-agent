@@ -12,10 +12,32 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type agentTypeFlag map[string]uint
+
 // ServeCmd represents the listen command.
 type ServeCmd struct {
 	LoadKeyfile bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
 	ExitTimeout time.Duration `kong:"default=32m,help='Exit after this period to drop transaction and key file passphrase cache'"`
+	AgentTypes  agentTypeFlag `kong:"default='ssh=0;gpg=1',help='Agent types to handle'"`
+}
+
+// validAgents is the list of agents supported by piv-agent.
+var validAgents = []string{"ssh", "gpg"}
+
+// AfterApply validates the given agent types.
+func (flagAgents *agentTypeFlag) AfterApply() error {
+	for flagAgent := range map[string]uint(*flagAgents) {
+		valid := false
+		for _, validAgent := range validAgents {
+			if flagAgent == validAgent {
+				valid = true
+			}
+		}
+		if !valid {
+			return fmt.Errorf("invalid agent-type: %v", flagAgent)
+		}
+	}
+	return nil
 }
 
 // Run the listen command to start listening for ssh-agent requests.
@@ -27,23 +49,26 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	if err != nil {
 		return fmt.Errorf("cannot retrieve listeners: %w", err)
 	}
-	if len(ls) != 2 {
-		return fmt.Errorf("wrong number of sockets, expected: 2, received: %v",
-			len(ls))
+	// validate given agent types
+	if len(ls) != len(cmd.AgentTypes) {
+		return fmt.Errorf("wrong number of agent sockets: wanted %v, received %v",
+			cmd.AgentTypes, len(ls))
 	}
-
+	// prepare dependencies
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	exit := time.NewTicker(cmd.ExitTimeout)
 	g := errgroup.Group{}
 	s := server.NewSSH(log)
 	a := ssh.NewAgent(log, cmd.LoadKeyfile)
-
-	g.Go(func() error {
-		err := s.Serve(ctx, a, ls[0], exit, cmd.ExitTimeout)
-		cancel()
-		return err
-	})
-
+	// start SSH agent if given in agent-type flag
+	if _, ok := cmd.AgentTypes["ssh"]; ok {
+		g.Go(func() error {
+			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], exit, cmd.ExitTimeout)
+			cancel()
+			return err
+		})
+	}
 loop:
 	for {
 		select {
