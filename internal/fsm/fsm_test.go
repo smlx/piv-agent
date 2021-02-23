@@ -34,15 +34,17 @@ func TestFSM(t *testing.T) {
 				Event: pushOpen,
 			},
 		},
-		OnEntry: map[fsm.State][]func(fsm.Event){
-			opened: []func(fsm.Event){
-				func(_ fsm.Event) {
+		OnEntry: map[fsm.State][]func(fsm.Event) error{
+			opened: []func(fsm.Event) error{
+				func(_ fsm.Event) error {
 					openCount++
+					return nil
 				},
 			},
-			closed: []func(fsm.Event){
-				func(_ fsm.Event) {
+			closed: []func(fsm.Event) error{
+				func(_ fsm.Event) error {
 					closeCount++
+					return nil
 				},
 			},
 		},
