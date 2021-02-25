@@ -36,6 +36,7 @@ func (s *GPG) handle(conn net.Conn) error {
 	}
 	// parse incoming messages to events
 	r := bufio.NewReader(conn)
+	var e event
 	for {
 		line, err := r.ReadBytes(byte('\n'))
 		if err != nil {
@@ -44,7 +45,6 @@ func (s *GPG) handle(conn net.Conn) error {
 			}
 			return fmt.Errorf("socket read error: %w", err)
 		}
-		var e event
 		if err := e.UnmarshalText(
 			bytes.SplitN(line, []byte(" "), 2)[0]); err != nil {
 			return fmt.Errorf("couldn't unmarshal line `%v`: %w", line, err)

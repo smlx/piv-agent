@@ -2,7 +2,6 @@ package server
 
 import (
 	"io"
-	"net"
 
 	"github.com/smlx/piv-agent/internal/fsm"
 )
@@ -26,9 +25,13 @@ const (
 	connected
 )
 
+type piv interface {
+	SigningKeys()
+}
+
 // newAssuanFSM initialises a new gpg-agent server FSM.
 // It returns a *fsm.Machine configured in the ready state.
-func newAssuanFSM(conn net.Conn) *fsm.Machine {
+func newAssuanFSM(conn io.Writer, p piv) *fsm.Machine {
 	return &fsm.Machine{
 		State: fsm.State(ready),
 		Transitions: []fsm.Transition{
