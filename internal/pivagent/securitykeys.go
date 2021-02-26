@@ -66,6 +66,7 @@ func signingKeys(k *piv.YubiKey) ([]key.Sign, error) {
 			return nil, fmt.Errorf("couldn't convert public key: %w", err)
 		}
 		signingKeys = append(signingKeys, key.Sign{
+			Public:   pubKey,
 			PubSSH:      pubSSH,
 			PubPGP:      packet.NewECDSAPublicKey(cert.NotBefore, pubKey),
 			Slot:        s.Slot,

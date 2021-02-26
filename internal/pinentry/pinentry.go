@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/gopasspw/gopass/pkg/pinentry"
-	"github.com/smlx/piv-agent/internal/token"
+	"github.com/smlx/piv-agent/internal/key"
 )
 
 // GetPin uses pinentry to get the pin of the given token.
-func GetPin(sk *token.Token) func() (string, error) {
+func GetPin(k *key.Security) func() (string, error) {
 	return func() (string, error) {
 		p, err := pinentry.New()
 		if err != nil {
@@ -19,12 +19,12 @@ func GetPin(sk *token.Token) func() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("couldn't set title on PIN pinentry: %w", err)
 		}
-		r, err := sk.Key.Retries()
+		r, err := k.Key.Retries()
 		if err != nil {
 			return "", fmt.Errorf("couldn't get retries for security key: %w", err)
 		}
 		err = p.Set("desc",
-			fmt.Sprintf("serial number: %d, attempts remaining: %d", sk.Serial, r))
+			fmt.Sprintf("serial number: %d, attempts remaining: %d", k.Serial, r))
 		if err != nil {
 			return "", fmt.Errorf("couldn't set desc on PIN pinentry: %w", err)
 		}
@@ -37,7 +37,7 @@ func GetPin(sk *token.Token) func() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("couldn't set option on PIN pinentry: %w", err)
 		}
-		err = p.Set("KEYINFO", fmt.Sprintf("--yubikey-id-%d", sk.Serial))
+		err = p.Set("KEYINFO", fmt.Sprintf("--yubikey-id-%d", k.Serial))
 		if err != nil {
 			return "", fmt.Errorf("couldn't set KEYINFO on PIN pinentry: %w", err)
 		}

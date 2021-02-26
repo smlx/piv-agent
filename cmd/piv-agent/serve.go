@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/activation"
+	"github.com/smlx/piv-agent/internal/pivagent"
 	"github.com/smlx/piv-agent/internal/server"
 	"github.com/smlx/piv-agent/internal/ssh"
 	"go.uber.org/zap"
@@ -41,7 +42,7 @@ func (flagAgents *agentTypeFlag) AfterApply() error {
 }
 
 // Run the listen command to start listening for ssh-agent requests.
-func (cmd *ServeCmd) Run(log *zap.Logger) error {
+func (cmd *ServeCmd) Run(p *pivagent.PIVAgent, log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("build date", date))
 	// use systemd socket activation
@@ -63,7 +64,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	if _, ok := cmd.AgentTypes["ssh"]; ok {
 		g.Go(func() error {
 			s := server.NewSSH(log)
-			a := ssh.NewAgent(log, cmd.LoadKeyfile)
+			a := ssh.NewAgent(p, log, cmd.LoadKeyfile)
 			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], exit, cmd.ExitTimeout)
 			cancel()
 			return err

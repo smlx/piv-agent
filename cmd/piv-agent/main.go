@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/alecthomas/kong"
+	"github.com/smlx/piv-agent/internal/pivagent"
 	"go.uber.org/zap"
 )
 
@@ -37,5 +38,5 @@ func main() {
 	}
 	defer log.Sync() //nolint:errcheck
 	// execute CLI
-	kctx.FatalIfErrorf(kctx.Run(log))
+	kctx.FatalIfErrorf(kctx.Run(pivagent.New(log), log))
 }

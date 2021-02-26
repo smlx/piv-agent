@@ -14,8 +14,9 @@ import (
 
 	"github.com/gen2brain/beeep"
 	"github.com/go-piv/piv-go/piv"
+	"github.com/smlx/piv-agent/internal/key"
 	pinentry "github.com/smlx/piv-agent/internal/pinentry"
-	"github.com/smlx/piv-agent/internal/token"
+	"github.com/smlx/piv-agent/internal/pivagent"
 	"go.uber.org/zap"
 	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -24,7 +25,8 @@ import (
 // Agent implements the crypto/ssh Agent interface
 // https://pkg.go.dev/golang.org/x/crypto/ssh/agent#Agent
 type Agent struct {
-	securityKeys []token.Token
+	p            *pivagent.PIVAgent
+	securityKeys []key.Security
 	mutex        sync.Mutex
 	log          *zap.Logger
 	loadKeyfile  bool
@@ -40,20 +42,20 @@ var ErrUnknownKey = errors.New("requested signature of unknown key")
 var passphrases = map[string][]byte{}
 
 // NewAgent returns a new Agent.
-func NewAgent(log *zap.Logger, loadKeyfile bool) *Agent {
-	return &Agent{log: log, loadKeyfile: loadKeyfile}
+func NewAgent(p *pivagent.PIVAgent, log *zap.Logger, loadKeyfile bool) *Agent {
+	return &Agent{p: p, log: log, loadKeyfile: loadKeyfile}
 }
 
 // reopenSecurityKeys closes and attempts to re-open all avalable security keys
 func (a *Agent) reopenSecurityKeys() error {
-	for _, sk := range a.securityKeys {
-		_ = sk.Key.Close()
+	for _, secKey := range a.securityKeys {
+		_ = secKey.Key.Close()
 	}
-	sks, err := token.List(a.log)
+	secKeys, err := a.p.SecurityKeys()
 	if err != nil {
 		return fmt.Errorf("couldn't get all security keys: %w", err)
 	}
-	a.securityKeys = sks
+	a.securityKeys = secKeys
 	return nil
 }
 
@@ -61,49 +63,52 @@ func (a *Agent) reopenSecurityKeys() error {
 func (a *Agent) List() ([]*agent.Key, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	// get token identities first
-	tl, err := a.tokenList()
+	// get security key identities first
+	ski, err := a.securityKeyIDs()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get token identities: %w", err)
 	}
+	// then key file identities
 	if !a.loadKeyfile {
-		return tl, err
+		return ski, err
 	}
-	kl, err := a.keyfileList()
+	kfi, err := a.keyFileIDs()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get keyfile identities: %w", err)
 	}
-	return append(tl, kl...), nil
+	return append(ski, kfi...), nil
 }
 
 // returns the identities from hardware tokens
-func (a *Agent) tokenList() ([]*agent.Key, error) {
-	sshKeySpecs, err := token.SigningKeys(a.securityKeys)
-	if err != nil || len(a.securityKeys) == 0 {
-		a.log.Debug("reopening security keys", zap.Error(err),
-			zap.Int("number of security keys", len(a.securityKeys)))
-		err = a.reopenSecurityKeys()
-		if err != nil {
+func (a *Agent) securityKeyIDs() ([]*agent.Key, error) {
+	var keys []*agent.Key
+	var err error
+	// check we have any security keys
+	if len(a.securityKeys) == 0 {
+		if err = a.reopenSecurityKeys(); err != nil {
 			return nil, fmt.Errorf("couldn't reopen security keys: %w", err)
 		}
 	}
-	var keys []*agent.Key
-	if len(a.securityKeys) > 0 {
-		if sshKeySpecs == nil {
-			sshKeySpecs, err = token.SigningKeys(a.securityKeys)
-			if err != nil {
-				return nil, fmt.Errorf("couldn't get public SSH keys: %w", err)
+	// check they are healthy
+	for _, secKey := range a.securityKeys {
+		if _, err = secKey.Key.AttestationCertificate(); err != nil {
+			if err = a.reopenSecurityKeys(); err != nil {
+				return nil, fmt.Errorf("couldn't reopen security keys: %w", err)
 			}
+			break
 		}
-		for _, sks := range sshKeySpecs {
+	}
+	// use them for IDs
+	for _, secKey := range a.securityKeys {
+		for _, signKey := range secKey.SigningKeys {
 			keys = append(keys, &agent.Key{
-				Format: sks.PubSSH.Type(),
-				Blob:   sks.PubSSH.Marshal(),
+				Format: signKey.PubSSH.Type(),
+				Blob:   signKey.PubSSH.Marshal(),
 				Comment: fmt.Sprintf(
 					`Security Key "%s" #%d PIV Slot %x`,
-					sks.PubSSH,
-					sks.Serial,
-					sks.Slot.Key),
+					signKey.PubSSH,
+					secKey.Serial,
+					signKey.Slot.Key),
 			})
 		}
 	}
@@ -111,8 +116,8 @@ func (a *Agent) tokenList() ([]*agent.Key, error) {
 }
 
 // returns the identities from keyfiles on disk
-func (a *Agent) keyfileList() ([]*agent.Key, error) {
-	var pkss []*agent.Key
+func (a *Agent) keyFileIDs() ([]*agent.Key, error) {
+	var keys []*agent.Key
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -122,20 +127,20 @@ func (a *Agent) keyfileList() ([]*agent.Key, error) {
 	if err != nil {
 		a.log.Debug("couldn't load keyfile", zap.String("path", keyPath),
 			zap.Error(err))
-		return pkss, nil
+		return keys, nil
 	}
 	pubKey, _, _, _, err := gossh.ParseAuthorizedKey(pubBytes)
 	if err != nil {
 		a.log.Debug("couldn't parse keyfile", zap.String("path", keyPath),
 			zap.Error(err))
-		return pkss, nil
+		return keys, nil
 	}
-	pkss = append(pkss, &agent.Key{
+	keys = append(keys, &agent.Key{
 		Format:  pubKey.Type(),
 		Blob:    pubKey.Marshal(),
 		Comment: keyPath,
 	})
-	return pkss, nil
+	return keys, nil
 }
 
 // Sign has the agent sign the data using a protocol 2 key as defined
@@ -243,26 +248,22 @@ func (a *Agent) Signers() ([]gossh.Signer, error) {
 // get signers for all keys stored in hardware tokens
 func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 	var signers []gossh.Signer
-	sshKeySpecs, err := token.SigningKeys(a.securityKeys)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get public keys: %w", err)
-	}
-	for _, sk := range a.securityKeys {
-		for _, sks := range sshKeySpecs {
-			privKey, err := sk.Key.PrivateKey(
-				sks.Slot,
-				sks.PubSSH.(gossh.CryptoPublicKey).CryptoPublicKey(),
-				piv.KeyAuth{PINPrompt: pinentry.GetPin(&sk)},
+	for _, secKey := range a.securityKeys {
+		for _, signKey := range secKey.SigningKeys {
+			privKey, err := secKey.Key.PrivateKey(
+				signKey.Slot,
+				signKey.Public,
+				piv.KeyAuth{PINPrompt: pinentry.GetPin(&secKey)},
 			)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get private key for slot %x: %w",
-					sks.Slot.Key, err)
+					signKey.Slot.Key, err)
 			}
 			s, err := gossh.NewSignerFromKey(privKey)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get signer for key: %w", err)
 			}
-			a.log.Debug("loaded key from card",
+			a.log.Debug("loaded signing key from security key",
 				zap.Binary("public key bytes", s.PublicKey().Marshal()))
 			signers = append(signers, s)
 		}

@@ -1,6 +1,7 @@
 package key
 
 import (
+	"crypto"
 	"fmt"
 
 	"github.com/gliderlabs/ssh"
@@ -10,6 +11,7 @@ import (
 
 // Sign represents a signing key on a security key / hardware token.
 type Sign struct {
+	Public      crypto.PublicKey
 	PubSSH      ssh.PublicKey
 	PubPGP      *packet.PublicKey
 	Slot        piv.Slot
@@ -56,7 +58,7 @@ var SignSlots = []SlotSpec{
 	{piv.SlotCardAuthentication, piv.TouchPolicyNever},
 }
 
-// SignSlotSpecs represents the slot specifications for encryption operations.
+// EncryptSlots represents the slot specifications for encryption operations.
 var EncryptSlots = []SlotSpec{
 	// Slot 9d: Key Management
 	// This certificate and its associated private key is used for encryption for

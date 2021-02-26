@@ -31,7 +31,7 @@ type piv interface {
 
 // newAssuanFSM initialises a new gpg-agent server FSM.
 // It returns a *fsm.Machine configured in the ready state.
-func newAssuanFSM(conn io.Writer, p piv) *fsm.Machine {
+func newAssuanFSM(conn io.Writer) *fsm.Machine {
 	return &fsm.Machine{
 		State: fsm.State(ready),
 		Transitions: []fsm.Transition{

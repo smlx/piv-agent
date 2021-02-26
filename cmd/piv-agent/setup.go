@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/smlx/piv-agent/internal/token"
+	"github.com/smlx/piv-agent/internal/key"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -55,13 +55,13 @@ func (cmd *SetupCmd) Run() error {
 	if cmd.PIN < 100000 || cmd.PIN > 99999999 {
 		return fmt.Errorf("invalid PIN, must be 6-8 digits")
 	}
-	k, err := token.Get(cmd.Card)
+	k, err := key.Get(cmd.Card)
 	if err != nil {
 		return fmt.Errorf("couldn't get security key: %w", err)
 	}
-	err = token.Setup(k, strconv.FormatUint(cmd.PIN, 10), version,
+	err = key.Setup(k, strconv.FormatUint(cmd.PIN, 10), version,
 		cmd.ResetSecurityKey, cmd.AllTouchPolicies)
-	if errors.Is(err, token.ErrNotReset) {
+	if errors.Is(err, key.ErrNotReset) {
 		return fmt.Errorf("--reset-security-key not specified: %w", err)
 	}
 	return err
