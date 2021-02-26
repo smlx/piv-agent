@@ -1,4 +1,4 @@
-package token
+package key
 
 import (
 	"crypto/ecdsa"
@@ -51,7 +51,7 @@ func Setup(k *piv.YubiKey, pin, version string, reset, allTouchPolicies bool) er
 		{Slot: piv.SlotAuthentication, TouchPolicy: piv.TouchPolicyCached},
 	}
 	if allTouchPolicies {
-		keySpecs = SignSlotSpecs
+		keySpecs = SignSlots
 	}
 	for _, ks := range keySpecs {
 		if err = configureSlot(k, mk, ks.Slot, ks.TouchPolicy, version); err != nil {

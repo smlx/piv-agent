@@ -1,11 +1,28 @@
-package token
+package key
 
 import (
 	"fmt"
 
+	"github.com/gliderlabs/ssh"
 	"github.com/go-piv/piv-go/piv"
-	"go.uber.org/zap"
+	"golang.org/x/crypto/openpgp/packet"
 )
+
+// Sign represents a signing key on a security key / hardware token.
+type Sign struct {
+	PubSSH      ssh.PublicKey
+	PubPGP      *packet.PublicKey
+	Slot        piv.Slot
+	TouchPolicy piv.TouchPolicy
+}
+
+// Security represents a hardware security key.
+type Security struct {
+	Card        string
+	Key         *piv.YubiKey
+	Serial      uint32
+	SigningKeys []Sign
+}
 
 // SlotSpec represents a combination of slot and touch policy on the token.
 type SlotSpec struct {
@@ -13,9 +30,9 @@ type SlotSpec struct {
 	TouchPolicy piv.TouchPolicy
 }
 
-// SignSlotSpecs represents the slot specifications for signing operations.
+// SignSlots represents the slot specifications for signing operations.
 // https://developers.yubico.com/PIV/Introduction/Certificate_slots.html
-var SignSlotSpecs = []SlotSpec{
+var SignSlots = []SlotSpec{
 	// Slot 9a: PIV Authentication
 	// This certificate and its associated private key is used to authenticate
 	// the card and the cardholder. This slot is used for things like system
@@ -40,7 +57,7 @@ var SignSlotSpecs = []SlotSpec{
 }
 
 // SignSlotSpecs represents the slot specifications for encryption operations.
-var EncryptSlotSpecs = []SlotSpec{
+var EncryptSlots = []SlotSpec{
 	// Slot 9d: Key Management
 	// This certificate and its associated private key is used for encryption for
 	// the purpose of confidentiality. This slot is used for things like
@@ -49,44 +66,6 @@ var EncryptSlotSpecs = []SlotSpec{
 	// multiple private key operations may be performed without additional
 	// cardholder consent.
 	{piv.SlotKeyManagement, piv.TouchPolicyCached},
-}
-
-// Token represents a security key / hardware token.
-type Token struct {
-	Card   string
-	Key    *piv.YubiKey
-	Serial uint32
-}
-
-// List returns all security keys available on the system.
-func List(log *zap.Logger) ([]Token, error) {
-	var all []Token
-	cards, err := piv.Cards()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get smart cards: %w", err)
-	}
-	var sk *piv.YubiKey
-	for _, card := range cards {
-		sk, err = piv.Open(card)
-		if err != nil {
-			log.Debug("couldn't open card", zap.String("card", card), zap.Error(err))
-		} else {
-			log.Debug("opened card", zap.String("card", card))
-			// cache serial
-			serial, err := sk.Serial()
-			if err != nil {
-				log.Warn("couldn't get serial for card",
-					zap.String("card", card), zap.Error(err))
-				continue
-			}
-			all = append(all, Token{
-				Card:   card,
-				Key:    sk,
-				Serial: serial,
-			})
-		}
-	}
-	return all, nil
 }
 
 // Get returns a security key identified by card string.
