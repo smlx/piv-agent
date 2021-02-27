@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/smlx/piv-agent/internal/fsm"
+	"github.com/smlx/piv-agent/internal/key"
 )
 
 //go:generate enumer -type=event -text -transform upper
@@ -25,13 +26,13 @@ const (
 	connected
 )
 
-type piv interface {
-	SigningKeys()
+type pivGPGAgent interface {
+	SecurityKeys() ([]key.Security, error)
 }
 
 // newAssuanFSM initialises a new gpg-agent server FSM.
 // It returns a *fsm.Machine configured in the ready state.
-func (s *GPG) newAssuanFSM(conn io.Writer) *fsm.Machine {
+func newAssuanFSM(conn io.Writer, p pivGPGAgent) *fsm.Machine {
 	return &fsm.Machine{
 		State: fsm.State(ready),
 		Transitions: []fsm.Transition{

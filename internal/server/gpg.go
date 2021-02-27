@@ -31,7 +31,7 @@ func NewGPG(p *pivagent.PIVAgent, l *zap.Logger) *GPG {
 // handle a valid connection
 func (s *GPG) handle(conn net.Conn) error {
 	// init protocol state machine
-	assuan := s.newAssuanFSM(conn)
+	assuan := newAssuanFSM(conn, s.pivAgent)
 	// register connection
 	if err := assuan.Occur(fsm.Event(connect)); err != nil {
 		return fmt.Errorf("error handling connect: %w", err)
