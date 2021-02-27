@@ -1,4 +1,4 @@
-package server
+package assuan
 
 import (
 	"io"
@@ -26,13 +26,15 @@ const (
 	connected
 )
 
-type pivGPGAgent interface {
+// PIVAgent is an interface representing the PIV agent methods used by the
+// Assuan FSM.
+type PIVAgent interface {
 	SecurityKeys() ([]key.Security, error)
 }
 
-// newAssuanFSM initialises a new gpg-agent server FSM.
+// NewFSM initialises a new gpg-agent server FSM.
 // It returns a *fsm.Machine configured in the ready state.
-func newAssuanFSM(conn io.Writer, p pivGPGAgent) *fsm.Machine {
+func NewFSM(conn io.Writer, p PIVAgent) *fsm.Machine {
 	return &fsm.Machine{
 		State: fsm.State(ready),
 		Transitions: []fsm.Transition{
