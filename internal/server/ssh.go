@@ -30,7 +30,7 @@ func NewSSH(l *zap.Logger) *SSH {
 func (s *SSH) Serve(ctx context.Context, a *ssh.Agent, l net.Listener,
 	exit *time.Ticker, timeout time.Duration) error {
 	// start serving connections
-	conns := accept(ctx, s.log, l)
+	conns := accept(s.log, l)
 	for {
 		select {
 		case conn, ok := <-conns:

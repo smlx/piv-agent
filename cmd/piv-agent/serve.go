@@ -72,7 +72,7 @@ func (cmd *ServeCmd) Run(p *pivagent.PIVAgent, log *zap.Logger) error {
 	}
 	if _, ok := cmd.AgentTypes["gpg"]; ok {
 		g.Go(func() error {
-			s := server.NewGPG(log)
+			s := server.NewGPG(p, log)
 			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], exit, cmd.ExitTimeout)
 			cancel()
 			return err

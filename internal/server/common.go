@@ -1,15 +1,13 @@
 package server
 
 import (
-	"context"
 	"net"
 
 	"go.uber.org/zap"
 )
 
 // accept connections in a goroutine and return them on a channel
-func accept(ctx context.Context, log *zap.Logger,
-	l net.Listener) <-chan net.Conn {
+func accept(log *zap.Logger, l net.Listener) <-chan net.Conn {
 	conns := make(chan net.Conn)
 	go func() {
 		for {
