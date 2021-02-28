@@ -1,5 +1,5 @@
 test: mod-tidy generate
-	go test ./...
+	go test -v ./...
 
 mod-tidy:
 	go mod tidy

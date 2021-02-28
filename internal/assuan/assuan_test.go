@@ -2,6 +2,7 @@ package assuan_test
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -40,7 +41,7 @@ func TestSign(t *testing.T) {
 				"PKSIGN",
 			},
 			expect: []string{
-				"OK Pleased to meet you, process 1799257\n",
+				"OK Pleased to meet you, process 123456789\n",
 				"OK\n",
 				"OK\n",
 				"OK\n",
@@ -90,11 +91,11 @@ func TestSign(t *testing.T) {
 			// read the responses
 			for _, expected := range tc.expect {
 				line, err := writeBuf.ReadString(byte('\n'))
-				if err != nil {
+				if err != nil && err != io.EOF {
 					tt.Fatal(err)
 				}
 				if line != expected {
-					tt.Fatalf("got %v, expected %v", line, expected)
+					tt.Fatalf(`got "%v", expected "%v"`, line, expected)
 				}
 			}
 		})
