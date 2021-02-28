@@ -4,10 +4,7 @@
 package fsm
 
 import (
-	"fmt"
 	"sync"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 // Event represents an event that can occur which may cause a state transition.
@@ -37,6 +34,9 @@ type Machine struct {
 	// OnExit works similarly to OnEntry. Each func(Event) will be called just
 	// before the Machine leaves the associated State.
 	OnExit map[State][]func(Event) error
+	// ErrorOnUnexpectedEvent, if set tot true, causes Occur to return an error
+	// on an unexpected event.
+	ErrorOnUnexpectedEvent bool
 }
 
 // Occur handles events which may cause a transition in the machine's state. It
@@ -47,9 +47,6 @@ func (m *Machine) Occur(e Event) error {
 	defer m.mu.Unlock()
 	for _, t := range m.Transitions {
 		if t.Event == e && t.Src == m.State {
-			fmt.Println("transitioning")
-			spew.Dump(e)
-			spew.Dump(m.State)
 			for _, f := range m.OnExit[m.State] {
 				if err := f(e); err != nil {
 					return err
@@ -64,5 +61,11 @@ func (m *Machine) Occur(e Event) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("unexpected event %v for state %v", e, m.State)
+	if m.ErrorOnUnexpectedEvent {
+		return UnexpectedEventError{
+			Event: e,
+			State: m.State,
+		}
+	}
+	return nil
 }

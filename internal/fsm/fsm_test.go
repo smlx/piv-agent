@@ -67,7 +67,7 @@ func TestFSM(t *testing.T) {
 	}
 	for name, step := range steps {
 		if err := door.Occur(step.event); err != nil {
-			t.Fatal(err)
+			t.Fatalf("%s: %v", name, err)
 		}
 		if door.State != step.expect.state {
 			t.Fatalf("%s: expected %v, got %v", name, step.expect.state, door.State)
