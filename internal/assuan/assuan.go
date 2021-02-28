@@ -1,5 +1,7 @@
 package assuan
 
+//go:generate mockgen -source=assuan.go -destination=../mock/mock_assuan.go -package=mock
+
 import (
 	"io"
 
@@ -28,31 +30,38 @@ const (
 
 // PIVAgent is an interface representing the PIV agent methods used by the
 // Assuan FSM.
+// It is implemented by pivagent.PIVAgent.
 type PIVAgent interface {
 	SecurityKeys() ([]key.Security, error)
 }
 
-// NewFSM initialises a new gpg-agent server FSM.
+type Assuan struct {
+	fsm *fsm.Machine
+}
+
+// NewFSM initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
-func NewFSM(conn io.Writer, p PIVAgent) *fsm.Machine {
-	return &fsm.Machine{
-		State: fsm.State(ready),
-		Transitions: []fsm.Transition{
-			{
-				Src:   fsm.State(ready),
-				Dst:   fsm.State(connected),
-				Event: fsm.Event(connect),
+func New(w io.Writer, p PIVAgent) *Assuan {
+	return &Assuan{
+		fsm: &fsm.Machine{
+			State: fsm.State(ready),
+			Transitions: []fsm.Transition{
+				{
+					Src:   fsm.State(ready),
+					Dst:   fsm.State(connected),
+					Event: fsm.Event(connect),
+				},
 			},
-		},
-		OnEntry: map[fsm.State][]func(fsm.Event) error{
-			fsm.State(connected): []func(fsm.Event) error{
-				func(e fsm.Event) error {
-					if e == fsm.Event(connect) {
-						_, err := io.WriteString(conn,
-							"OK Pleased to meet you, process 123456789\n")
-						return err
-					}
-					return nil
+			OnEntry: map[fsm.State][]func(fsm.Event) error{
+				fsm.State(connected): []func(fsm.Event) error{
+					func(e fsm.Event) error {
+						if e == fsm.Event(connect) {
+							_, err := io.WriteString(w,
+								"OK Pleased to meet you, process 123456789\n")
+							return err
+						}
+						return nil
+					},
 				},
 			},
 		},
