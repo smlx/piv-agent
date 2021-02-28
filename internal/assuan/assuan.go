@@ -9,21 +9,26 @@ import (
 	"github.com/smlx/piv-agent/internal/key"
 )
 
-//go:generate enumer -type=event -text -transform upper
-type event fsm.Event
+//go:generate enumer -type=Event -text -transform upper
 
-//go:generate enumer -type=state -text -transform upper
-type state fsm.Event
+// Event represents an Assuan event.
+type Event fsm.Event
+
+//go:generate enumer -type=State -text -transform upper
+
+// State represents an Assuan state.
+type State fsm.Event
 
 // enumeration of all possible events in the assuan FSM
 const (
-	invalidEvent event = iota
+	invalidEvent Event = iota
 	connect
+	reset
 )
 
 // enumeration of all possible states in the assuan FSM
 const (
-	invalidState state = iota
+	invalidState State = iota
 	ready
 	connected
 )
@@ -35,11 +40,12 @@ type PIVAgent interface {
 	SecurityKeys() ([]key.Security, error)
 }
 
+// Assuan is the Assuan protocol FSM.
 type Assuan struct {
 	fsm *fsm.Machine
 }
 
-// NewFSM initialises a new gpg-agent server assuan FSM.
+// New initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
 func New(w io.Writer, p PIVAgent) *Assuan {
 	return &Assuan{
@@ -64,6 +70,7 @@ func New(w io.Writer, p PIVAgent) *Assuan {
 					},
 				},
 			},
+			ErrorOnUnexpectedEvent: true,
 		},
 	}
 }

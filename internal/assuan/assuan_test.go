@@ -16,29 +16,29 @@ func TestSign(t *testing.T) {
 		expect []string
 	}{
 		// this test data is taken from a successful
-		"success": {
+		"sign file": {
 			input: []string{
-				"RESET",
-				"OPTION ttyname=/dev/pts/3",
-				"OPTION ttytype=xterm-256color",
-				"OPTION display=:0",
-				"OPTION xauthority=/run/user/1000/.mutter-Xwaylandauth.ACKBZ0",
-				"OPTION putenv=XMODIFIERS=@im=ibus",
-				"OPTION putenv=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus",
-				"OPTION putenv=QT_IM_MODULE=ibus",
-				"OPTION lc-ctype=en_AU.UTF-8",
-				"OPTION lc-messages=en_AU.UTF-8",
-				"GETINFO version",
-				"OPTION allow-pinentry-notify",
-				"OPTION agent-awareness=2.1.0",
-				"HAVEKEY 462406CC94FD5638FD6AF06D729B223C9D38975B 8576CF2F884ADDDF8858F101F8BA287E282F1A94 75B5ADB16CA15C9090BAD030D3A0398A4B3DE6C9",
-				"HAVEKEY 8576CF2F884ADDDF8858F101F8BA287E282F1A94",
-				"KEYINFO 8576CF2F884ADDDF8858F101F8BA287E282F1A94",
-				"RESET",
-				"SIGKEY 8576CF2F884ADDDF8858F101F8BA287E282F1A94",
-				"SETKEYDESC Please+enter+the+passphrase+to+unlock+the+OpenPGP+secret+key:%0A%22Scott+Leggett+<scott@sl.id.au>%22%0A4096-bit+RSA+key,+ID+0x609574560D313CDD,%0Acreated+2016-04-14+(main+key+ID+0x8E9AF864BCF9CB54).%0A",
-				"SETHASH 10 30A0BA99ABAE024849E72F81B22DD660BEC471D4B38B9C03B7665E8A86B7604D5977A9536259E3C4230222D0FB50C4C970AF8E7B184D9D978464DEAE50CF4395",
-				"PKSIGN",
+				"RESET\n",
+				"OPTION ttyname=/dev/pts/3\n",
+				"OPTION ttytype=xterm-256color\n",
+				"OPTION display=:0\n",
+				"OPTION xauthority=/run/user/1000/.mutter-Xwaylandauth.ACKBZ0\n",
+				"OPTION putenv=XMODIFIERS=@im=ibus\n",
+				"OPTION putenv=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus\n",
+				"OPTION putenv=QT_IM_MODULE=ibus\n",
+				"OPTION lc-ctype=en_AU.UTF-8\n",
+				"OPTION lc-messages=en_AU.UTF-8\n",
+				"GETINFO version\n",
+				"OPTION allow-pinentry-notify\n",
+				"OPTION agent-awareness=2.1.0\n",
+				"HAVEKEY 462406CC94FD5638FD6AF06D729B223C9D38975B 8576CF2F884ADDDF8858F101F8BA287E282F1A94 75B5ADB16CA15C9090BAD030D3A0398A4B3DE6C9\n",
+				"HAVEKEY 8576CF2F884ADDDF8858F101F8BA287E282F1A94\n",
+				"KEYINFO 8576CF2F884ADDDF8858F101F8BA287E282F1A94\n",
+				"RESET\n",
+				"SIGKEY 8576CF2F884ADDDF8858F101F8BA287E282F1A94\n",
+				"SETKEYDESC Please+enter+the+passphrase+to+unlock+the+OpenPGP+secret+key:%0A%22Scott+Leggett+<scott@sl.id.au>%22%0A4096-bit+RSA+key,+ID+0x609574560D313CDD,%0Acreated+2016-04-14+(main+key+ID+0x8E9AF864BCF9CB54).%0A\n",
+				"SETHASH 10 30A0BA99ABAE024849E72F81B22DD660BEC471D4B38B9C03B7665E8A86B7604D5977A9536259E3C4230222D0FB50C4C970AF8E7B184D9D978464DEAE50CF4395\n",
+				"PKSIGN\n",
 			},
 			expect: []string{
 				"OK Pleased to meet you, process 123456789\n",
@@ -95,7 +95,7 @@ func TestSign(t *testing.T) {
 					tt.Fatal(err)
 				}
 				if line != expected {
-					tt.Fatalf(`got "%v", expected "%v"`, line, expected)
+					tt.Fatalf(`got %#v, expected %#v`, line, expected)
 				}
 			}
 		})

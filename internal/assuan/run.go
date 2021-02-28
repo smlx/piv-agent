@@ -17,7 +17,7 @@ func (a *Assuan) Run(conn io.Reader) error {
 	}
 	// parse incoming messages to events
 	r := bufio.NewReader(conn)
-	var e event
+	var e Event
 	for {
 		line, err := r.ReadBytes(byte('\n'))
 		if err != nil {
@@ -27,11 +27,12 @@ func (a *Assuan) Run(conn io.Reader) error {
 			return fmt.Errorf("socket read error: %w", err)
 		}
 		if err := e.UnmarshalText(
-			bytes.SplitN(line, []byte(" "), 2)[0]); err != nil {
+			bytes.SplitN(bytes.TrimRight(line, "\n"), []byte(" "), 2)[0]); err != nil {
 			return fmt.Errorf("couldn't unmarshal line `%v`: %w", line, err)
 		}
 		if err := a.fsm.Occur(fsm.Event(e)); err != nil {
-			return fmt.Errorf("error handling event %v: %w", e, err)
+			return fmt.Errorf("couldn't handle event %v in state %v: %w",
+				e, State(a.fsm.State), err)
 		}
 	}
 }
