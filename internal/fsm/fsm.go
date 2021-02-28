@@ -3,7 +3,12 @@
 // defining one or more functions to be called. That's it!
 package fsm
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+
+	"github.com/davecgh/go-spew/spew"
+)
 
 // Event represents an event that can occur which may cause a state transition.
 type Event int
@@ -42,6 +47,9 @@ func (m *Machine) Occur(e Event) error {
 	defer m.mu.Unlock()
 	for _, t := range m.Transitions {
 		if t.Event == e && t.Src == m.State {
+			fmt.Println("transitioning")
+			spew.Dump(e)
+			spew.Dump(m.State)
 			for _, f := range m.OnExit[m.State] {
 				if err := f(e); err != nil {
 					return err
@@ -56,5 +64,5 @@ func (m *Machine) Occur(e Event) error {
 			return nil
 		}
 	}
-	return nil
+	return fmt.Errorf("unexpected event %v for state %v", e, m.State)
 }

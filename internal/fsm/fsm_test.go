@@ -55,7 +55,7 @@ func TestFSM(t *testing.T) {
 		openCount  uint
 		closeCount uint
 	}
-	var testCases = map[string]struct {
+	var steps = map[string]struct {
 		event  fsm.Event
 		expect e
 	}{
@@ -65,18 +65,18 @@ func TestFSM(t *testing.T) {
 		"step 4": {event: pushOpen, expect: e{state: opened, openCount: 1, closeCount: 1}},
 		"step 5": {event: pushOpen, expect: e{state: opened, openCount: 1, closeCount: 1}},
 	}
-	for name, tc := range testCases {
-		t.Run(name, func(tt *testing.T) {
-			door.Occur(tc.event)
-			if door.State != tc.expect.state {
-				t.Fatalf("expected %v, got %v", tc.expect.state, door.State)
-			}
-			if openCount != tc.expect.openCount {
-				t.Fatalf("expected %v, got %v", tc.expect.openCount, openCount)
-			}
-			if closeCount != tc.expect.closeCount {
-				t.Fatalf("expected %v, got %v", tc.expect.closeCount, closeCount)
-			}
-		})
+	for name, step := range steps {
+		if err := door.Occur(step.event); err != nil {
+			t.Fatal(err)
+		}
+		if door.State != step.expect.state {
+			t.Fatalf("%s: expected %v, got %v", name, step.expect.state, door.State)
+		}
+		if openCount != step.expect.openCount {
+			t.Fatalf("%s: expected %v, got %v", name, step.expect.openCount, openCount)
+		}
+		if closeCount != step.expect.closeCount {
+			t.Fatalf("%s: expected %v, got %v", name, step.expect.closeCount, closeCount)
+		}
 	}
 }
