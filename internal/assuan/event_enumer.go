@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-const _EventName = "INVALIDEVENTCONNECTRESET"
+const _EventName = "INVALIDEVENTCONNECTRESETOPTIONGETINFO"
 
-var _EventIndex = [...]uint8{0, 12, 19, 24}
+var _EventIndex = [...]uint8{0, 12, 19, 24, 30, 37}
 
-const _EventLowerName = "invalideventconnectreset"
+const _EventLowerName = "invalideventconnectresetoptiongetinfo"
 
 func (i Event) String() string {
 	if i < 0 || i >= Event(len(_EventIndex)-1) {
@@ -27,9 +27,11 @@ func _EventNoOp() {
 	_ = x[invalidEvent-(0)]
 	_ = x[connect-(1)]
 	_ = x[reset-(2)]
+	_ = x[option-(3)]
+	_ = x[getinfo-(4)]
 }
 
-var _EventValues = []Event{invalidEvent, connect, reset}
+var _EventValues = []Event{invalidEvent, connect, reset, option, getinfo}
 
 var _EventNameToValueMap = map[string]Event{
 	_EventName[0:12]:       invalidEvent,
@@ -38,12 +40,18 @@ var _EventNameToValueMap = map[string]Event{
 	_EventLowerName[12:19]: connect,
 	_EventName[19:24]:      reset,
 	_EventLowerName[19:24]: reset,
+	_EventName[24:30]:      option,
+	_EventLowerName[24:30]: option,
+	_EventName[30:37]:      getinfo,
+	_EventLowerName[30:37]: getinfo,
 }
 
 var _EventNames = []string{
 	_EventName[0:12],
 	_EventName[12:19],
 	_EventName[19:24],
+	_EventName[24:30],
+	_EventName[30:37],
 }
 
 // EventString retrieves an enum value from the enum constants string name.
