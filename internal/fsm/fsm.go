@@ -30,10 +30,10 @@ type Machine struct {
 	// OnEntry is a way of hooking transitions between functions. Each
 	// func(Event) will be called just before the Machine enters the associated
 	// State.
-	OnEntry map[State][]func(Event) error
+	OnEntry map[State][]func(Event, ...[]byte) error
 	// OnExit works similarly to OnEntry. Each func(Event) will be called just
 	// before the Machine leaves the associated State.
-	OnExit map[State][]func(Event) error
+	OnExit map[State][]func(Event, ...[]byte) error
 	// ErrorOnUnexpectedEvent, if set tot true, causes Occur to return an error
 	// on an unexpected event.
 	ErrorOnUnexpectedEvent bool
@@ -42,18 +42,19 @@ type Machine struct {
 // Occur handles events which may cause a transition in the machine's state. It
 // handles synchronisation via an internal mutex, so is safe to call from
 // multiple goroutines.
-func (m *Machine) Occur(e Event) error {
+// The data argument is additional data which is passed alongside the event.
+func (m *Machine) Occur(e Event, data ...[]byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, t := range m.Transitions {
 		if t.Event == e && t.Src == m.State {
 			for _, f := range m.OnExit[m.State] {
-				if err := f(e); err != nil {
+				if err := f(e, data...); err != nil {
 					return err
 				}
 			}
 			for _, f := range m.OnEntry[t.Dst] {
-				if err := f(e); err != nil {
+				if err := f(e, data...); err != nil {
 					return err
 				}
 			}
