@@ -6,6 +6,7 @@ require (
 	github.com/alecthomas/kong v0.2.15
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
+	github.com/davecgh/go-spew v1.1.1
 	github.com/gen2brain/beeep v0.0.0-20200526185328-e9c15c258e28
 	github.com/gliderlabs/ssh v0.3.2
 	github.com/go-piv/piv-go v1.7.0

@@ -28,6 +28,7 @@ const (
 	reset
 	option
 	getinfo
+	havekey
 )
 
 // enumeration of all possible states in the assuan FSM
@@ -93,6 +94,14 @@ func New(w io.Writer, p PIVAgent) *Assuan {
 							// ignore option values - piv-agent doesn't use them
 							_, err = io.WriteString(w, "OK\n")
 						case getinfo:
+							if bytes.Equal(data[0], []byte("version")) {
+								// masquerade as a compatible gpg-agent
+								_, err = io.WriteString(w, "D 2.2.20\nOK\n")
+							} else {
+								err = fmt.Errorf("unknown getinfo command: %q", data[0])
+							}
+						case havekey:
+							// HAVEKEY arguments are a list of keygrips
 							if bytes.Equal(data[0], []byte("version")) {
 								// masquerade as a compatible gpg-agent
 								_, err = io.WriteString(w, "D 2.2.20\nOK\n")
