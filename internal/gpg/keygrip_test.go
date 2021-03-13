@@ -2,7 +2,9 @@ package gpg_test
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"encoding/hex"
+	"math/big"
 	"os"
 	"strings"
 	"testing"
@@ -12,6 +14,35 @@ import (
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
 )
+
+func TestTrezorCompat(t *testing.T) {
+	var testCases = map[string]struct {
+		input  *big.Int
+		expect string
+	}{
+		"keygrip 1": {input: big.NewInt(1), expect: "95852E917FE2C39152BA998192B5791DB15CDCF0"},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(tt *testing.T) {
+
+			// construct private key
+			priv := ecdsa.PrivateKey{}
+			curve := elliptic.P256()
+			priv.PublicKey.Curve = curve
+			priv.D = tc.input
+			priv.PublicKey.X, priv.PublicKey.Y = curve.ScalarBaseMult(tc.input.Bytes())
+
+			keygrip, err := gpg.Keygrip(&priv.PublicKey)
+			if err != nil {
+				tt.Fatal(err)
+			}
+			kgString := strings.ToUpper(hex.EncodeToString(keygrip))
+			if kgString != tc.expect {
+				tt.Fatalf("expected %s, got %s", tc.expect, kgString)
+			}
+		})
+	}
+}
 
 func TestKeyGrip(t *testing.T) {
 	var testCases = map[string]struct {
