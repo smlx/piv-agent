@@ -50,6 +50,7 @@ func TestKeyGrip(t *testing.T) {
 		expect string
 	}{
 		"keygrip 1": {input: "testdata/key1.asc", expect: "27B6858AA86F7B3DE9ADF89D5C91EA06558659DE"},
+		"keygrip 2": {input: "testdata/key2.asc", expect: "D88F095C9279EE30E5F64AE82C0033A4CAE9D336"},
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(tt *testing.T) {
@@ -79,6 +80,9 @@ func TestKeyGrip(t *testing.T) {
 			eccKey, ok := key.PublicKey.(*ecdsa.PublicKey)
 			if !ok {
 				tt.Fatal("not an ecdsa public key")
+			}
+			if eccKey.Curve != elliptic.P256() {
+				tt.Fatal("wrong curve")
 			}
 
 			keygrip, err := gpg.Keygrip(eccKey)
