@@ -51,6 +51,7 @@ func TestKeyGrip(t *testing.T) {
 	}{
 		"keygrip 1": {input: "testdata/key1.asc", expect: "27B6858AA86F7B3DE9ADF89D5C91EA06558659DE"},
 		"keygrip 2": {input: "testdata/key2.asc", expect: "D88F095C9279EE30E5F64AE82C0033A4CAE9D336"},
+		"keygrip 3": {input: "testdata/key3.asc", expect: "137770C017D7693C1DAD922EB3E83AEFCC9743BA"},
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(tt *testing.T) {
