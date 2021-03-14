@@ -6,8 +6,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"math/big"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 type part struct {
@@ -18,6 +16,9 @@ type part struct {
 // Keygrip calculates a keygrip for an ECDSA public key. This is a SHA1 hash of
 // public key parameters. It is pretty much undocumented outside of the
 // libgcrypt codebase.
+//
+// The idea behind the keygrip is to use only the cryptographic properties of
+// the public key to produce an identifier.
 func Keygrip(pubKey *ecdsa.PublicKey) ([]byte, error) {
 	if pubKey == nil {
 		return nil, fmt.Errorf("nil key")
@@ -30,25 +31,32 @@ func Keygrip(pubKey *ecdsa.PublicKey) ([]byte, error) {
 	a = big.NewInt(-3)
 	a.Mod(a, p)
 
-	b = pubKey.Params().B
+	// we need to allocate and set rather than just assign here and throughout
+	// the function otherwise we end up mutating the curve variable directly!
+	b = big.NewInt(0)
+	b.Set(pubKey.Params().B)
 	b.Mod(b, p)
 
 	g = big.NewInt(4)
 	g.Lsh(g, 512)
-	gx = pubKey.Params().Gx
+	gx = big.NewInt(0)
+	gx.Set(pubKey.Params().Gx)
 	gx.Lsh(gx, 256)
 	g.Or(g, gx)
-	gy = pubKey.Params().Gy
+	gy = big.NewInt(0)
+	gy.Set(pubKey.Params().Gy)
 	g.Or(g, gy)
 
 	n = pubKey.Params().N
 
 	q = big.NewInt(4)
-	q.Lsh(g, 512)
-	x = pubKey.X
+	q.Lsh(q, 512)
+	x = big.NewInt(0)
+	x.Set(pubKey.X)
 	x.Lsh(x, 256)
 	q.Or(q, x)
-	y = pubKey.Y
+	y = big.NewInt(0)
+	y.Set(pubKey.Y)
 	q.Or(q, y)
 
 	parts := []part{
@@ -59,14 +67,8 @@ func Keygrip(pubKey *ecdsa.PublicKey) ([]byte, error) {
 		{name: "n", value: n.Bytes()[:32]},
 		{name: "q", value: q.Bytes()[:65]},
 	}
-	spew.Dump(parts)
 	// hash them all
 	return compute(parts)
-}
-
-func bigInt2Bytes(i *big.Int, n uint) []byte {
-	buf := i.Bytes()
-	return buf[:n]
 }
 
 func compute(parts []part) ([]byte, error) {

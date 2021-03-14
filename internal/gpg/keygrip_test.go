@@ -75,6 +75,9 @@ func TestKeyGrip(t *testing.T) {
 
 			reader := packet.NewReader(block.Body)
 			pkt, err := reader.Next()
+			if err != nil {
+				tt.Fatal(err)
+			}
 			key, ok := pkt.(*packet.PublicKey)
 			if !ok {
 				tt.Fatal("not an openpgp public key")
