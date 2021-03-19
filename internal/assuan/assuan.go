@@ -4,11 +4,13 @@ package assuan
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"fmt"
 	"io"
 	"strconv"
 
 	"github.com/smlx/piv-agent/internal/fsm"
+	"github.com/smlx/piv-agent/internal/gpg"
 	"github.com/smlx/piv-agent/internal/key"
 )
 
@@ -203,6 +205,27 @@ func New(w io.Writer, p PIVAgent) *Assuan {
 // haveKey returns true if any of the keygrips refer to keys held by the local
 // PIVAgent, and false otherwise.
 func haveKey(p PIVAgent, keygrips [][]byte) (bool, error) {
-	// TODO: actually check for keygrips
+	securityKeys, err := p.SecurityKeys()
+	if err != nil {
+		return false, fmt.Errorf("couldn't get security keys: %v", err)
+	}
+	for _, sk := range securityKeys {
+		for _, signingKey := range sk.SigningKeys {
+			ecdsaPubKey, ok := signingKey.Public.(*ecdsa.PublicKey)
+			if !ok {
+				// TODO: handle other key types
+				continue
+			}
+			thisKeygrip, err := gpg.Keygrip(ecdsaPubKey)
+			if err != nil {
+				return false, fmt.Errorf("couldn't get keygrip: %v", err)
+			}
+			for _, kg := range keygrips {
+				if bytes.Equal(thisKeygrip, kg) {
+					return true, nil
+				}
+			}
+		}
+	}
 	return false, nil
 }

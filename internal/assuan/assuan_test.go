@@ -89,7 +89,7 @@ func TestSign(t *testing.T) {
 			if err := a.Run(&readBuf); err != nil {
 				tt.Fatal(err)
 			}
-			// read the responses
+			// check the responses
 			for i, expected := range tc.expect {
 				line, err := writeBuf.ReadString(byte('\n'))
 				if err != nil && err != io.EOF {
