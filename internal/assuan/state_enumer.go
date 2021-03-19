@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-const _StateName = "INVALIDSTATEREADYCONNECTED"
+const _StateName = "INVALIDSTATEREADYCONNECTEDKEYISSETHASHISSET"
 
-var _StateIndex = [...]uint8{0, 12, 17, 26}
+var _StateIndex = [...]uint8{0, 12, 17, 26, 34, 43}
 
-const _StateLowerName = "invalidstatereadyconnected"
+const _StateLowerName = "invalidstatereadyconnectedkeyissethashisset"
 
 func (i State) String() string {
 	if i < 0 || i >= State(len(_StateIndex)-1) {
@@ -27,9 +27,11 @@ func _StateNoOp() {
 	_ = x[invalidState-(0)]
 	_ = x[ready-(1)]
 	_ = x[connected-(2)]
+	_ = x[keyIsSet-(3)]
+	_ = x[hashIsSet-(4)]
 }
 
-var _StateValues = []State{invalidState, ready, connected}
+var _StateValues = []State{invalidState, ready, connected, keyIsSet, hashIsSet}
 
 var _StateNameToValueMap = map[string]State{
 	_StateName[0:12]:       invalidState,
@@ -38,12 +40,18 @@ var _StateNameToValueMap = map[string]State{
 	_StateLowerName[12:17]: ready,
 	_StateName[17:26]:      connected,
 	_StateLowerName[17:26]: connected,
+	_StateName[26:34]:      keyIsSet,
+	_StateLowerName[26:34]: keyIsSet,
+	_StateName[34:43]:      hashIsSet,
+	_StateLowerName[34:43]: hashIsSet,
 }
 
 var _StateNames = []string{
 	_StateName[0:12],
 	_StateName[12:17],
 	_StateName[17:26],
+	_StateName[26:34],
+	_StateName[34:43],
 }
 
 // StateString retrieves an enum value from the enum constants string name.

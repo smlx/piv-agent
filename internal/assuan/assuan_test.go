@@ -52,7 +52,8 @@ func TestSign(t *testing.T) {
 				"OK\n",
 				"OK\n",
 				"OK\n",
-				"D 2.2.20\nOK\n",
+				"D 2.2.20\n",
+				"OK\n",
 				"OK\n",
 				"OK\n",
 				"OK\n",
@@ -89,13 +90,13 @@ func TestSign(t *testing.T) {
 				tt.Fatal(err)
 			}
 			// read the responses
-			for _, expected := range tc.expect {
+			for i, expected := range tc.expect {
 				line, err := writeBuf.ReadString(byte('\n'))
 				if err != nil && err != io.EOF {
 					tt.Fatal(err)
 				}
 				if line != expected {
-					tt.Fatalf(`got %#v, expected %#v`, line, expected)
+					tt.Fatalf(`sent %#v, got %#v, expected %#v`, tc.input[i], line, expected)
 				}
 			}
 		})

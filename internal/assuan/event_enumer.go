@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-const _EventName = "INVALIDEVENTCONNECTRESETOPTIONGETINFO"
+const _EventName = "INVALIDEVENTCONNECTRESETOPTIONGETINFOHAVEKEYKEYINFOSIGKEYSETKEYDESCSETHASHPKSIGN"
 
-var _EventIndex = [...]uint8{0, 12, 19, 24, 30, 37}
+var _EventIndex = [...]uint8{0, 12, 19, 24, 30, 37, 44, 51, 57, 67, 74, 80}
 
-const _EventLowerName = "invalideventconnectresetoptiongetinfo"
+const _EventLowerName = "invalideventconnectresetoptiongetinfohavekeykeyinfosigkeysetkeydescsethashpksign"
 
 func (i Event) String() string {
 	if i < 0 || i >= Event(len(_EventIndex)-1) {
@@ -29,9 +29,15 @@ func _EventNoOp() {
 	_ = x[reset-(2)]
 	_ = x[option-(3)]
 	_ = x[getinfo-(4)]
+	_ = x[havekey-(5)]
+	_ = x[keyinfo-(6)]
+	_ = x[sigkey-(7)]
+	_ = x[setkeydesc-(8)]
+	_ = x[sethash-(9)]
+	_ = x[pksign-(10)]
 }
 
-var _EventValues = []Event{invalidEvent, connect, reset, option, getinfo}
+var _EventValues = []Event{invalidEvent, connect, reset, option, getinfo, havekey, keyinfo, sigkey, setkeydesc, sethash, pksign}
 
 var _EventNameToValueMap = map[string]Event{
 	_EventName[0:12]:       invalidEvent,
@@ -44,6 +50,18 @@ var _EventNameToValueMap = map[string]Event{
 	_EventLowerName[24:30]: option,
 	_EventName[30:37]:      getinfo,
 	_EventLowerName[30:37]: getinfo,
+	_EventName[37:44]:      havekey,
+	_EventLowerName[37:44]: havekey,
+	_EventName[44:51]:      keyinfo,
+	_EventLowerName[44:51]: keyinfo,
+	_EventName[51:57]:      sigkey,
+	_EventLowerName[51:57]: sigkey,
+	_EventName[57:67]:      setkeydesc,
+	_EventLowerName[57:67]: setkeydesc,
+	_EventName[67:74]:      sethash,
+	_EventLowerName[67:74]: sethash,
+	_EventName[74:80]:      pksign,
+	_EventLowerName[74:80]: pksign,
 }
 
 var _EventNames = []string{
@@ -52,6 +70,12 @@ var _EventNames = []string{
 	_EventName[19:24],
 	_EventName[24:30],
 	_EventName[30:37],
+	_EventName[37:44],
+	_EventName[44:51],
+	_EventName[51:57],
+	_EventName[57:67],
+	_EventName[67:74],
+	_EventName[74:80],
 }
 
 // EventString retrieves an enum value from the enum constants string name.
