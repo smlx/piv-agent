@@ -24,7 +24,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
     - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v2
+      uses: goreleaser/goreleaser-action@v2.5.0
       with:
         version: latest
         args: release --rm-dist --config .goreleaser.${{ matrix.os }}.yml
