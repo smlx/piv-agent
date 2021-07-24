@@ -85,6 +85,7 @@ loop:
 	for {
 		select {
 		case <-ctx.Done():
+			log.Debug("exit done")
 			break loop
 		case <-exit.C:
 			log.Debug("exit timeout")

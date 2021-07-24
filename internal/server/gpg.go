@@ -47,7 +47,9 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 			a := assuan.New(conn, g.pivService)
 			// run the protocol state machine to completion
 			// (client severs connection)
-			return a.Run(conn)
+			if err := a.Run(conn); err != nil {
+				return err
+			}
 		case <-ctx.Done():
 			return nil
 		}
