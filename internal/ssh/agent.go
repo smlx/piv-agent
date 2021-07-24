@@ -23,11 +23,10 @@ import (
 // Agent implements the crypto/ssh Agent interface
 // https://pkg.go.dev/golang.org/x/crypto/ssh/agent#Agent
 type Agent struct {
-	mu           sync.Mutex
-	pivService   *pivservice.PIVService
-	securityKeys []pivservice.SecurityKey
-	log          *zap.Logger
-	loadKeyfile  bool
+	mu          sync.Mutex
+	pivService  *pivservice.PIVService
+	log         *zap.Logger
+	loadKeyfile bool
 }
 
 // ErrNotImplemented is returned from any unimplemented method.
@@ -42,19 +41,6 @@ var passphrases = map[string][]byte{}
 // NewAgent returns a new Agent.
 func NewAgent(p *pivservice.PIVService, log *zap.Logger, loadKeyfile bool) *Agent {
 	return &Agent{pivService: p, log: log, loadKeyfile: loadKeyfile}
-}
-
-// reopenSecurityKeys closes and attempts to re-open all avalable security keys
-func (a *Agent) reopenSecurityKeys() error {
-	for _, k := range a.securityKeys {
-		_ = k.Close()
-	}
-	securityKeys, err := a.pivService.SecurityKeys()
-	if err != nil {
-		return fmt.Errorf("couldn't get all security keys: %v", err)
-	}
-	a.securityKeys = securityKeys
-	return nil
 }
 
 // List returns the identities known to the agent.
@@ -80,24 +66,11 @@ func (a *Agent) List() ([]*agent.Key, error) {
 // returns the identities from hardware tokens
 func (a *Agent) securityKeyIDs() ([]*agent.Key, error) {
 	var keys []*agent.Key
-	var err error
-	// check we have any security keys
-	if len(a.securityKeys) == 0 {
-		if err = a.reopenSecurityKeys(); err != nil {
-			return nil, fmt.Errorf("couldn't reopen security keys: %w", err)
-		}
+	securityKeys, err := a.pivService.SecurityKeys()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
-	// check they are healthy
-	for _, k := range a.securityKeys {
-		if _, err = k.AttestationCertificate(); err != nil {
-			if err = a.reopenSecurityKeys(); err != nil {
-				return nil, fmt.Errorf("couldn't reopen security keys: %w", err)
-			}
-			break
-		}
-	}
-	// use them for IDs
-	for _, k := range a.securityKeys {
+	for _, k := range securityKeys {
 		for _, s := range k.SigningKeys() {
 			keys = append(keys, &agent.Key{
 				Format: s.PubSSH.Type(),
@@ -246,7 +219,11 @@ func (a *Agent) Signers() ([]gossh.Signer, error) {
 // get signers for all keys stored in hardware tokens
 func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 	var signers []gossh.Signer
-	for _, k := range a.securityKeys {
+	securityKeys, err := a.pivService.SecurityKeys()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get security keys: %v", err)
+	}
+	for _, k := range securityKeys {
 		for _, s := range k.SigningKeys() {
 			privKey, err := k.PrivateKey(&s)
 			if err != nil {
