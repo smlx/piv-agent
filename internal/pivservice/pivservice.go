@@ -9,8 +9,9 @@ import (
 // PIVService represents a collection of tokens and slots accessed by the
 // Personal Identity Verifaction card interface.
 type PIVService struct {
-	mu sync.Mutex
-	log   *zap.Logger
+	mu           sync.Mutex
+	log          *zap.Logger
+	securityKeys []SecurityKey
 }
 
 // New constructs a PIV and returns it.

@@ -26,12 +26,16 @@ type SecurityKey interface {
 	StringsSSH() []string
 }
 
-// SecurityKeys returns a slice containing all available security keys.
-func (p *PIVService) SecurityKeys() ([]SecurityKey, error) {
-	var all []SecurityKey
+func (p *PIVService) reloadSecurityKeys() error {
+	// try to clean up and reset state
+	for _, k := range p.securityKeys {
+		_ = k.Close()
+	}
+	p.securityKeys = nil
+	// open cards and load keys from scratch
 	cards, err := piv.Cards()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get smart cards: %w", err)
+		return fmt.Errorf("couldn't get cards: %v", err)
 	}
 	for _, card := range cards {
 		sk, err := securitykey.New(card)
@@ -40,7 +44,33 @@ func (p *PIVService) SecurityKeys() ([]SecurityKey, error) {
 				zap.Error(err))
 			continue
 		}
-		all = append(all, sk)
+		p.securityKeys = append(p.securityKeys, sk)
 	}
-	return all, nil
+	if len(p.securityKeys) == 0 {
+		return fmt.Errorf("no valid security keys found")
+	}
+	return nil
+}
+
+// SecurityKeys returns a slice containing all available security keys.
+func (p *PIVService) SecurityKeys() ([]SecurityKey, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	var err error
+	// check if any securityKeys are cached, and if not then cache them
+	if len(p.securityKeys) == 0 {
+		if err = p.reloadSecurityKeys(); err != nil {
+			return nil, fmt.Errorf("couldn't reload security keys: %v", err)
+		}
+	}
+	// check they are healthy, and reload if not
+	for _, k := range p.securityKeys {
+		if _, err = k.AttestationCertificate(); err != nil {
+			if err = p.reloadSecurityKeys(); err != nil {
+				return nil, fmt.Errorf("couldn't reload security keys: %v", err)
+			}
+			break
+		}
+	}
+	return p.securityKeys, nil
 }

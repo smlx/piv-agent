@@ -43,7 +43,6 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 			if err := conn.SetDeadline(time.Now().Add(16 * time.Second)); err != nil {
 				return fmt.Errorf("couldn't set deadline: %v", err)
 			}
-			g.log.Debug("start serving GPG connection")
 			// init protocol state machine
 			a := assuan.New(conn, g.pivService)
 			// run the protocol state machine to completion
