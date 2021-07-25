@@ -1,6 +1,7 @@
 # PIV Agent
 
-![Tag and release on merge](https://github.com/smlx/piv-agent/workflows/Tag%20and%20release%20on%20merge/badge.svg)
+![Tag and Release](https://github.com/smlx/piv-agent/workflows/Tag%20and%20release%20on%20merge/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/smlx/piv-agent/badge.svg?branch=main)](https://coveralls.io/github/smlx/piv-agent?branch=main)
 
 ## About
 

@@ -1,4 +1,4 @@
-name: Tag and release on merge
+name: Tag and Release
 on:
   push:
     branches:
@@ -20,10 +20,11 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: "^1.15"
+        go-version: "^1.16"
     - name: Install ccv
-      working-directory: /
-      run: GO111MODULE=on go get github.com/smlx/ccv
+      run: >
+        curl -sSL https://github.com/smlx/ccv/releases/download/v0.3.2/ccv_0.3.2_linux_amd64.tar.gz
+        | sudo tar -xz -C /usr/local/bin ccv
     - name: Bump tag if necessary
       id: bump-tag
       run: |
@@ -51,7 +52,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: "^1.15"
+        go-version: "^1.16"
     - name: Install Dependencies
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
