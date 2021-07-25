@@ -155,6 +155,70 @@ func TestSign(t *testing.T) {
 	}
 }
 
+func TestKeyinfo(t *testing.T) {
+	var testCases = map[string]struct {
+		keyPath string
+		input   []string
+		expect  []string
+	}{
+		"keyinfo": {
+			keyPath: "testdata/C54A8868468BC138.asc",
+			input: []string{
+				"RESET\n",
+				"KEYINFO 38F053358EFD6C923D08EE4FC4CEB208CBCDF73C\n",
+			},
+			expect: []string{
+				"OK Pleased to meet you, process 123456789\n",
+				"OK\n",
+				"S KEYINFO 38F053358EFD6C923D08EE4FC4CEB208CBCDF73C D - - - P - - -\n",
+				"OK\n",
+			},
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(tt *testing.T) {
+			// load key test fixture
+			pubKey, err := ecdsaPubKeyLoad(tc.keyPath)
+			if err != nil {
+				tt.Fatal(err)
+			}
+			ctrl := gomock.NewController(tt)
+			defer ctrl.Finish()
+			var mockSecurityKey = mock.NewMockSecurityKey(ctrl)
+			mockSecurityKey.EXPECT().SigningKeys().AnyTimes().Return(
+				[]securitykey.SigningKey{{Public: pubKey}})
+			pivService := mock.NewMockPIVService(ctrl)
+			pivService.EXPECT().SecurityKeys().AnyTimes().Return(
+				[]pivservice.SecurityKey{mockSecurityKey}, nil)
+			// writeBuf is the buffer that the assuan statemachine writes to
+			writeBuf := bytes.Buffer{}
+			// readBuf is the buffer that the assuan statemachine reads from
+			readBuf := bytes.Buffer{}
+			a := assuan.New(&writeBuf, pivService)
+			// write all the lines into the statemachine
+			for _, in := range tc.input {
+				if _, err := readBuf.WriteString(in); err != nil {
+					tt.Fatal(err)
+				}
+			}
+			// start the state machine
+			if err := a.Run(&readBuf); err != nil {
+				tt.Fatal(err)
+			}
+			// check the responses
+			for _, expected := range tc.expect {
+				line, err := writeBuf.ReadString(byte('\n'))
+				if err != nil && err != io.EOF {
+					tt.Fatal(err)
+				}
+				if line != expected {
+					tt.Fatalf(`got %#v, expected %#v`, line, expected)
+				}
+			}
+		})
+	}
+}
+
 func ecdsaPubKeyLoad(path string) (*ecdsa.PublicKey, error) {
 	in, err := os.Open(path)
 	if err != nil {

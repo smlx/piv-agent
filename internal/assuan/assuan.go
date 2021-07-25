@@ -12,6 +12,7 @@ import (
 	"io"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/smlx/fsm"
 	"github.com/smlx/piv-agent/internal/gpg"
@@ -71,7 +72,7 @@ func New(w io.Writer, p PIVService) *Assuan {
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					hk, err := haveKey(p, keygrips)
+					hk, _, err := haveKey(p, keygrips)
 					if err != nil {
 						_, _ = io.WriteString(w, "ERR 1 couldn't check for keygrip\n")
 						return fmt.Errorf("couldn't check for keygrip: %v", err)
@@ -89,13 +90,15 @@ func New(w io.Writer, p PIVService) *Assuan {
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					hk, err := haveKey(p, keygrips)
+					hk, keygrip, err := haveKey(p, keygrips)
 					if err != nil {
 						_, _ = io.WriteString(w, "ERR 1 couldn't check for keygrip\n")
 						return fmt.Errorf("couldn't check for keygrip: %v", err)
 					}
 					if hk {
-						_, err = io.WriteString(w, "OK\n")
+						_, err = io.WriteString(w,
+							fmt.Sprintf("S KEYINFO %s D - - - P - - -\nOK\n",
+								strings.ToUpper(hex.EncodeToString(keygrip))))
 					} else {
 						_, err = io.WriteString(w, "No_Secret_Key\n")
 					}
@@ -179,10 +182,10 @@ func New(w io.Writer, p PIVService) *Assuan {
 // PIVService, and false otherwise.
 // It takes keygrips in raw byte format, so keygrip in hex-encoded form must
 // first be decoded before being passed to this function.
-func haveKey(p PIVService, keygrips [][]byte) (bool, error) {
+func haveKey(p PIVService, keygrips [][]byte) (bool, []byte, error) {
 	securityKeys, err := p.SecurityKeys()
 	if err != nil {
-		return false, fmt.Errorf("couldn't get security keys: %w", err)
+		return false, nil, fmt.Errorf("couldn't get security keys: %w", err)
 	}
 	for _, sk := range securityKeys {
 		for _, signingKey := range sk.SigningKeys() {
@@ -193,16 +196,16 @@ func haveKey(p PIVService, keygrips [][]byte) (bool, error) {
 			}
 			thisKeygrip, err := gpg.Keygrip(ecdsaPubKey)
 			if err != nil {
-				return false, fmt.Errorf("couldn't get keygrip: %w", err)
+				return false, nil, fmt.Errorf("couldn't get keygrip: %w", err)
 			}
 			for _, kg := range keygrips {
 				if bytes.Equal(thisKeygrip, kg) {
-					return true, nil
+					return true, thisKeygrip, nil
 				}
 			}
 		}
 	}
-	return false, nil
+	return false, nil, nil
 }
 
 // getKey returns the security key associated with the given keygrip.
