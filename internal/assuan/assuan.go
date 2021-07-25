@@ -283,7 +283,7 @@ func (a *Assuan) sign() ([]byte, error) {
 		return nil, fmt.Errorf("couldn't read s as asn1.Integer")
 	}
 	// encode the params (r, s) into s-exp
-	sexp := fmt.Sprintf(`D (7:sig-val(5:ecdsa(1:r32:%s)(1:s32:%s)))`,
-		r.Bytes(), s.Bytes())
-	return []byte(sexp), nil
+	return []byte(fmt.Sprintf(`D (7:sig-val(5:ecdsa(1:r32#%s#)(1:s32#%s#)))`,
+		hex.EncodeToString(r.Bytes()),
+		hex.EncodeToString(s.Bytes()))), nil
 }
