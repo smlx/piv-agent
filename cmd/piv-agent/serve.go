@@ -77,6 +77,11 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 		g.Go(func() error {
 			s := server.NewGPG(p, log)
 			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], exit, cmd.ExitTimeout)
+			if err != nil {
+				log.Debug("exiting GPG server", zap.Error(err))
+			} else {
+				log.Debug("exiting GPG server successfully")
+			}
 			cancel()
 			return err
 		})
