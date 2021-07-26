@@ -35,14 +35,16 @@ var defaultSignSlots = []SlotSpec{
 	{piv.SlotCardAuthentication, piv.TouchPolicyNever},
 }
 
-// defaultEncryptSlots represents the slot specifications for encryption operations.
-var defaultEncryptSlots = []SlotSpec{
-	// Slot 9d: Key Management
-	// This certificate and its associated private key is used for encryption for
-	// the purpose of confidentiality. This slot is used for things like
-	// encrypting e-mails or files. The end user PIN is required to perform any
-	// private key operations. Once the PIN has been provided successfully,
-	// multiple private key operations may be performed without additional
-	// cardholder consent.
-	{piv.SlotKeyManagement, piv.TouchPolicyCached},
-}
+// TODO: use the encrypt slot
+
+// // defaultEncryptSlots represents the slot specifications for encryption operations.
+// var defaultEncryptSlots = []SlotSpec{
+// 	// Slot 9d: Key Management
+// 	// This certificate and its associated private key is used for encryption for
+// 	// the purpose of confidentiality. This slot is used for things like
+// 	// encrypting e-mails or files. The end user PIN is required to perform any
+// 	// private key operations. Once the PIN has been provided successfully,
+// 	// multiple private key operations may be performed without additional
+// 	// cardholder consent.
+// 	{piv.SlotKeyManagement, piv.TouchPolicyCached},
+// }
