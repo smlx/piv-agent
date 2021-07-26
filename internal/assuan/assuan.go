@@ -27,7 +27,8 @@ type PIVService interface {
 	SecurityKeys() ([]pivservice.SecurityKey, error)
 }
 
-var hashAlgorithm = map[uint64]crypto.Hash{
+// hashFunction maps the code used by assuan to the relevant hash function.
+var hashFunction = map[uint64]crypto.Hash{
 	8:  crypto.SHA256,
 	10: crypto.SHA512,
 }
@@ -35,6 +36,10 @@ var hashAlgorithm = map[uint64]crypto.Hash{
 // New initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
 func New(w io.Writer, p PIVService) *Assuan {
+	var err error
+	var keyFound bool
+	var keygrip, signature []byte
+	var keygrips, hash [][]byte
 	assuan := Assuan{
 		Machine: fsm.Machine{
 			State:       fsm.State(ready),
@@ -44,7 +49,6 @@ func New(w io.Writer, p PIVService) *Assuan {
 	assuan.OnEntry = map[fsm.State][]fsm.TransitionFunc{
 		fsm.State(connected): {
 			func(e fsm.Event, _ fsm.State) error {
-				var err error
 				switch Event(e) {
 				case connect:
 					// acknowledge connection using the format expected by the client
@@ -69,16 +73,16 @@ func New(w io.Writer, p PIVService) *Assuan {
 					// HAVEKEY arguments are a list of keygrips
 					// if _any_ key is available, we return OK, otherwise
 					// No_Secret_Key.
-					keygrips, err := hexDecode(assuan.data...)
+					keygrips, err = hexDecode(assuan.data...)
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					hk, _, err := haveKey(p, keygrips)
+					keyFound, _, err = haveKey(p, keygrips)
 					if err != nil {
 						_, _ = io.WriteString(w, "ERR 1 couldn't check for keygrip\n")
 						return fmt.Errorf("couldn't check for keygrip: %v", err)
 					}
-					if hk {
+					if keyFound {
 						_, err = io.WriteString(w, "OK\n")
 					} else {
 						_, err = io.WriteString(w, "No_Secret_Key\n")
@@ -87,16 +91,16 @@ func New(w io.Writer, p PIVService) *Assuan {
 					// KEYINFO arguments are a list of keygrips
 					// if _any_ key is available, we return OK, otherwise
 					// No_Secret_Key.
-					keygrips, err := hexDecode(assuan.data...)
+					keygrips, err = hexDecode(assuan.data...)
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					hk, keygrip, err := haveKey(p, keygrips)
+					keyFound, keygrip, err = haveKey(p, keygrips)
 					if err != nil {
 						_, _ = io.WriteString(w, "ERR 1 couldn't check for keygrip\n")
 						return fmt.Errorf("couldn't check for keygrip: %v", err)
 					}
-					if hk {
+					if keyFound {
 						_, err = io.WriteString(w,
 							fmt.Sprintf("S KEYINFO %s D - - - P - - -\nOK\n",
 								strings.ToUpper(hex.EncodeToString(keygrip))))
@@ -116,7 +120,7 @@ func New(w io.Writer, p PIVService) *Assuan {
 				case sigkey:
 					// SIGKEY has a single argument: a keygrip indicating the key which
 					// will be used for subsequent signing operations
-					keygrips, err := hexDecode(assuan.data...)
+					keygrips, err = hexDecode(assuan.data...)
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
@@ -142,21 +146,22 @@ func New(w io.Writer, p PIVService) *Assuan {
 				switch Event(e) {
 				case sethash:
 					// record the algorithm and hash
-					h, err := strconv.ParseUint(string(assuan.data[0]), 10, 32)
+					var n uint64
+					n, err = strconv.ParseUint(string(assuan.data[0]), 10, 32)
 					if err != nil {
 						return fmt.Errorf("couldn't parse uint %s: %v", assuan.data[0], err)
 					}
-					if assuan.hashAlgo = hashAlgorithm[h]; assuan.hashAlgo == 0 {
-						return fmt.Errorf("invalid hash algorithm value: %v", h)
+					if assuan.hashAlgo = hashFunction[n]; assuan.hashAlgo == 0 {
+						return fmt.Errorf("invalid hash algorithm value: %v", n)
 					}
-					hash, err := hexDecode(assuan.data[1:]...)
+					hash, err = hexDecode(assuan.data[1:]...)
 					if err != nil {
 						return fmt.Errorf("couldn't decode hash: %v", err)
 					}
 					assuan.hash = hash[0]
 					_, err = io.WriteString(w, "OK\n")
 				case pksign:
-					signature, err := assuan.sign()
+					signature, err = assuan.sign()
 					if err != nil {
 						return fmt.Errorf("couldn't sign: %v", err)
 					}
