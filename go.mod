@@ -7,10 +7,10 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/gen2brain/beeep v0.0.0-20200526185328-e9c15c258e28
 	github.com/go-piv/piv-go v1.8.0
-	github.com/gopasspw/gopass v1.10.2-0.20201105185611-36c5888f3a49
-	go.uber.org/zap v1.18.1
 	github.com/golang/mock v1.5.0
+	github.com/gopasspw/gopass v1.10.2-0.20201105185611-36c5888f3a49
 	github.com/smlx/fsm v0.2.0
+	go.uber.org/zap v1.18.1
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 )
