@@ -2,7 +2,6 @@ package ssh
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -10,9 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
-	"github.com/gen2brain/beeep"
+	"github.com/smlx/piv-agent/internal/notify"
 	pinentry "github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/pivservice"
 	"go.uber.org/zap"
@@ -146,30 +144,14 @@ func (a *Agent) signWithSigners(key gossh.PublicKey, data []byte, signers []goss
 			continue
 		}
 		// (possibly) send a notification
-		ctx, cancel := context.WithCancel(context.Background())
+		cancel := notify.Touch(a.log)
 		defer cancel()
-		a.touchNotify(ctx)
 		// perform signature
 		a.log.Debug("signing",
 			zap.Binary("public key bytes", s.PublicKey().Marshal()))
 		return s.Sign(rand.Reader, data)
 	}
 	return nil, fmt.Errorf("%w: %v", ErrUnknownKey, key)
-}
-
-func (a *Agent) touchNotify(ctx context.Context) {
-	timer := time.NewTimer(8 * time.Second)
-	go func() {
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-		case <-timer.C:
-			err := beeep.Alert("Security Key Agent", "Waiting for touch...", "")
-			if err != nil {
-				a.log.Warn("couldn't send touch notification", zap.Error(err))
-			}
-		}
-	}()
 }
 
 // Add adds a private key to the agent.

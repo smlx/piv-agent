@@ -16,6 +16,7 @@ import (
 
 	"github.com/smlx/fsm"
 	"github.com/smlx/piv-agent/internal/gpg"
+	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/pivservice"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
@@ -260,11 +261,14 @@ func hexDecode(data ...[]byte) ([][]byte, error) {
 // sign performs signing of the specified "hash" data, using the specified
 // "hashAlgo" hash algorithm. It then encodes the response into an s-expression
 // and returns it as a byte slice.
+//
+// This function's complexity is due to the fact that while Sign() returns the
+// r and s components of the signature ASN1-encoded, gpg expects them to be
+// separately s-exp encoded. So we have to decode the ASN1 signature, extract
+// the params, and re-encode them into the s-exp. Ugh.
 func (a *Assuan) sign() ([]byte, error) {
-	// This function's complexity is due to the fact that while Sign() returns
-	// the r and s components of the signature ASN1-encoded, gpg expects them to
-	// be separately s-exp encoded. So we have to decode the ASN1 signature,
-	// extract the params, and re-encode them into the s-exp. Ugh.
+	cancel := notify.Touch(nil)
+	defer cancel()
 	signature, err := a.signingPrivKey.Sign(rand.Reader, a.hash, a.hashAlgo)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't sign: %v", err)
