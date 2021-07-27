@@ -121,8 +121,8 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 			}
 			// reset the exit timer
 			exit.Reset(timeout)
-			// if the client stops responding for 16 seconds, give up.
-			if err := conn.SetDeadline(time.Now().Add(16 * time.Second)); err != nil {
+			// if the client stops responding for 60 seconds, give up.
+			if err := conn.SetDeadline(time.Now().Add(60 * time.Second)); err != nil {
 				return fmt.Errorf("couldn't set deadline: %v", err)
 			}
 			// init protocol state machine
