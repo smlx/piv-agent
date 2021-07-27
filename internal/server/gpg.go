@@ -16,6 +16,7 @@ import (
 	"github.com/smlx/piv-agent/internal/gpg"
 	"github.com/smlx/piv-agent/internal/pivservice"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/openpgp/errors"
 	"golang.org/x/crypto/openpgp/packet"
 )
 
@@ -42,6 +43,9 @@ func LoadFallbackKeys(path string) ([]*packet.PrivateKey, error) {
 	var pkt packet.Packet
 	var privKeys []*packet.PrivateKey
 	for pkt, err = reader.Next(); err != io.EOF; pkt, err = reader.Next() {
+		if _, ok := err.(errors.UnsupportedError); ok {
+			continue // gpg writes some non-standard cruft
+		}
 		if err != nil {
 			return nil, fmt.Errorf("couldn't get next packet: %v", err)
 		}
