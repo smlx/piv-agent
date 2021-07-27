@@ -2,6 +2,7 @@ package assuan
 
 import (
 	"crypto"
+	"crypto/rsa"
 	"sync"
 
 	"github.com/smlx/fsm"
@@ -54,6 +55,8 @@ type Assuan struct {
 	signingPrivKey crypto.Signer
 	hashAlgo       crypto.Hash
 	hash           []byte
+	// fallback keys
+	fallbackRSA []rsa.PrivateKey
 }
 
 // Occur handles an event occurence.

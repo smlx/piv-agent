@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -15,6 +16,7 @@ import (
 	"github.com/smlx/piv-agent/internal/mock"
 	"github.com/smlx/piv-agent/internal/pivservice"
 	"github.com/smlx/piv-agent/internal/securitykey"
+	"github.com/smlx/piv-agent/internal/server"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
 	"golang.org/x/crypto/openpgp"
@@ -130,7 +132,7 @@ func TestSign(t *testing.T) {
 			writeBuf := bytes.Buffer{}
 			// readBuf is the buffer that the assuan statemachine reads from
 			readBuf := bytes.Buffer{}
-			a := assuan.New(&writeBuf, pivService)
+			a := assuan.New(&writeBuf, pivService, nil)
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := readBuf.WriteString(in); err != nil {
@@ -194,7 +196,7 @@ func TestKeyinfo(t *testing.T) {
 			writeBuf := bytes.Buffer{}
 			// readBuf is the buffer that the assuan statemachine reads from
 			readBuf := bytes.Buffer{}
-			a := assuan.New(&writeBuf, pivService)
+			a := assuan.New(&writeBuf, pivService, nil)
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := readBuf.WriteString(in); err != nil {
@@ -246,4 +248,44 @@ func ecdsaPubKeyLoad(path string) (*ecdsa.PublicKey, error) {
 		return nil, fmt.Errorf("not an ecdsa public key")
 	}
 	return eccKey, nil
+}
+
+func hexMustDecode(s string) []byte {
+	raw, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return raw
+}
+
+func TestKeyfileSigner(t *testing.T) {
+	var testCases = map[string]struct {
+		path      string
+		keygrip   []byte
+		protected bool
+	}{
+		"unprotected key": {
+			path:    "testdata/private/bar@example.com.gpg",
+			keygrip: hexMustDecode("23F4477DF0F0C0963F8C4DFDEA8911CE65CC7CE3"),
+		},
+		"protected key": {
+			path:      "testdata/private/bar-protected@example.com.gpg",
+			keygrip:   hexMustDecode("75B7C5A35213E71BA282F64317DDB90EC5C3FEE0"),
+			protected: true,
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(tt *testing.T) {
+			ctrl := gomock.NewController(tt)
+			defer ctrl.Finish()
+			var mockPES = mock.NewMockPINEntryService(ctrl)
+			if tc.protected {
+				mockPES.EXPECT().GetPGPPassphrase(gomock.Any()).Return([]byte("trustno1"), nil)
+			}
+			g := server.NewGPG(nil, mockPES, nil, tc.path)
+			if _, err := assuan.KeyfileSigner(g, tc.keygrip); err != nil {
+				tt.Fatalf("couldn't find keygrip: %v", err)
+			}
+		})
+	}
 }

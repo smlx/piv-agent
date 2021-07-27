@@ -7,6 +7,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -27,6 +28,11 @@ type PIVService interface {
 	SecurityKeys() ([]pivservice.SecurityKey, error)
 }
 
+// The GPGService interface provides GPG functions used by the Assuan FSM.
+type GPGService interface {
+	GetKey([]byte) *rsa.PrivateKey
+}
+
 // hashFunction maps the code used by assuan to the relevant hash function.
 var hashFunction = map[uint64]crypto.Hash{
 	8:  crypto.SHA256,
@@ -35,7 +41,7 @@ var hashFunction = map[uint64]crypto.Hash{
 
 // New initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
-func New(w io.Writer, p PIVService) *Assuan {
+func New(w io.Writer, p PIVService, g GPGService) *Assuan {
 	var err error
 	var keyFound bool
 	var keygrip, signature []byte
@@ -77,7 +83,7 @@ func New(w io.Writer, p PIVService) *Assuan {
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					keyFound, _, err = haveKey(p, keygrips)
+					keyFound, _, err = haveKey(p, g, keygrips)
 					if err != nil {
 						_, _ = io.WriteString(w, "ERR 1 couldn't check for keygrip\n")
 						return fmt.Errorf("couldn't check for keygrip: %v", err)
@@ -95,7 +101,7 @@ func New(w io.Writer, p PIVService) *Assuan {
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					keyFound, keygrip, err = haveKey(p, keygrips)
+					keyFound, keygrip, err = haveKey(p, g, keygrips)
 					if err != nil {
 						_, _ = io.WriteString(w, "ERR 1 couldn't check for keygrip\n")
 						return fmt.Errorf("couldn't check for keygrip: %v", err)
@@ -124,7 +130,11 @@ func New(w io.Writer, p PIVService) *Assuan {
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					assuan.signingPrivKey, err = getKey(p, keygrips[0])
+					assuan.signingPrivKey, err = tokenSigner(p, keygrips[0])
+					if err != nil {
+						// fall back to keyfiles
+						assuan.signingPrivKey, err = keyfileSigner(g, keygrips[0])
+					}
 					if err != nil {
 						_, _ = io.WriteString(w, "ERR 1 couldn't get key from keygrip\n")
 						return fmt.Errorf("couldn't get key from keygrip: %v", err)
@@ -188,11 +198,12 @@ func New(w io.Writer, p PIVService) *Assuan {
 // PIVService, and false otherwise.
 // It takes keygrips in raw byte format, so keygrip in hex-encoded form must
 // first be decoded before being passed to this function.
-func haveKey(p PIVService, keygrips [][]byte) (bool, []byte, error) {
+func haveKey(p PIVService, g GPGService, keygrips [][]byte) (bool, []byte, error) {
 	securityKeys, err := p.SecurityKeys()
 	if err != nil {
 		return false, nil, fmt.Errorf("couldn't get security keys: %w", err)
 	}
+	// check against tokens
 	for _, sk := range securityKeys {
 		for _, signingKey := range sk.SigningKeys() {
 			ecdsaPubKey, ok := signingKey.Public.(*ecdsa.PublicKey)
@@ -200,7 +211,7 @@ func haveKey(p PIVService, keygrips [][]byte) (bool, []byte, error) {
 				// TODO: handle other key types
 				continue
 			}
-			thisKeygrip, err := gpg.Keygrip(ecdsaPubKey)
+			thisKeygrip, err := gpg.KeygripECDSA(ecdsaPubKey)
 			if err != nil {
 				return false, nil, fmt.Errorf("couldn't get keygrip: %w", err)
 			}
@@ -211,14 +222,20 @@ func haveKey(p PIVService, keygrips [][]byte) (bool, []byte, error) {
 			}
 		}
 	}
+	// also check against keyfiles
+	for _, kg := range keygrips {
+		if key := g.GetKey(kg); key != nil {
+			return true, kg, nil
+		}
+	}
 	return false, nil, nil
 }
 
-// getKey returns the security key associated with the given keygrip.
+// tokenSigner returns the security key associated with the given keygrip.
 // If the keygrip doesn't match any known key, err will be non-nil.
 // It takes a keygrip in raw byte format, so a keygrip in hex-encoded form must
 // first be decoded before being passed to this function.
-func getKey(p PIVService, keygrip []byte) (crypto.Signer, error) {
+func tokenSigner(p PIVService, keygrip []byte) (crypto.Signer, error) {
 	securityKeys, err := p.SecurityKeys()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get security keys: %w", err)
@@ -230,7 +247,7 @@ func getKey(p PIVService, keygrip []byte) (crypto.Signer, error) {
 				// TODO: handle other key types
 				continue
 			}
-			thisKeygrip, err := gpg.Keygrip(ecdsaPubKey)
+			thisKeygrip, err := gpg.KeygripECDSA(ecdsaPubKey)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get keygrip: %w", err)
 			}
@@ -246,6 +263,18 @@ func getKey(p PIVService, keygrip []byte) (crypto.Signer, error) {
 				return signingPrivKey, nil
 			}
 		}
+	}
+	return nil, fmt.Errorf("no matching key")
+}
+
+// keyfileSigner returns a crypto.Signer associated with the given keygrip.
+// If the keygrip doesn't match any known key, err will be non-nil.
+// It takes a keygrip in raw byte format, so a keygrip in hex-encoded form must
+// first be decoded before being passed to this function.
+// The path is to a secret keys file exported from gpg.
+func keyfileSigner(g GPGService, keygrip []byte) (crypto.Signer, error) {
+	if key := g.GetKey(keygrip); key != nil {
+		return key, nil
 	}
 	return nil, fmt.Errorf("no matching key")
 }

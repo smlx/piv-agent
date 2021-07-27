@@ -32,7 +32,7 @@ func TestTrezorCompat(t *testing.T) {
 			priv.D = tc.input
 			priv.PublicKey.X, priv.PublicKey.Y = curve.ScalarBaseMult(tc.input.Bytes())
 
-			keygrip, err := gpg.Keygrip(&priv.PublicKey)
+			keygrip, err := gpg.KeygripECDSA(&priv.PublicKey)
 			if err != nil {
 				tt.Fatal(err)
 			}
@@ -90,7 +90,7 @@ func TestKeyGrip(t *testing.T) {
 				tt.Fatal("wrong curve")
 			}
 
-			keygrip, err := gpg.Keygrip(eccKey)
+			keygrip, err := gpg.KeygripECDSA(eccKey)
 			if err != nil {
 				tt.Fatal(err)
 			}

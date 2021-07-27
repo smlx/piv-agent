@@ -5,6 +5,7 @@
 package mock
 
 import (
+	rsa "crypto/rsa"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -47,4 +48,41 @@ func (m *MockPIVService) SecurityKeys() ([]pivservice.SecurityKey, error) {
 func (mr *MockPIVServiceMockRecorder) SecurityKeys() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SecurityKeys", reflect.TypeOf((*MockPIVService)(nil).SecurityKeys))
+}
+
+// MockGPGService is a mock of GPGService interface.
+type MockGPGService struct {
+	ctrl     *gomock.Controller
+	recorder *MockGPGServiceMockRecorder
+}
+
+// MockGPGServiceMockRecorder is the mock recorder for MockGPGService.
+type MockGPGServiceMockRecorder struct {
+	mock *MockGPGService
+}
+
+// NewMockGPGService creates a new mock instance.
+func NewMockGPGService(ctrl *gomock.Controller) *MockGPGService {
+	mock := &MockGPGService{ctrl: ctrl}
+	mock.recorder = &MockGPGServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockGPGService) EXPECT() *MockGPGServiceMockRecorder {
+	return m.recorder
+}
+
+// GetKey mocks base method.
+func (m *MockGPGService) GetKey(arg0 []byte) *rsa.PrivateKey {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetKey", arg0)
+	ret0, _ := ret[0].(*rsa.PrivateKey)
+	return ret0
+}
+
+// GetKey indicates an expected call of GetKey.
+func (mr *MockGPGServiceMockRecorder) GetKey(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKey", reflect.TypeOf((*MockGPGService)(nil).GetKey), arg0)
 }

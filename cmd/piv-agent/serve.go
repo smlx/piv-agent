@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/coreos/go-systemd/activation"
+	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/pivservice"
 	"github.com/smlx/piv-agent/internal/server"
 	"github.com/smlx/piv-agent/internal/ssh"
@@ -72,10 +75,16 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 			return err
 		})
 	}
+	// start GPG agent if given in agent-type flag
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Warn("couldn't determine $HOME", zap.Error(err))
+	}
+	fallbackKeys := filepath.Join(home, ".gnupg", "piv-agent.secring.gpg")
 	if _, ok := cmd.AgentTypes["gpg"]; ok {
 		log.Debug("starting GPG server")
 		g.Go(func() error {
-			s := server.NewGPG(p, log)
+			s := server.NewGPG(p, &pinentry.PINEntry{}, log, fallbackKeys)
 			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], exit, cmd.ExitTimeout)
 			if err != nil {
 				log.Debug("exiting GPG server", zap.Error(err))
