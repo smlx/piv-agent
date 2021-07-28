@@ -1,8 +1,8 @@
 package assuan
 
 import (
+	"bufio"
 	"crypto"
-	"crypto/rsa"
 	"sync"
 
 	"github.com/smlx/fsm"
@@ -26,6 +26,8 @@ const (
 	setkeydesc
 	sethash
 	pksign
+	setkey
+	pkdecrypt
 )
 
 //go:generate enumer -type=State -text -transform upper
@@ -35,28 +37,31 @@ type State fsm.Event
 
 // Enumeration of all possible states in the assuan FSM.
 // connected is the initial state when the client connects.
-// keyIsSet indicates that the client has selected a key.
+// signingKeyIsSet indicates that the client has selected a key.
 // hashIsSet indicates that the client has selected a hash (and key).
 const (
 	invalidState State = iota
 	ready
 	connected
-	keyIsSet
+	signingKeyIsSet
 	hashIsSet
+	decryptingKeyIsSet
+	waitingForCiphertext
 )
 
 // Assuan is the Assuan protocol FSM.
 type Assuan struct {
 	fsm.Machine
 	mu sync.Mutex
+	// buffered IO for linewise reading
+	reader *bufio.Reader
 	// data is passed during Occur()
 	data [][]byte
 	// remaining fields store Assuan internal state
-	signingPrivKey crypto.Signer
-	hashAlgo       crypto.Hash
-	hash           []byte
-	// fallback keys
-	fallbackRSA []rsa.PrivateKey
+	signer    crypto.Signer
+	decrypter crypto.Decrypter
+	hashAlgo  crypto.Hash
+	hash      []byte
 }
 
 // Occur handles an event occurence.
@@ -72,50 +77,57 @@ var assuanTransitions = []fsm.Transition{
 		Src:   fsm.State(ready),
 		Event: fsm.Event(connect),
 		Dst:   fsm.State(connected),
-	},
-	{
+	}, {
 		Src:   fsm.State(connected),
 		Event: fsm.Event(reset),
 		Dst:   fsm.State(connected),
-	},
-	{
+	}, {
 		Src:   fsm.State(connected),
 		Event: fsm.Event(option),
 		Dst:   fsm.State(connected),
-	},
-	{
+	}, {
 		Src:   fsm.State(connected),
 		Event: fsm.Event(getinfo),
 		Dst:   fsm.State(connected),
-	},
-	{
+	}, {
 		Src:   fsm.State(connected),
 		Event: fsm.Event(havekey),
 		Dst:   fsm.State(connected),
-	},
-	{
+	}, {
 		Src:   fsm.State(connected),
 		Event: fsm.Event(keyinfo),
 		Dst:   fsm.State(connected),
 	},
+	// signing transitions
 	{
 		Src:   fsm.State(connected),
 		Event: fsm.Event(sigkey),
-		Dst:   fsm.State(keyIsSet),
-	},
-	{
-		Src:   fsm.State(keyIsSet),
+		Dst:   fsm.State(signingKeyIsSet),
+	}, {
+		Src:   fsm.State(signingKeyIsSet),
 		Event: fsm.Event(setkeydesc),
-		Dst:   fsm.State(keyIsSet),
-	},
-	{
-		Src:   fsm.State(keyIsSet),
+		Dst:   fsm.State(signingKeyIsSet),
+	}, {
+		Src:   fsm.State(signingKeyIsSet),
 		Event: fsm.Event(sethash),
 		Dst:   fsm.State(hashIsSet),
-	},
-	{
+	}, {
 		Src:   fsm.State(hashIsSet),
 		Event: fsm.Event(pksign),
 		Dst:   fsm.State(hashIsSet),
+	},
+	// decrypting transitions
+	{
+		Src:   fsm.State(connected),
+		Event: fsm.Event(setkey),
+		Dst:   fsm.State(decryptingKeyIsSet),
+	}, {
+		Src:   fsm.State(decryptingKeyIsSet),
+		Event: fsm.Event(setkeydesc),
+		Dst:   fsm.State(decryptingKeyIsSet),
+	}, {
+		Src:   fsm.State(decryptingKeyIsSet),
+		Event: fsm.Event(pkdecrypt),
+		Dst:   fsm.State(waitingForCiphertext),
 	},
 }

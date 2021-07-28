@@ -1,130 +1,36 @@
 package server
 
-//go:generate mockgen -source=gpg.go -destination=../mock/mock_server_gpg.go -package=mock
-
 import (
-	"bytes"
 	"context"
-	"crypto/rsa"
 	"fmt"
-	"io"
 	"net"
-	"os"
 	"time"
 
 	"github.com/smlx/piv-agent/internal/assuan"
 	"github.com/smlx/piv-agent/internal/gpg"
 	"github.com/smlx/piv-agent/internal/pivservice"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/openpgp/errors"
-	"golang.org/x/crypto/openpgp/packet"
 )
-
-// PINEntryService provides an interface to talk to a pinentry program.
-type PINEntryService interface {
-	GetPGPPassphrase(string) ([]byte, error)
-}
 
 // GPG represents a gpg-agent server.
 type GPG struct {
-	pivService       *pivservice.PIVService
-	log              *zap.Logger
-	fallbackPrivKeys []*packet.PrivateKey
-	pinentry         PINEntryService
-	// cache passphrases used for decryption
-	passphrases [][]byte
-}
-
-// LoadFallbackKeys reads the given path and returns any private keys found.
-func LoadFallbackKeys(path string) ([]*packet.PrivateKey, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't read keyring %s: %v", path, err)
-	}
-	reader := packet.NewReader(f)
-	var pkt packet.Packet
-	var privKeys []*packet.PrivateKey
-	for pkt, err = reader.Next(); err != io.EOF; pkt, err = reader.Next() {
-		if _, ok := err.(errors.UnsupportedError); ok {
-			continue // gpg writes some non-standard cruft
-		}
-		if err != nil {
-			return nil, fmt.Errorf("couldn't get next packet: %v", err)
-		}
-		k, ok := pkt.(*packet.PrivateKey)
-		if !ok {
-			continue
-		}
-		privKeys = append(privKeys, k)
-	}
-	return privKeys, nil
+	log            *zap.Logger
+	pivService     *pivservice.PIVService
+	keyfileService *gpg.KeyfileService // fallback keyfile keys
 }
 
 // NewGPG initialises a new gpg-agent server.
-func NewGPG(p *pivservice.PIVService, pe PINEntryService, l *zap.Logger, path string) *GPG {
-	fallbackPrivKeys, err := LoadFallbackKeys(path)
+func NewGPG(piv *pivservice.PIVService, pinentry gpg.PINEntryService,
+	log *zap.Logger, path string) *GPG {
+	kfs, err := gpg.NewKeyfileService(log, pinentry, path)
 	if err != nil {
-		l.Info("couldn't load fallback RSA keys", zap.Error(err))
+		log.Info("couldn't load keyfiles", zap.String("path", path), zap.Error(err))
 	}
 	return &GPG{
-		pivService: p,
-		log:        l,
-		// fallback keyfile keys
-		fallbackPrivKeys: fallbackPrivKeys,
-		pinentry:         pe,
+		pivService:     piv,
+		log:            log,
+		keyfileService: kfs,
 	}
-}
-
-// GetKey returns a matching private RSA key if the keygrip matches, and nil
-// otherwise.
-func (g *GPG) GetKey(keygrip []byte) *rsa.PrivateKey {
-	var pass []byte
-	var err error
-	for _, k := range g.fallbackPrivKeys {
-		pubKey, ok := k.PublicKey.PublicKey.(*rsa.PublicKey)
-		if !ok {
-			continue
-		}
-		if !bytes.Equal(keygrip, gpg.KeygripRSA(pubKey)) {
-			continue
-		}
-		if k.Encrypted {
-			// try existing passphrases
-			for _, pass := range g.passphrases {
-				if err = k.Decrypt(pass); err == nil {
-					g.log.Debug("decrypted using cached passphrase",
-						zap.String("fingerprint", k.KeyIdString()))
-					break
-				}
-			}
-		}
-		if k.Encrypted {
-			// ask for a passphrase
-			pass, err = g.pinentry.GetPGPPassphrase(
-				fmt.Sprintf("%X %X %X %X", k.Fingerprint[:5], k.Fingerprint[5:10],
-					k.Fingerprint[10:15], k.Fingerprint[15:]))
-			if err != nil {
-				g.log.Warn("couldn't get passphrase for key",
-					zap.String("fingerprint", k.KeyIdString()), zap.Error(err))
-				return nil
-			}
-			g.passphrases = append(g.passphrases, pass)
-			if err = k.Decrypt(pass); err != nil {
-				g.log.Warn("couldn't decrypt key",
-					zap.String("fingerprint", k.KeyIdString()), zap.Error(err))
-				return nil
-			}
-			g.log.Debug("decrypted using passphrase",
-				zap.String("fingerprint", k.KeyIdString()))
-		}
-		privKey, ok := k.PrivateKey.(*rsa.PrivateKey)
-		if !ok {
-			g.log.Info("not an RSA key", zap.String("fingerprint", k.KeyIdString()))
-			return nil
-		}
-		return privKey
-	}
-	return nil
 }
 
 // Serve starts serving signing requests, and returns when the request socket
@@ -133,6 +39,7 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 	timeout time.Duration) error {
 	// start serving connections
 	conns := accept(g.log, l)
+	g.log.Debug("accepted gpg-agent connection")
 	for {
 		select {
 		case conn, ok := <-conns:
@@ -146,10 +53,10 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 				return fmt.Errorf("couldn't set deadline: %v", err)
 			}
 			// init protocol state machine
-			a := assuan.New(conn, g.pivService, g)
+			a := assuan.New(conn, g.log, g.pivService, g.keyfileService)
 			// run the protocol state machine to completion
 			// (client severs connection)
-			if err := a.Run(conn); err != nil {
+			if err := a.Run(); err != nil {
 				return err
 			}
 		case <-ctx.Done():

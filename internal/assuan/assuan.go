@@ -3,50 +3,40 @@ package assuan
 //go:generate mockgen -source=assuan.go -destination=../mock/mock_assuan.go -package=mock
 
 import (
+	"bufio"
 	"bytes"
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/rand"
-	"crypto/rsa"
 	"encoding/hex"
 	"fmt"
 	"io"
-	"math/big"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/smlx/fsm"
-	"github.com/smlx/piv-agent/internal/gpg"
-	"github.com/smlx/piv-agent/internal/notify"
-	"github.com/smlx/piv-agent/internal/pivservice"
-	"golang.org/x/crypto/cryptobyte"
-	"golang.org/x/crypto/cryptobyte/asn1"
+	"go.uber.org/zap"
+	"golang.org/x/crypto/openpgp/s2k"
 )
 
-// The PIVService interface provides PIV functions used by the Assuan FSM.
-type PIVService interface {
-	SecurityKeys() ([]pivservice.SecurityKey, error)
+// The KeyService interface provides functions used by the Assuan FSM.
+type KeyService interface {
+	Name() string
+	HaveKey([][]byte) (bool, []byte, error)
+	GetSigner([]byte) (crypto.Signer, error)
+	GetDecrypter([]byte) (crypto.Decrypter, error)
 }
 
-// The GPGService interface provides GPG functions used by the Assuan FSM.
-type GPGService interface {
-	GetKey([]byte) *rsa.PrivateKey
-}
-
-// hashFunction maps the code used by assuan to the relevant hash function.
-var hashFunction = map[uint64]crypto.Hash{
-	8:  crypto.SHA256,
-	10: crypto.SHA512,
-}
+var ciphertextRegex = regexp.MustCompile(
+	`^D \(7:enc-val\(3:rsa\(1:a(\d+):(.+)\)\)\)$`)
 
 // New initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
-func New(w io.Writer, p PIVService, g GPGService) *Assuan {
-	var err error
+func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 	var keyFound bool
 	var keygrip, signature []byte
 	var keygrips, hash [][]byte
 	assuan := Assuan{
+		reader: bufio.NewReader(rw),
 		Machine: fsm.Machine{
 			State:       fsm.State(ready),
 			Transitions: assuanTransitions,
@@ -55,23 +45,25 @@ func New(w io.Writer, p PIVService, g GPGService) *Assuan {
 	assuan.OnEntry = map[fsm.State][]fsm.TransitionFunc{
 		fsm.State(connected): {
 			func(e fsm.Event, _ fsm.State) error {
+				var err error
 				switch Event(e) {
 				case connect:
 					// acknowledge connection using the format expected by the client
-					_, err = io.WriteString(w,
+					_, err = io.WriteString(rw,
 						"OK Pleased to meet you, process 123456789\n")
 				case reset:
-					assuan.signingPrivKey = nil
+					assuan.signer = nil
+					assuan.decrypter = nil
 					assuan.hashAlgo = 0
 					assuan.hash = []byte{}
-					_, err = io.WriteString(w, "OK\n")
+					_, err = io.WriteString(rw, "OK\n")
 				case option:
 					// ignore option values - piv-agent doesn't use them
-					_, err = io.WriteString(w, "OK\n")
+					_, err = io.WriteString(rw, "OK\n")
 				case getinfo:
 					if bytes.Equal(assuan.data[0], []byte("version")) {
 						// masquerade as a compatible gpg-agent
-						_, err = io.WriteString(w, "D 2.2.27\nOK\n")
+						_, err = io.WriteString(rw, "D 2.2.27\nOK\n")
 					} else {
 						err = fmt.Errorf("unknown getinfo command: %q", assuan.data[0])
 					}
@@ -83,35 +75,35 @@ func New(w io.Writer, p PIVService, g GPGService) *Assuan {
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					keyFound, _, err = haveKey(p, g, keygrips)
+					keyFound, _, err = haveKey(ks, keygrips)
 					if err != nil {
-						_, _ = io.WriteString(w, "ERR 1 couldn't check for keygrip\n")
-						return fmt.Errorf("couldn't check for keygrip: %v", err)
+						_, _ = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
+						return fmt.Errorf("couldn't check keygrips: %v", err)
 					}
 					if keyFound {
-						_, err = io.WriteString(w, "OK\n")
+						_, err = io.WriteString(rw, "OK\n")
 					} else {
-						_, err = io.WriteString(w, "No_Secret_Key\n")
+						_, err = io.WriteString(rw, "No_Secret_Key\n")
 					}
 				case keyinfo:
 					// KEYINFO arguments are a list of keygrips
-					// if _any_ key is available, we return OK, otherwise
+					// if _any_ key is available, we return info, otherwise
 					// No_Secret_Key.
 					keygrips, err = hexDecode(assuan.data...)
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					keyFound, keygrip, err = haveKey(p, g, keygrips)
+					keyFound, keygrip, err = haveKey(ks, keygrips)
 					if err != nil {
-						_, _ = io.WriteString(w, "ERR 1 couldn't check for keygrip\n")
+						_, _ = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
 						return fmt.Errorf("couldn't check for keygrip: %v", err)
 					}
 					if keyFound {
-						_, err = io.WriteString(w,
+						_, err = io.WriteString(rw,
 							fmt.Sprintf("S KEYINFO %s D - - - P - - -\nOK\n",
 								strings.ToUpper(hex.EncodeToString(keygrip))))
 					} else {
-						_, err = io.WriteString(w, "No_Secret_Key\n")
+						_, err = io.WriteString(rw, "No_Secret_Key\n")
 					}
 				default:
 					return fmt.Errorf("unknown event: %v", e)
@@ -119,7 +111,7 @@ func New(w io.Writer, p PIVService, g GPGService) *Assuan {
 				return err
 			},
 		},
-		fsm.State(keyIsSet): {
+		fsm.State(signingKeyIsSet): {
 			func(e fsm.Event, _ fsm.State) error {
 				var err error
 				switch Event(e) {
@@ -130,20 +122,21 @@ func New(w io.Writer, p PIVService, g GPGService) *Assuan {
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
-					assuan.signingPrivKey, err = tokenSigner(p, keygrips[0])
-					if err != nil {
-						// fall back to keyfiles
-						assuan.signingPrivKey, err = keyfileSigner(g, keygrips[0])
+					for _, k := range ks {
+						assuan.signer, err = k.GetSigner(keygrips[0])
+						if err == nil {
+							break
+						}
 					}
 					if err != nil {
-						_, _ = io.WriteString(w, "ERR 1 couldn't get key from keygrip\n")
-						return fmt.Errorf("couldn't get key from keygrip: %v", err)
+						_, _ = io.WriteString(rw, "ERR 1 couldn't get key for keygrip\n")
+						return fmt.Errorf("couldn't get key for keygrip: %v", err)
 					}
-					_, err = io.WriteString(w, "OK\n")
+					_, err = io.WriteString(rw, "OK\n")
 				case setkeydesc:
 					// ignore this event since we don't currently use the client's
 					// description in the prompt
-					_, err = io.WriteString(w, "OK\n")
+					_, err = io.WriteString(rw, "OK\n")
 				default:
 					return fmt.Errorf("unknown event: %v", Event(e))
 				}
@@ -161,29 +154,122 @@ func New(w io.Writer, p PIVService, g GPGService) *Assuan {
 					if err != nil {
 						return fmt.Errorf("couldn't parse uint %s: %v", assuan.data[0], err)
 					}
-					if assuan.hashAlgo = hashFunction[n]; assuan.hashAlgo == 0 {
-						return fmt.Errorf("invalid hash algorithm value: %v", n)
+					var ok bool
+					if assuan.hashAlgo, ok = s2k.HashIdToHash(byte(n)); !ok {
+						return fmt.Errorf("invalid hash algorithm value: %x", n)
 					}
 					hash, err = hexDecode(assuan.data[1:]...)
 					if err != nil {
 						return fmt.Errorf("couldn't decode hash: %v", err)
 					}
 					assuan.hash = hash[0]
-					_, err = io.WriteString(w, "OK\n")
+					_, err = io.WriteString(rw, "OK\n")
 				case pksign:
 					signature, err = assuan.sign()
 					if err != nil {
 						return fmt.Errorf("couldn't sign: %v", err)
 					}
-					_, err = w.Write(signature)
+					_, err = rw.Write(signature)
 					if err != nil {
 						return fmt.Errorf("couldn't write signature: %v", err)
 					}
-					_, err = io.WriteString(w, "\n")
+					_, err = io.WriteString(rw, "\n")
 					if err != nil {
 						return fmt.Errorf("couldn't write newline: %v", err)
 					}
-					_, err = io.WriteString(w, "OK\n")
+					_, err = io.WriteString(rw, "OK\n")
+				default:
+					return fmt.Errorf("unknown event: %v", Event(e))
+				}
+				return err
+			},
+		},
+		fsm.State(decryptingKeyIsSet): {
+			func(e fsm.Event, _ fsm.State) error {
+				var err error
+				switch Event(e) {
+				case setkey:
+					// SETKEY has a single argument: a keygrip indicating the key which
+					// will be used for subsequent decrypting operations
+					keygrips, err = hexDecode(assuan.data...)
+					if err != nil {
+						return fmt.Errorf("couldn't decode keygrips: %v", err)
+					}
+					for _, k := range ks {
+						assuan.decrypter, err = k.GetDecrypter(keygrips[0])
+						if err == nil {
+							break
+						}
+					}
+					if err != nil {
+						_, _ = io.WriteString(rw, "ERR 1 couldn't get key for keygrip\n")
+						return fmt.Errorf("couldn't get key for keygrip: %v", err)
+					}
+					_, err = io.WriteString(rw, "OK\n")
+				case setkeydesc:
+					// ignore this event since we don't currently use the client's
+					// description in the prompt
+					_, err = io.WriteString(rw, "OK\n")
+				default:
+					return fmt.Errorf("unknown event: %v", Event(e))
+				}
+				return err
+			},
+		},
+		fsm.State(waitingForCiphertext): {
+			func(e fsm.Event, _ fsm.State) error {
+				var err error
+				switch Event(e) {
+				case pkdecrypt:
+					// once we receive PKDECRYPT we enter a "reversed" state where the
+					// agent drives the client by sending commands.
+					// ask for ciphertext
+					_, err = io.WriteString(rw,
+						"S INQUIRE_MAXLEN 4096\nINQUIRE CIPHERTEXT\n")
+					if err != nil {
+						return err
+					}
+					var chunk []byte
+					var chunks [][]byte
+					scanner := bufio.NewScanner(assuan.reader)
+					for {
+						if !scanner.Scan() {
+							break
+						}
+						chunk = scanner.Bytes()
+						if bytes.Equal([]byte("END"), chunk) {
+							break // end of ciphertext
+						}
+						chunks = append(chunks, chunk)
+					}
+					if len(chunks) < 1 {
+						return fmt.Errorf("invalid ciphertext format")
+					}
+					sexp := bytes.Join(chunks[:], []byte("\n"))
+					matches := ciphertextRegex.FindAllSubmatch(sexp, -1)
+					var plaintext, ciphertext []byte
+					ciphertext = matches[0][2]
+					log.Debug("raw ciphertext",
+						zap.Binary("sexp", sexp), zap.Binary("ciphertext", ciphertext))
+					// undo the buggy encoding sent by gpg
+					ciphertext = percentDecodeSExp(ciphertext)
+					log.Debug("normalised ciphertext",
+						zap.Binary("ciphertext", ciphertext))
+					plaintext, err = assuan.decrypter.Decrypt(nil, ciphertext, nil)
+					if err != nil {
+						return fmt.Errorf("couldn't decrypt: %v", err)
+					}
+					// gnupg uses the pre-buggy-encoding length in the sexp
+					plaintextLen := len(plaintext)
+					// apply the buggy encoding as expected by gpg
+					plaintext = percentEncodeSExp(plaintext)
+					plaintextSexp := fmt.Sprintf("D (5:value%d:%s)\x00\nOK\n",
+						plaintextLen, plaintext)
+					_, err = io.WriteString(rw, plaintextSexp)
+				case setkeydesc:
+					// ignore this event since we don't currently use the client's
+					// description in the prompt
+					_, err = io.WriteString(rw, "OK\n")
 				default:
 					return fmt.Errorf("unknown event: %v", Event(e))
 				}
@@ -194,91 +280,29 @@ func New(w io.Writer, p PIVService, g GPGService) *Assuan {
 	return &assuan
 }
 
-// haveKey returns true if any of the keygrips refer to keys held by the local
-// PIVService, and false otherwise.
+// haveKey returns true if any of the keygrips refer to keys known locally, and
+// false otherwise.
 // It takes keygrips in raw byte format, so keygrip in hex-encoded form must
-// first be decoded before being passed to this function.
-func haveKey(p PIVService, g GPGService, keygrips [][]byte) (bool, []byte, error) {
-	securityKeys, err := p.SecurityKeys()
-	if err != nil {
-		return false, nil, fmt.Errorf("couldn't get security keys: %w", err)
-	}
-	// check against tokens
-	for _, sk := range securityKeys {
-		for _, signingKey := range sk.SigningKeys() {
-			ecdsaPubKey, ok := signingKey.Public.(*ecdsa.PublicKey)
-			if !ok {
-				// TODO: handle other key types
-				continue
-			}
-			thisKeygrip, err := gpg.KeygripECDSA(ecdsaPubKey)
-			if err != nil {
-				return false, nil, fmt.Errorf("couldn't get keygrip: %w", err)
-			}
-			for _, kg := range keygrips {
-				if bytes.Equal(thisKeygrip, kg) {
-					return true, thisKeygrip, nil
-				}
-			}
+// first be decoded before being passed to this function. It returns the
+// keygrip found.
+func haveKey(ks []KeyService, keygrips [][]byte) (bool, []byte, error) {
+	var keyFound bool
+	var keygrip []byte
+	var err error
+	for _, k := range ks {
+		keyFound, keygrip, err = k.HaveKey(keygrips)
+		if err != nil {
+			return false, nil, fmt.Errorf("couldn't check %s keygrips: %v", k.Name(), err)
 		}
-	}
-	// also check against keyfiles
-	for _, kg := range keygrips {
-		if key := g.GetKey(kg); key != nil {
-			return true, kg, nil
+		if keyFound {
+			return true, keygrip, nil
 		}
 	}
 	return false, nil, nil
 }
 
-// tokenSigner returns the security key associated with the given keygrip.
-// If the keygrip doesn't match any known key, err will be non-nil.
-// It takes a keygrip in raw byte format, so a keygrip in hex-encoded form must
-// first be decoded before being passed to this function.
-func tokenSigner(p PIVService, keygrip []byte) (crypto.Signer, error) {
-	securityKeys, err := p.SecurityKeys()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get security keys: %w", err)
-	}
-	for _, k := range securityKeys {
-		for _, signingKey := range k.SigningKeys() {
-			ecdsaPubKey, ok := signingKey.Public.(*ecdsa.PublicKey)
-			if !ok {
-				// TODO: handle other key types
-				continue
-			}
-			thisKeygrip, err := gpg.KeygripECDSA(ecdsaPubKey)
-			if err != nil {
-				return nil, fmt.Errorf("couldn't get keygrip: %w", err)
-			}
-			if bytes.Equal(thisKeygrip, keygrip) {
-				cryptoPrivKey, err := k.PrivateKey(&signingKey)
-				if err != nil {
-					return nil, fmt.Errorf("couldn't get private key from slot")
-				}
-				signingPrivKey, ok := cryptoPrivKey.(crypto.Signer)
-				if !ok {
-					return nil, fmt.Errorf("private key is invalid type")
-				}
-				return signingPrivKey, nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("no matching key")
-}
-
-// keyfileSigner returns a crypto.Signer associated with the given keygrip.
-// If the keygrip doesn't match any known key, err will be non-nil.
-// It takes a keygrip in raw byte format, so a keygrip in hex-encoded form must
-// first be decoded before being passed to this function.
-// The path is to a secret keys file exported from gpg.
-func keyfileSigner(g GPGService, keygrip []byte) (crypto.Signer, error) {
-	if key := g.GetKey(keygrip); key != nil {
-		return key, nil
-	}
-	return nil, fmt.Errorf("no matching key")
-}
-
+// hexDecode take a list of hex-encoded bytestring values and converts them to
+// their raw byte representation.
 func hexDecode(data ...[]byte) ([][]byte, error) {
 	var decoded [][]byte
 	for _, d := range data {
@@ -292,35 +316,28 @@ func hexDecode(data ...[]byte) ([][]byte, error) {
 	return decoded, nil
 }
 
-// sign performs signing of the specified "hash" data, using the specified
-// "hashAlgo" hash algorithm. It then encodes the response into an s-expression
-// and returns it as a byte slice.
+// Work around bug(?) in gnupg where some byte sequences are
+// percent-encoded in the sexp. Yes, really. NFI what to do if the
+// percent-encoded byte sequences themselves are part of the
+// ciphertext. Yikes.
 //
-// This function's complexity is due to the fact that while Sign() returns the
-// r and s components of the signature ASN1-encoded, gpg expects them to be
-// separately s-exp encoded. So we have to decode the ASN1 signature, extract
-// the params, and re-encode them into the s-exp. Ugh.
-func (a *Assuan) sign() ([]byte, error) {
-	cancel := notify.Touch(nil)
-	defer cancel()
-	signature, err := a.signingPrivKey.Sign(rand.Reader, a.hash, a.hashAlgo)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't sign: %v", err)
-	}
-	var sig cryptobyte.String = signature
-	var b []byte
-	if !sig.ReadASN1Bytes(&b, asn1.SEQUENCE) {
-		return nil, fmt.Errorf("couldn't read asn1.SEQUENCE")
-	}
-	var rawInts cryptobyte.String = b
-	var r, s big.Int
-	if !rawInts.ReadASN1Integer(&r) {
-		return nil, fmt.Errorf("couldn't read r as asn1.Integer")
-	}
-	if !rawInts.ReadASN1Integer(&s) {
-		return nil, fmt.Errorf("couldn't read s as asn1.Integer")
-	}
-	// encode the params (r, s) into s-exp
-	return []byte(fmt.Sprintf(`D (7:sig-val(5:ecdsa(1:r32#%X#)(1:s32#%X#)))`,
-		r.Bytes(), s.Bytes())), nil
+// These two functions represent over a week of late nights stepping through
+// debug builds of libcrypt in gdb :-(
+
+// percentDecodeSExp replaces the percent-encoded byte sequences with their raw
+// byte values.
+func percentDecodeSExp(data []byte) []byte {
+	data = bytes.ReplaceAll(data, []byte{0x25, 0x32, 0x35}, []byte{0x25}) // %
+	data = bytes.ReplaceAll(data, []byte{0x25, 0x30, 0x41}, []byte{0x0a}) // \n
+	data = bytes.ReplaceAll(data, []byte{0x25, 0x30, 0x44}, []byte{0x0d}) // \r
+	return data
+}
+
+// percentEncodeSExp replaces the raw byte values with their percent-encoded
+// byte sequences.
+func percentEncodeSExp(data []byte) []byte {
+	data = bytes.ReplaceAll(data, []byte{0x25}, []byte{0x25, 0x32, 0x35})
+	data = bytes.ReplaceAll(data, []byte{0x0a}, []byte{0x25, 0x30, 0x41})
+	data = bytes.ReplaceAll(data, []byte{0x0d}, []byte{0x25, 0x30, 0x44})
+	return data
 }

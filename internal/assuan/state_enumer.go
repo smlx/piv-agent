@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-const _StateName = "INVALIDSTATEREADYCONNECTEDKEYISSETHASHISSET"
+const _StateName = "INVALIDSTATEREADYCONNECTEDSIGNINGKEYISSETHASHISSETDECRYPTINGKEYISSETWAITINGFORCIPHERTEXT"
 
-var _StateIndex = [...]uint8{0, 12, 17, 26, 34, 43}
+var _StateIndex = [...]uint8{0, 12, 17, 26, 41, 50, 68, 88}
 
-const _StateLowerName = "invalidstatereadyconnectedkeyissethashisset"
+const _StateLowerName = "invalidstatereadyconnectedsigningkeyissethashissetdecryptingkeyissetwaitingforciphertext"
 
 func (i State) String() string {
 	if i < 0 || i >= State(len(_StateIndex)-1) {
@@ -27,11 +27,13 @@ func _StateNoOp() {
 	_ = x[invalidState-(0)]
 	_ = x[ready-(1)]
 	_ = x[connected-(2)]
-	_ = x[keyIsSet-(3)]
+	_ = x[signingKeyIsSet-(3)]
 	_ = x[hashIsSet-(4)]
+	_ = x[decryptingKeyIsSet-(5)]
+	_ = x[waitingForCiphertext-(6)]
 }
 
-var _StateValues = []State{invalidState, ready, connected, keyIsSet, hashIsSet}
+var _StateValues = []State{invalidState, ready, connected, signingKeyIsSet, hashIsSet, decryptingKeyIsSet, waitingForCiphertext}
 
 var _StateNameToValueMap = map[string]State{
 	_StateName[0:12]:       invalidState,
@@ -40,18 +42,24 @@ var _StateNameToValueMap = map[string]State{
 	_StateLowerName[12:17]: ready,
 	_StateName[17:26]:      connected,
 	_StateLowerName[17:26]: connected,
-	_StateName[26:34]:      keyIsSet,
-	_StateLowerName[26:34]: keyIsSet,
-	_StateName[34:43]:      hashIsSet,
-	_StateLowerName[34:43]: hashIsSet,
+	_StateName[26:41]:      signingKeyIsSet,
+	_StateLowerName[26:41]: signingKeyIsSet,
+	_StateName[41:50]:      hashIsSet,
+	_StateLowerName[41:50]: hashIsSet,
+	_StateName[50:68]:      decryptingKeyIsSet,
+	_StateLowerName[50:68]: decryptingKeyIsSet,
+	_StateName[68:88]:      waitingForCiphertext,
+	_StateLowerName[68:88]: waitingForCiphertext,
 }
 
 var _StateNames = []string{
 	_StateName[0:12],
 	_StateName[12:17],
 	_StateName[17:26],
-	_StateName[26:34],
-	_StateName[34:43],
+	_StateName[26:41],
+	_StateName[41:50],
+	_StateName[50:68],
+	_StateName[68:88],
 }
 
 // StateString retrieves an enum value from the enum constants string name.
