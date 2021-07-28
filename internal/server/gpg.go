@@ -31,6 +31,8 @@ type GPG struct {
 	log              *zap.Logger
 	fallbackPrivKeys []*packet.PrivateKey
 	pinentry         PINEntryService
+	// cache passphrases used for decryption
+	passphrases [][]byte
 }
 
 // LoadFallbackKeys reads the given path and returns any private keys found.
@@ -76,33 +78,51 @@ func NewGPG(p *pivservice.PIVService, pe PINEntryService, l *zap.Logger, path st
 // GetKey returns a matching private RSA key if the keygrip matches, and nil
 // otherwise.
 func (g *GPG) GetKey(keygrip []byte) *rsa.PrivateKey {
+	var pass []byte
+	var err error
 	for _, k := range g.fallbackPrivKeys {
 		pubKey, ok := k.PublicKey.PublicKey.(*rsa.PublicKey)
 		if !ok {
 			continue
 		}
-		if bytes.Equal(keygrip, gpg.KeygripRSA(pubKey)) {
-			if k.Encrypted {
-				pass, err := g.pinentry.GetPGPPassphrase(
-					fmt.Sprintf("%X %X %X %X", k.Fingerprint[:5], k.Fingerprint[5:10],
-						k.Fingerprint[10:15], k.Fingerprint[15:]))
-				if err != nil {
-					g.log.Warn("couldn't get passphrase for key",
-						zap.String("fingerprint", k.KeyIdString()), zap.Error(err))
-					return nil
-				}
-				if err = k.Decrypt(pass); err != nil {
-					g.log.Warn("couldn't decrypt key",
-						zap.String("fingerprint", k.KeyIdString()), zap.Error(err))
+		if !bytes.Equal(keygrip, gpg.KeygripRSA(pubKey)) {
+			continue
+		}
+		if k.Encrypted {
+			// try existing passphrases
+			for _, pass := range g.passphrases {
+				if err = k.Decrypt(pass); err == nil {
+					g.log.Debug("decrypted using cached passphrase",
+						zap.String("fingerprint", k.KeyIdString()))
+					break
 				}
 			}
-			privKey, ok := k.PrivateKey.(*rsa.PrivateKey)
-			if !ok {
-				g.log.Info("not an RSA key", zap.String("fingerprint", k.KeyIdString()))
+		}
+		if k.Encrypted {
+			// ask for a passphrase
+			pass, err = g.pinentry.GetPGPPassphrase(
+				fmt.Sprintf("%X %X %X %X", k.Fingerprint[:5], k.Fingerprint[5:10],
+					k.Fingerprint[10:15], k.Fingerprint[15:]))
+			if err != nil {
+				g.log.Warn("couldn't get passphrase for key",
+					zap.String("fingerprint", k.KeyIdString()), zap.Error(err))
 				return nil
 			}
-			return privKey
+			g.passphrases = append(g.passphrases, pass)
+			if err = k.Decrypt(pass); err != nil {
+				g.log.Warn("couldn't decrypt key",
+					zap.String("fingerprint", k.KeyIdString()), zap.Error(err))
+				return nil
+			}
+			g.log.Debug("decrypted using passphrase",
+				zap.String("fingerprint", k.KeyIdString()))
 		}
+		privKey, ok := k.PrivateKey.(*rsa.PrivateKey)
+		if !ok {
+			g.log.Info("not an RSA key", zap.String("fingerprint", k.KeyIdString()))
+			return nil
+		}
+		return privKey
 	}
 	return nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/smlx/piv-agent/internal/pivservice"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"github.com/smlx/piv-agent/internal/server"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
 	"golang.org/x/crypto/openpgp"
@@ -282,7 +283,11 @@ func TestKeyfileSigner(t *testing.T) {
 			if tc.protected {
 				mockPES.EXPECT().GetPGPPassphrase(gomock.Any()).Return([]byte("trustno1"), nil)
 			}
-			g := server.NewGPG(nil, mockPES, nil, tc.path)
+			log, err := zap.NewDevelopment()
+			if err != nil {
+				tt.Fatal(err)
+			}
+			g := server.NewGPG(nil, mockPES, log, tc.path)
 			if _, err := assuan.KeyfileSigner(g, tc.keygrip); err != nil {
 				tt.Fatalf("couldn't find keygrip: %v", err)
 			}
