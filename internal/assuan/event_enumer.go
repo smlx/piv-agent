@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-const _EventName = "INVALIDEVENTCONNECTRESETOPTIONGETINFOHAVEKEYKEYINFOSIGKEYSETKEYDESCSETHASHPKSIGNSETKEYPKDECRYPT"
+const _EventName = "INVALIDEVENTCONNECTRESETOPTIONGETINFOHAVEKEYKEYINFOSIGKEYSETKEYDESCSETHASHPKSIGNSETKEYPKDECRYPTSCD"
 
-var _EventIndex = [...]uint8{0, 12, 19, 24, 30, 37, 44, 51, 57, 67, 74, 80, 86, 95}
+var _EventIndex = [...]uint8{0, 12, 19, 24, 30, 37, 44, 51, 57, 67, 74, 80, 86, 95, 98}
 
-const _EventLowerName = "invalideventconnectresetoptiongetinfohavekeykeyinfosigkeysetkeydescsethashpksignsetkeypkdecrypt"
+const _EventLowerName = "invalideventconnectresetoptiongetinfohavekeykeyinfosigkeysetkeydescsethashpksignsetkeypkdecryptscd"
 
 func (i Event) String() string {
 	if i < 0 || i >= Event(len(_EventIndex)-1) {
@@ -37,9 +37,10 @@ func _EventNoOp() {
 	_ = x[pksign-(10)]
 	_ = x[setkey-(11)]
 	_ = x[pkdecrypt-(12)]
+	_ = x[scd-(13)]
 }
 
-var _EventValues = []Event{invalidEvent, connect, reset, option, getinfo, havekey, keyinfo, sigkey, setkeydesc, sethash, pksign, setkey, pkdecrypt}
+var _EventValues = []Event{invalidEvent, connect, reset, option, getinfo, havekey, keyinfo, sigkey, setkeydesc, sethash, pksign, setkey, pkdecrypt, scd}
 
 var _EventNameToValueMap = map[string]Event{
 	_EventName[0:12]:       invalidEvent,
@@ -68,6 +69,8 @@ var _EventNameToValueMap = map[string]Event{
 	_EventLowerName[80:86]: setkey,
 	_EventName[86:95]:      pkdecrypt,
 	_EventLowerName[86:95]: pkdecrypt,
+	_EventName[95:98]:      scd,
+	_EventLowerName[95:98]: scd,
 }
 
 var _EventNames = []string{
@@ -84,6 +87,7 @@ var _EventNames = []string{
 	_EventName[74:80],
 	_EventName[80:86],
 	_EventName[86:95],
+	_EventName[95:98],
 }
 
 // EventString retrieves an enum value from the enum constants string name.

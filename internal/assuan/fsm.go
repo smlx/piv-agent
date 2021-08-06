@@ -28,6 +28,7 @@ const (
 	pksign
 	setkey
 	pkdecrypt
+	scd
 )
 
 //go:generate enumer -type=State -text -transform upper
@@ -96,6 +97,10 @@ var assuanTransitions = []fsm.Transition{
 	}, {
 		Src:   fsm.State(connected),
 		Event: fsm.Event(keyinfo),
+		Dst:   fsm.State(connected),
+	}, {
+		Src:   fsm.State(connected),
+		Event: fsm.Event(scd),
 		Dst:   fsm.State(connected),
 	},
 	// signing transitions

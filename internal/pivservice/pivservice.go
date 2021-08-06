@@ -89,7 +89,7 @@ func (p *PIVService) GetSigner(keygrip []byte) (crypto.Signer, error) {
 			}
 		}
 	}
-	return nil, nil
+	return nil, fmt.Errorf("couldn't find keygrip")
 }
 
 // GetDecrypter returns a crypto.Decrypter associated with the given keygrip.

@@ -3,7 +3,6 @@ package gpg
 import (
 	"crypto"
 	"crypto/rsa"
-	"fmt"
 	"io"
 	"math/big"
 )
@@ -19,21 +18,21 @@ func (k *RSAKey) Decrypt(_ io.Reader, ciphertext []byte,
 	_ crypto.DecrypterOpts) ([]byte, error) {
 	c := new(big.Int)
 	c.SetBytes(ciphertext)
-	// libgcrypt does this, not sure if required
+	// TODO: libgcrypt does this, not sure if required?
 	c.Rem(c, k.rsa.N)
 	// perform arithmetic manually
 	c.Exp(c, k.rsa.D, k.rsa.N)
 	return c.Bytes(), nil
 }
 
-// Public implements the crypto.Decrypter interface.
+// Public implements the other required method of the crypto.Decrypter and
+// crypto.Signer interfaces.
 func (k *RSAKey) Public() crypto.PublicKey {
 	return k.rsa.Public()
 }
 
 // Sign performs RSA signing as per gpg-agent.
-func (k *RSAKey) Sign(_ io.Reader, digest []byte,
-	_ crypto.SignerOpts) ([]byte, error) {
-	// TODO: implement this
-	return nil, fmt.Errorf("not implemented")
+func (k *RSAKey) Sign(r io.Reader, digest []byte,
+	o crypto.SignerOpts) ([]byte, error) {
+	return rsa.SignPKCS1v15(r, k.rsa, o.HashFunc(), digest)
 }

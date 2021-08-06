@@ -100,11 +100,14 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 					}
 					if keyFound {
 						_, err = io.WriteString(rw,
-							fmt.Sprintf("S KEYINFO %s D - - - P - - -\nOK\n",
+							fmt.Sprintf("S KEYINFO %s D - - - - - - -\nOK\n",
 								strings.ToUpper(hex.EncodeToString(keygrip))))
 					} else {
 						_, err = io.WriteString(rw, "No_Secret_Key\n")
 					}
+				case scd:
+					// ignore scdaemon requests
+					_, err = io.WriteString(rw, "ERR 100696144 No such device <SCD>\n")
 				default:
 					return fmt.Errorf("unknown event: %v", e)
 				}
