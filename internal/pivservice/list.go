@@ -47,7 +47,7 @@ func (p *PIVService) reloadSecurityKeys() error {
 		p.securityKeys = append(p.securityKeys, sk)
 	}
 	if len(p.securityKeys) == 0 {
-		return fmt.Errorf("no valid security keys found")
+		p.log.Warn("no valid security keys found")
 	}
 	return nil
 }
