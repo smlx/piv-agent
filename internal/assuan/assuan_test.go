@@ -280,7 +280,7 @@ func TestDecryptRSAKeyfile(t *testing.T) {
 	}{
 		// test data is taken from a successful decrypt by gpg-agent
 		"decrypt file": {
-			keyPath: "testdata/private/foo@example.com.priv.key",
+			keyPath: "testdata/private/foo@example.com.gpg",
 			input: []string{
 				"RESET\n",
 				"OPTION ttyname=/dev/pts/1\n",
@@ -379,7 +379,7 @@ func TestSignRSAKeyfile(t *testing.T) {
 	}{
 		// test data is taken from a successful decrypt by gpg-agent
 		"decrypt file": {
-			keyPath: "testdata/private/foo@example.com.priv.key",
+			keyPath: "testdata/private/foo@example.com.gpg",
 			input: []string{
 				"RESET\n",
 				"OPTION ttyname=/dev/pts/1\n",
