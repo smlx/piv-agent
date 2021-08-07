@@ -1,6 +1,6 @@
 package gpg
 
-//go:generate mockgen -source=keyservice.go -destination=../mock/mock_keyservice.go -package=mock
+//go:generate mockgen -source=keyservice.go -destination=../../mock/mock_keyservice.go -package=mock
 
 import (
 	"bytes"
@@ -17,9 +17,9 @@ type PINEntryService interface {
 	GetPGPPassphrase(string) ([]byte, error)
 }
 
-// KeyfileService implements an interface for getting cryptographic keys from
+// KeyService implements an interface for getting cryptographic keys from
 // keyfiles on disk.
-type KeyfileService struct {
+type KeyService struct {
 	// cache passphrases used for decryption
 	passphrases [][]byte
 	privKeys    []*packet.PrivateKey
@@ -27,15 +27,15 @@ type KeyfileService struct {
 	pinentry    PINEntryService
 }
 
-// NewKeyfileService returns a keyservice initialised with keys found at path.
+// New returns a keyservice initialised with keys found at path.
 // Path can be a file or directory.
-func NewKeyfileService(l *zap.Logger, pe PINEntryService,
-	path string) (*KeyfileService, error) {
+func New(l *zap.Logger, pe PINEntryService,
+	path string) (*KeyService, error) {
 	p, err := keyfilePrivateKeys(path)
 	if err != nil {
 		return nil, err
 	}
-	return &KeyfileService{
+	return &KeyService{
 		privKeys: p,
 		log:      l,
 		pinentry: pe,
@@ -43,13 +43,13 @@ func NewKeyfileService(l *zap.Logger, pe PINEntryService,
 }
 
 // Name returns the name of the keyservice.
-func (g *KeyfileService) Name() string {
+func (*KeyService) Name() string {
 	return "GPG Keyfile"
 }
 
 // HaveKey takes a list of keygrips, and returns a boolean indicating if any of
 // the given keygrips were found, the found keygrip, and an error, if any.
-func (g *KeyfileService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
+func (g *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 	for _, kg := range keygrips {
 		key, err := g.getKey(kg)
 		if err != nil {
@@ -64,7 +64,7 @@ func (g *KeyfileService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 
 // getKey returns a matching private RSA key if the keygrip matches. If a key
 // is returned err will be nil. If no key is found, both values may be nil.
-func (g *KeyfileService) getKey(keygrip []byte) (*rsa.PrivateKey, error) {
+func (g *KeyService) getKey(keygrip []byte) (*rsa.PrivateKey, error) {
 	var pass []byte
 	var err error
 	for _, k := range g.privKeys {
@@ -113,7 +113,7 @@ func (g *KeyfileService) getKey(keygrip []byte) (*rsa.PrivateKey, error) {
 }
 
 // GetSigner returns a crypto.Signer associated with the given keygrip.
-func (g *KeyfileService) GetSigner(keygrip []byte) (crypto.Signer, error) {
+func (g *KeyService) GetSigner(keygrip []byte) (crypto.Signer, error) {
 	rsaPrivKey, err := g.getKey(keygrip)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't getKey: %v", err)
@@ -122,7 +122,7 @@ func (g *KeyfileService) GetSigner(keygrip []byte) (crypto.Signer, error) {
 }
 
 // GetDecrypter returns a crypto.Decrypter associated with the given keygrip.
-func (g *KeyfileService) GetDecrypter(keygrip []byte) (crypto.Decrypter, error) {
+func (g *KeyService) GetDecrypter(keygrip []byte) (crypto.Decrypter, error) {
 	rsaPrivKey, err := g.getKey(keygrip)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't getKey: %v", err)

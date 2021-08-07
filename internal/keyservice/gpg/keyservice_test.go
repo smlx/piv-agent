@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/smlx/piv-agent/internal/gpg"
+	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"github.com/smlx/piv-agent/internal/mock"
 	"go.uber.org/zap"
 )
@@ -47,7 +47,7 @@ func TestGetSigner(t *testing.T) {
 				mockPES.EXPECT().GetPGPPassphrase(gomock.Any()).
 					Return([]byte("trustno1"), nil)
 			}
-			ks, err := gpg.NewKeyfileService(log, mockPES, tc.path)
+			ks, err := gpg.New(log, mockPES, tc.path)
 			if err != nil {
 				tt.Fatal(err)
 			}

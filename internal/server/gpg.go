@@ -7,29 +7,29 @@ import (
 	"time"
 
 	"github.com/smlx/piv-agent/internal/assuan"
-	"github.com/smlx/piv-agent/internal/gpg"
-	"github.com/smlx/piv-agent/internal/pivservice"
+	"github.com/smlx/piv-agent/internal/keyservice/gpg"
+	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"go.uber.org/zap"
 )
 
 // GPG represents a gpg-agent server.
 type GPG struct {
-	log            *zap.Logger
-	pivService     *pivservice.PIVService
-	keyfileService *gpg.KeyfileService // fallback keyfile keys
+	log           *zap.Logger
+	pivKeyService *piv.KeyService
+	gpgKeyService *gpg.KeyService // fallback keyfile keys
 }
 
 // NewGPG initialises a new gpg-agent server.
-func NewGPG(piv *pivservice.PIVService, pinentry gpg.PINEntryService,
+func NewGPG(piv *piv.KeyService, pinentry gpg.PINEntryService,
 	log *zap.Logger, path string) *GPG {
-	kfs, err := gpg.NewKeyfileService(log, pinentry, path)
+	kfs, err := gpg.New(log, pinentry, path)
 	if err != nil {
 		log.Info("couldn't load keyfiles", zap.String("path", path), zap.Error(err))
 	}
 	return &GPG{
-		pivService:     piv,
-		log:            log,
-		keyfileService: kfs,
+		log:           log,
+		pivKeyService: piv,
+		gpgKeyService: kfs,
 	}
 }
 
@@ -53,7 +53,7 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 				return fmt.Errorf("couldn't set deadline: %v", err)
 			}
 			// init protocol state machine
-			a := assuan.New(conn, g.log, g.pivService, g.keyfileService)
+			a := assuan.New(conn, g.log, g.pivKeyService, g.gpgKeyService)
 			// run the protocol state machine to completion
 			// (client severs connection)
 			if err := a.Run(); err != nil {

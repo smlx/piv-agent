@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smlx/piv-agent/internal/gpg"
+	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"

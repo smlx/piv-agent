@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -13,7 +14,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/mock/gomock"
 	"github.com/smlx/piv-agent/internal/assuan"
-	"github.com/smlx/piv-agent/internal/gpg"
+	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"github.com/smlx/piv-agent/internal/mock"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"go.uber.org/zap"
@@ -172,11 +173,13 @@ func TestSign(t *testing.T) {
 func TestKeyinfo(t *testing.T) {
 	var testCases = map[string]struct {
 		keyPath string
+		keyGrip string
 		input   []string
 		expect  []string
 	}{
 		"keyinfo": {
 			keyPath: "testdata/C54A8868468BC138.asc",
+			keyGrip: "38F053358EFD6C923D08EE4FC4CEB208CBCDF73C",
 			input: []string{
 				"RESET\n",
 				"KEYINFO 38F053358EFD6C923D08EE4FC4CEB208CBCDF73C\n",
@@ -196,7 +199,7 @@ func TestKeyinfo(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			keygrip, err := gpg.KeygripECDSA(pubKey)
+			keygrip, err := hex.DecodeString(tc.keyGrip)
 			if err != nil {
 				tt.Fatal(err)
 			}
@@ -331,7 +334,7 @@ func TestDecryptRSAKeyfile(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			keyfileService, err := gpg.NewKeyfileService(log, mockPES, tc.keyPath)
+			keyfileService, err := gpg.New(log, mockPES, tc.keyPath)
 			if err != nil {
 				tt.Fatal(err)
 			}
@@ -429,7 +432,7 @@ func TestSignRSAKeyfile(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			keyfileService, err := gpg.NewKeyfileService(log, mockPES, tc.keyPath)
+			keyfileService, err := gpg.New(log, mockPES, tc.keyPath)
 			if err != nil {
 				tt.Fatal(err)
 			}

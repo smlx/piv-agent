@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/notify"
 	pinentry "github.com/smlx/piv-agent/internal/pinentry"
-	"github.com/smlx/piv-agent/internal/pivservice"
 	"go.uber.org/zap"
 	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -22,7 +22,7 @@ import (
 // https://pkg.go.dev/golang.org/x/crypto/ssh/agent#Agent
 type Agent struct {
 	mu          sync.Mutex
-	pivService  *pivservice.PIVService
+	piv         *piv.KeyService
 	log         *zap.Logger
 	loadKeyfile bool
 }
@@ -37,8 +37,8 @@ var ErrUnknownKey = errors.New("requested signature of unknown key")
 var passphrases = map[string][]byte{}
 
 // NewAgent returns a new Agent.
-func NewAgent(p *pivservice.PIVService, log *zap.Logger, loadKeyfile bool) *Agent {
-	return &Agent{pivService: p, log: log, loadKeyfile: loadKeyfile}
+func NewAgent(p *piv.KeyService, log *zap.Logger, loadKeyfile bool) *Agent {
+	return &Agent{piv: p, log: log, loadKeyfile: loadKeyfile}
 }
 
 // List returns the identities known to the agent.
@@ -64,7 +64,7 @@ func (a *Agent) List() ([]*agent.Key, error) {
 // returns the identities from hardware tokens
 func (a *Agent) securityKeyIDs() ([]*agent.Key, error) {
 	var keys []*agent.Key
-	securityKeys, err := a.pivService.SecurityKeys()
+	securityKeys, err := a.piv.SecurityKeys()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
@@ -201,7 +201,7 @@ func (a *Agent) Signers() ([]gossh.Signer, error) {
 // get signers for all keys stored in hardware tokens
 func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 	var signers []gossh.Signer
-	securityKeys, err := a.pivService.SecurityKeys()
+	securityKeys, err := a.piv.SecurityKeys()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/smlx/piv-agent/internal/pivservice"
+	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"go.uber.org/zap"
 )
 
@@ -17,7 +17,7 @@ type ListCmd struct {
 
 // Run the list command.
 func (cmd *ListCmd) Run(l *zap.Logger) error {
-	p := pivservice.New(l)
+	p := piv.New(l)
 	securityKeys, err := p.SecurityKeys()
 	if err != nil {
 		return fmt.Errorf("couldn't get security keys: %w", err)

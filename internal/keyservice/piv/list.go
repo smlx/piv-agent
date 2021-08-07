@@ -1,6 +1,6 @@
-package pivservice
+package piv
 
-//go:generate mockgen -source=list.go -destination=../mock/mock_pivservice.go -package=mock
+//go:generate mockgen -source=list.go -destination=../../mock/mock_pivservice.go -package=mock
 
 import (
 	"crypto"
@@ -26,7 +26,7 @@ type SecurityKey interface {
 	StringsSSH() []string
 }
 
-func (p *PIVService) reloadSecurityKeys() error {
+func (p *KeyService) reloadSecurityKeys() error {
 	// try to clean up and reset state
 	for _, k := range p.securityKeys {
 		_ = k.Close()
@@ -53,7 +53,7 @@ func (p *PIVService) reloadSecurityKeys() error {
 }
 
 // SecurityKeys returns a slice containing all available security keys.
-func (p *PIVService) SecurityKeys() ([]SecurityKey, error) {
+func (p *KeyService) SecurityKeys() ([]SecurityKey, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	var err error

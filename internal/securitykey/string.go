@@ -35,7 +35,7 @@ func (k *SecurityKey) StringsSSH() []string {
 	for _, s := range k.SigningKeys() {
 		ss = append(ss, fmt.Sprintf("%s %s\n",
 			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(s.PubSSH)), "\n"),
-			fmt.Sprintf("%v #%v, touch policy: %s", k.Card(), k.Serial(),
+			fmt.Sprintf("%v #%v, touch policy: %s", k.card, k.serial,
 				touchStringMap[s.SlotSpec.TouchPolicy])))
 	}
 	return ss
@@ -114,7 +114,7 @@ func (k *SecurityKey) StringsGPG(name, email string) ([]string, error) {
 		w, err := armor.Encode(&buf, openpgp.PublicKeyType,
 			map[string]string{
 				"Comment": fmt.Sprintf("%v #%v, touch policy: %s",
-					k.Card(), k.Serial(), touchStringMap[e.SlotSpec.TouchPolicy]),
+					k.card, k.serial, touchStringMap[e.SlotSpec.TouchPolicy]),
 			})
 		if err != nil {
 			return nil, fmt.Errorf("couldn't get PGP public key armorer: %w", err)

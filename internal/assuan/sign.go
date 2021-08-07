@@ -2,10 +2,10 @@ package assuan
 
 import (
 	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"math/big"
 
-	"github.com/smlx/piv-agent/internal/gpg"
 	"github.com/smlx/piv-agent/internal/notify"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
@@ -15,8 +15,8 @@ import (
 // "hashAlgo" hash algorithm. It then encodes the response into an s-expression
 // and returns it as a byte slice.
 func (a *Assuan) sign() ([]byte, error) {
-	switch a.signer.(type) {
-	case *gpg.RSAKey:
+	switch a.signer.Public().(type) {
+	case *rsa.PublicKey:
 		return a.signRSA()
 	default:
 		// default also handles mock signers in the test suite
