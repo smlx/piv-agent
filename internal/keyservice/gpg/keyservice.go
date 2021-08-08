@@ -14,7 +14,12 @@ import (
 
 // PINEntryService provides an interface to talk to a pinentry program.
 type PINEntryService interface {
-	GetPGPPassphrase(string) ([]byte, error)
+	GetPGPPassphrase(string, string) ([]byte, error)
+}
+
+type privateKeyfile struct {
+	uid  *packet.UserId
+	keys []*packet.PrivateKey
 }
 
 // KeyService implements an interface for getting cryptographic keys from
@@ -22,15 +27,14 @@ type PINEntryService interface {
 type KeyService struct {
 	// cache passphrases used for decryption
 	passphrases [][]byte
-	privKeys    []*packet.PrivateKey
+	privKeys    []privateKeyfile
 	log         *zap.Logger
 	pinentry    PINEntryService
 }
 
 // New returns a keyservice initialised with keys found at path.
 // Path can be a file or directory.
-func New(l *zap.Logger, pe PINEntryService,
-	path string) (*KeyService, error) {
+func New(l *zap.Logger, pe PINEntryService, path string) (*KeyService, error) {
 	p, err := keyfilePrivateKeys(path)
 	if err != nil {
 		return nil, err
@@ -67,47 +71,49 @@ func (g *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 func (g *KeyService) getKey(keygrip []byte) (*rsa.PrivateKey, error) {
 	var pass []byte
 	var err error
-	for _, k := range g.privKeys {
-		pubKey, ok := k.PublicKey.PublicKey.(*rsa.PublicKey)
-		if !ok {
-			continue
-		}
-		if !bytes.Equal(keygrip, keygripRSA(pubKey)) {
-			continue
-		}
-		if k.Encrypted {
-			// try existing passphrases
-			for _, pass := range g.passphrases {
-				if err = k.Decrypt(pass); err == nil {
-					g.log.Debug("decrypted using cached passphrase",
-						zap.String("fingerprint", k.KeyIdString()))
-					break
+	for _, pk := range g.privKeys {
+		for _, k := range pk.keys {
+			pubKey, ok := k.PublicKey.PublicKey.(*rsa.PublicKey)
+			if !ok {
+				continue
+			}
+			if !bytes.Equal(keygrip, keygripRSA(pubKey)) {
+				continue
+			}
+			if k.Encrypted {
+				// try existing passphrases
+				for _, pass := range g.passphrases {
+					if err = k.Decrypt(pass); err == nil {
+						g.log.Debug("decrypted using cached passphrase",
+							zap.String("fingerprint", k.KeyIdString()))
+						break
+					}
 				}
 			}
-		}
-		if k.Encrypted {
-			// ask for a passphrase
-			pass, err = g.pinentry.GetPGPPassphrase(
-				fmt.Sprintf("%X %X %X %X", k.Fingerprint[:5], k.Fingerprint[5:10],
-					k.Fingerprint[10:15], k.Fingerprint[15:]))
-			if err != nil {
-				return nil, fmt.Errorf("couldn't get passphrase for key %s: %v",
+			if k.Encrypted {
+				// ask for a passphrase
+				pass, err = g.pinentry.GetPGPPassphrase(
+					fmt.Sprintf("%s (%s) <%s>", pk.uid.Name, pk.uid.Comment, pk.uid.Email),
+					fmt.Sprintf("%X %X %X %X", k.Fingerprint[:5], k.Fingerprint[5:10], k.Fingerprint[10:15], k.Fingerprint[15:]))
+				if err != nil {
+					return nil, fmt.Errorf("couldn't get passphrase for key %s: %v",
+						k.KeyIdString(), err)
+				}
+				g.passphrases = append(g.passphrases, pass)
+				if err = k.Decrypt(pass); err != nil {
+					return nil, fmt.Errorf("couldn't decrypt key %s: %v",
+						k.KeyIdString(), err)
+				}
+				g.log.Debug("decrypted using passphrase",
+					zap.String("fingerprint", k.KeyIdString()))
+			}
+			privKey, ok := k.PrivateKey.(*rsa.PrivateKey)
+			if !ok {
+				return nil, fmt.Errorf("not an RSA key %s: %v",
 					k.KeyIdString(), err)
 			}
-			g.passphrases = append(g.passphrases, pass)
-			if err = k.Decrypt(pass); err != nil {
-				return nil, fmt.Errorf("couldn't decrypt key %s: %v",
-					k.KeyIdString(), err)
-			}
-			g.log.Debug("decrypted using passphrase",
-				zap.String("fingerprint", k.KeyIdString()))
+			return privKey, nil
 		}
-		privKey, ok := k.PrivateKey.(*rsa.PrivateKey)
-		if !ok {
-			return nil, fmt.Errorf("not an RSA key %s: %v",
-				k.KeyIdString(), err)
-		}
-		return privKey, nil
 	}
 	return nil, nil
 }

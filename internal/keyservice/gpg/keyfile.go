@@ -11,7 +11,7 @@ import (
 )
 
 // keyfilePrivateKeys reads the given path and returns any private keys found.
-func keyfilePrivateKeys(p string) ([]*packet.PrivateKey, error) {
+func keyfilePrivateKeys(p string) ([]privateKeyfile, error) {
 	f, err := os.Open(p)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open path %s: %v", p, err)
@@ -23,7 +23,8 @@ func keyfilePrivateKeys(p string) ([]*packet.PrivateKey, error) {
 	}
 	switch {
 	case fileInfo.Mode().IsRegular():
-		return keysFromFile(f)
+		pk, err := keysFromFile(f)
+		return []privateKeyfile{*pk}, err
 	case fileInfo.IsDir():
 		// enumerate files in directory
 		dirents, err := f.ReadDir(0)
@@ -31,7 +32,7 @@ func keyfilePrivateKeys(p string) ([]*packet.PrivateKey, error) {
 			return nil, fmt.Errorf("couldn't read directory")
 		}
 		// get any private keys from each file
-		var privKeys []*packet.PrivateKey
+		var privKeys []privateKeyfile
 		for _, dirent := range dirents {
 			direntInfo, err := dirent.Info()
 			if err != nil {
@@ -49,7 +50,7 @@ func keyfilePrivateKeys(p string) ([]*packet.PrivateKey, error) {
 					return nil,
 						fmt.Errorf("couldn't get keys from file %s: %v", subPath, err)
 				}
-				privKeys = append(privKeys, subPrivKeys...)
+				privKeys = append(privKeys, *subPrivKeys)
 			}
 		}
 		return privKeys, nil
@@ -59,9 +60,10 @@ func keyfilePrivateKeys(p string) ([]*packet.PrivateKey, error) {
 }
 
 // keysFromFile read a file and return any private keys found
-func keysFromFile(f *os.File) ([]*packet.PrivateKey, error) {
+func keysFromFile(f *os.File) (*privateKeyfile, error) {
 	var err error
 	var pkt packet.Packet
+	var uid *packet.UserId
 	var privKeys []*packet.PrivateKey
 	reader := packet.NewReader(f)
 	for pkt, err = reader.Next(); err != io.EOF; pkt, err = reader.Next() {
@@ -71,11 +73,20 @@ func keysFromFile(f *os.File) ([]*packet.PrivateKey, error) {
 		if err != nil {
 			return nil, fmt.Errorf("couldn't get next packet: %v", err)
 		}
-		k, ok := pkt.(*packet.PrivateKey)
-		if !ok {
+		switch k := pkt.(type) {
+		case *packet.PrivateKey:
+			privKeys = append(privKeys, k)
+		case *packet.UserId:
+			uid = k
+		default:
 			continue
 		}
-		privKeys = append(privKeys, k)
 	}
-	return privKeys, nil
+	if uid == nil {
+		uid = packet.NewUserId("n/a", "n/a", "n/a")
+	}
+	return &privateKeyfile{
+		uid:  uid,
+		keys: privKeys,
+	}, nil
 }

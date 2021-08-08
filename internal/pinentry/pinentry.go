@@ -16,8 +16,8 @@ type SecurityKey interface {
 type PINEntry struct{}
 
 // GetPGPPassphrase uses pinentry to get the passphrase of the key with the
-// given keygrip.
-func (*PINEntry) GetPGPPassphrase(fingerprint string) ([]byte, error) {
+// given fingerprint.
+func (*PINEntry) GetPGPPassphrase(userID, fingerprint string) ([]byte, error) {
 	p, err := pinentry.New()
 	if err != nil {
 		return []byte{}, fmt.Errorf("couldn't get pinentry client: %w", err)
@@ -33,7 +33,8 @@ func (*PINEntry) GetPGPPassphrase(fingerprint string) ([]byte, error) {
 		return nil,
 			fmt.Errorf("couldn't set prompt on passphrase pinentry: %w", err)
 	}
-	err = p.Set("desc", fmt.Sprintf("PGP key fingerprint: %s", fingerprint))
+	err = p.Set("desc", fmt.Sprintf("UserID: %s, Fingerprint: %s", userID,
+		fingerprint))
 	if err != nil {
 		return nil,
 			fmt.Errorf("couldn't set desc on passphrase pinentry: %w", err)
