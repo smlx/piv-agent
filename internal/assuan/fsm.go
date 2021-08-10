@@ -29,6 +29,8 @@ const (
 	setkey
 	pkdecrypt
 	scd
+	readkey
+	passwd
 )
 
 //go:generate enumer -type=State -text -transform upper
@@ -101,6 +103,18 @@ var assuanTransitions = []fsm.Transition{
 	}, {
 		Src:   fsm.State(connected),
 		Event: fsm.Event(scd),
+		Dst:   fsm.State(connected),
+	}, {
+		Src:   fsm.State(connected),
+		Event: fsm.Event(readkey),
+		Dst:   fsm.State(connected),
+	}, {
+		Src:   fsm.State(connected),
+		Event: fsm.Event(setkeydesc),
+		Dst:   fsm.State(connected),
+	}, {
+		Src:   fsm.State(connected),
+		Event: fsm.Event(passwd),
 		Dst:   fsm.State(connected),
 	},
 	// signing transitions

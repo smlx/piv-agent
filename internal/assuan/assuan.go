@@ -95,8 +95,8 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 					}
 					keyFound, keygrip, err = haveKey(ks, keygrips)
 					if err != nil {
-						_, _ = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
-						return fmt.Errorf("couldn't check for keygrip: %v", err)
+						_, _ = io.WriteString(rw, "ERR 1 couldn't match keygrip\n")
+						return fmt.Errorf("couldn't match keygrip: %v", err)
 					}
 					if keyFound {
 						_, err = io.WriteString(rw,
@@ -108,6 +108,38 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 				case scd:
 					// ignore scdaemon requests
 					_, err = io.WriteString(rw, "ERR 100696144 No such device <SCD>\n")
+				case readkey:
+					// READKEY argument is a keygrip
+					// return information about the given key
+					keygrips, err = hexDecode(assuan.data...)
+					if err != nil {
+						return fmt.Errorf("couldn't decode keygrips: %v", err)
+					}
+					var signer crypto.Signer
+					for _, k := range ks {
+						signer, err = k.GetSigner(keygrips[0])
+						if err == nil {
+							break
+						}
+					}
+					if signer == nil {
+						_, _ = io.WriteString(rw, "ERR 1 couldn't match keygrip\n")
+						return fmt.Errorf("couldn't match keygrip: %v", err)
+					}
+					readKeyData, err := readKeyData(signer.Public())
+					if err != nil {
+						_, _ = io.WriteString(rw, "ERR 1 couldn't get key data\n")
+						return fmt.Errorf("couldn't get key data: %v", err)
+					}
+					_, err = io.WriteString(rw, readKeyData)
+				case setkeydesc:
+					// ignore this event since we don't currently use the client's
+					// description in the prompt
+					_, err = io.WriteString(rw, "OK\n")
+				case passwd:
+					// ignore this event since we assume that if the key is decrypted the
+					// user has permissions
+					_, err = io.WriteString(rw, "OK\n")
 				default:
 					return fmt.Errorf("unknown event: %v", e)
 				}
