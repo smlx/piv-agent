@@ -134,6 +134,14 @@ var assuanTransitions = []fsm.Transition{
 		Src:   fsm.State(hashIsSet),
 		Event: fsm.Event(pksign),
 		Dst:   fsm.State(hashIsSet),
+	}, {
+		Src:   fsm.State(hashIsSet),
+		Event: fsm.Event(keyinfo),
+		Dst:   fsm.State(hashIsSet),
+	}, {
+		Src:   fsm.State(hashIsSet),
+		Event: fsm.Event(reset),
+		Dst:   fsm.State(connected),
 	},
 	// decrypting transitions
 	{

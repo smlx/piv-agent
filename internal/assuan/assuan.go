@@ -33,7 +33,7 @@ var ciphertextRegex = regexp.MustCompile(
 // It returns a *fsm.Machine configured in the ready state.
 func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 	var keyFound bool
-	var keygrip, signature []byte
+	var signature []byte
 	var keygrips, hash [][]byte
 	assuan := Assuan{
 		reader: bufio.NewReader(rw),
@@ -86,25 +86,7 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 						_, err = io.WriteString(rw, "No_Secret_Key\n")
 					}
 				case keyinfo:
-					// KEYINFO arguments are a list of keygrips
-					// if _any_ key is available, we return info, otherwise
-					// No_Secret_Key.
-					keygrips, err = hexDecode(assuan.data...)
-					if err != nil {
-						return fmt.Errorf("couldn't decode keygrips: %v", err)
-					}
-					keyFound, keygrip, err = haveKey(ks, keygrips)
-					if err != nil {
-						_, _ = io.WriteString(rw, "ERR 1 couldn't match keygrip\n")
-						return fmt.Errorf("couldn't match keygrip: %v", err)
-					}
-					if keyFound {
-						_, err = io.WriteString(rw,
-							fmt.Sprintf("S KEYINFO %s D - - - - - - -\nOK\n",
-								strings.ToUpper(hex.EncodeToString(keygrip))))
-					} else {
-						_, err = io.WriteString(rw, "No_Secret_Key\n")
-					}
+					err = doKeyinfo(rw, assuan.data, ks)
 				case scd:
 					// ignore scdaemon requests
 					_, err = io.WriteString(rw, "ERR 100696144 No such device <SCD>\n")
@@ -213,6 +195,8 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 						return fmt.Errorf("couldn't write newline: %v", err)
 					}
 					_, err = io.WriteString(rw, "OK\n")
+				case keyinfo:
+					err = doKeyinfo(rw, assuan.data, ks)
 				default:
 					return fmt.Errorf("unknown event: %v", Event(e))
 				}
@@ -313,6 +297,30 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 		},
 	}
 	return &assuan
+}
+
+// doKeyinfo checks for key availability by keygrip, writing the result to rw.
+func doKeyinfo(rw io.ReadWriter, data [][]byte, ks []KeyService) error {
+	// KEYINFO arguments are a list of keygrips
+	// if _any_ key is available, we return info, otherwise
+	// No_Secret_Key.
+	keygrips, err := hexDecode(data...)
+	if err != nil {
+		return fmt.Errorf("couldn't decode keygrips: %v", err)
+	}
+	keyFound, keygrip, err := haveKey(ks, keygrips)
+	if err != nil {
+		_, _ = io.WriteString(rw, "ERR 1 couldn't match keygrip\n")
+		return fmt.Errorf("couldn't match keygrip: %v", err)
+	}
+	if keyFound {
+		_, err = io.WriteString(rw,
+			fmt.Sprintf("S KEYINFO %s D - - - - - - -\nOK\n",
+				strings.ToUpper(hex.EncodeToString(keygrip))))
+		return err
+	}
+	_, err = io.WriteString(rw, "No_Secret_Key\n")
+	return err
 }
 
 // haveKey returns true if any of the keygrips refer to keys known locally, and

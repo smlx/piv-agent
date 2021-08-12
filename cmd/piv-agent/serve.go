@@ -80,7 +80,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	if err != nil {
 		log.Warn("couldn't determine $HOME", zap.Error(err))
 	}
-	fallbackKeys := filepath.Join(home, ".gnupg", "piv-agent.secring.gpg")
+	fallbackKeys := filepath.Join(home, ".gnupg", "piv-agent.secring")
 	if _, ok := cmd.AgentTypes["gpg"]; ok {
 		log.Debug("starting GPG server")
 		g.Go(func() error {
