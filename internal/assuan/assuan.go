@@ -108,12 +108,13 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 						_, _ = io.WriteString(rw, "ERR 1 couldn't match keygrip\n")
 						return fmt.Errorf("couldn't match keygrip: %v", err)
 					}
-					readKeyData, err := readKeyData(signer.Public())
+					var data string
+					data, err = readKeyData(signer.Public())
 					if err != nil {
 						_, _ = io.WriteString(rw, "ERR 1 couldn't get key data\n")
 						return fmt.Errorf("couldn't get key data: %v", err)
 					}
-					_, err = io.WriteString(rw, readKeyData)
+					_, err = io.WriteString(rw, data)
 				case setkeydesc:
 					// ignore this event since we don't currently use the client's
 					// description in the prompt
