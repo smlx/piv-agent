@@ -19,7 +19,7 @@ If you are, please take a look at the code and send PRs or issues. :green_heart:
 
 ### Some features of piv-agent
 
-* implements both `ssh-agent` and `gpg-agent` functionality
+* implements (a subset of) both `ssh-agent` and `gpg-agent` functionality
 * support for multiple security keys
 * support for multiple slots in those keys
 * support for multiple touch policies
