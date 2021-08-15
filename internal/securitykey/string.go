@@ -29,14 +29,19 @@ type Entity struct {
 	SigningKey
 }
 
+// Comment returns a comment suitable for e.g. the SSH public key format
+func (k *SecurityKey) Comment(ss *SlotSpec) string {
+	return fmt.Sprintf("%v #%v, touch policy: %s", k.card, k.serial,
+		touchStringMap[ss.TouchPolicy])
+}
+
 // StringsSSH returns an array of commonly formatted SSH keys as strings.
 func (k *SecurityKey) StringsSSH() []string {
 	var ss []string
 	for _, s := range k.SigningKeys() {
 		ss = append(ss, fmt.Sprintf("%s %s\n",
 			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(s.PubSSH)), "\n"),
-			fmt.Sprintf("%v #%v, touch policy: %s", k.card, k.serial,
-				touchStringMap[s.SlotSpec.TouchPolicy])))
+			k.Comment(s.SlotSpec)))
 	}
 	return ss
 }

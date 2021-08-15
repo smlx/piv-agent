@@ -71,13 +71,9 @@ func (a *Agent) securityKeyIDs() ([]*agent.Key, error) {
 	for _, k := range securityKeys {
 		for _, s := range k.SigningKeys() {
 			keys = append(keys, &agent.Key{
-				Format: s.PubSSH.Type(),
-				Blob:   s.PubSSH.Marshal(),
-				Comment: fmt.Sprintf(
-					`Security Key "%s" #%d PIV Slot %x`,
-					s.PubSSH,
-					k.Serial(),
-					s.SlotSpec.Slot.Key),
+				Format:  s.PubSSH.Type(),
+				Blob:    s.PubSSH.Marshal(),
+				Comment: k.Comment(s.SlotSpec),
 			})
 		}
 	}

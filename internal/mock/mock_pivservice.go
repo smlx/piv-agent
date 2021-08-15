@@ -79,19 +79,33 @@ func (mr *MockSecurityKeyMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockSecurityKey)(nil).Close))
 }
 
-// PrivateKey mocks base method.
-func (m *MockSecurityKey) PrivateKey(s *securitykey.SigningKey) (crypto.PrivateKey, error) {
+// Comment mocks base method.
+func (m *MockSecurityKey) Comment(arg0 *securitykey.SlotSpec) string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PrivateKey", s)
+	ret := m.ctrl.Call(m, "Comment", arg0)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Comment indicates an expected call of Comment.
+func (mr *MockSecurityKeyMockRecorder) Comment(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Comment", reflect.TypeOf((*MockSecurityKey)(nil).Comment), arg0)
+}
+
+// PrivateKey mocks base method.
+func (m *MockSecurityKey) PrivateKey(arg0 *securitykey.SigningKey) (crypto.PrivateKey, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrivateKey", arg0)
 	ret0, _ := ret[0].(crypto.PrivateKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PrivateKey indicates an expected call of PrivateKey.
-func (mr *MockSecurityKeyMockRecorder) PrivateKey(s interface{}) *gomock.Call {
+func (mr *MockSecurityKeyMockRecorder) PrivateKey(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrivateKey", reflect.TypeOf((*MockSecurityKey)(nil).PrivateKey), s)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrivateKey", reflect.TypeOf((*MockSecurityKey)(nil).PrivateKey), arg0)
 }
 
 // Serial mocks base method.
