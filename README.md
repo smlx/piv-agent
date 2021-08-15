@@ -194,7 +194,7 @@ This public key contains a [User ID packet](https://datatracker.ietf.org/doc/htm
 * `list --key-formats=gpg` requires a touch of the security key to perform signing on the keys associated with those slots
 
 ```
-piv-agent list --key-formats=ssh,gpg --pgp-name='Scott Leggett' --pgp-email='scott@sl.id.au'
+piv-agent list --key-formats=ssh,gpg --pgp-name='Art Vandelay' --pgp-email='art@example.com'
 ```
 
 Paste these public keys into a `key.asc` file, and run `gpg --import key.asc`.
