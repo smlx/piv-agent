@@ -1,8 +1,9 @@
 [Unit]
-Description=piv-agent socket
+Description=piv-agent socket activation
 
 [Socket]
 ListenStream=%t/piv-agent/ssh.socket
+ListenStream=%t/gnupg/S.gpg-agent
 
 [Install]
 WantedBy=sockets.target

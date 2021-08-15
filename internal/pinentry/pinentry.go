@@ -12,6 +12,47 @@ type SecurityKey interface {
 	Serial() uint32
 }
 
+// PINEntry implements useful pinentry service methods.
+type PINEntry struct{}
+
+// GetPGPPassphrase uses pinentry to get the passphrase of the key with the
+// given fingerprint.
+func (*PINEntry) GetPGPPassphrase(userID, fingerprint string) ([]byte, error) {
+	p, err := pinentry.New()
+	if err != nil {
+		return []byte{}, fmt.Errorf("couldn't get pinentry client: %w", err)
+	}
+	defer p.Close()
+	err = p.Set("title", "piv-agent Passphrase Prompt")
+	if err != nil {
+		return nil,
+			fmt.Errorf("couldn't set title on passphrase pinentry: %w", err)
+	}
+	err = p.Set("prompt", "Please enter passphrase")
+	if err != nil {
+		return nil,
+			fmt.Errorf("couldn't set prompt on passphrase pinentry: %w", err)
+	}
+	err = p.Set("desc", fmt.Sprintf("UserID: %s, Fingerprint: %s", userID,
+		fingerprint))
+	if err != nil {
+		return nil,
+			fmt.Errorf("couldn't set desc on passphrase pinentry: %w", err)
+	}
+	// optional PIN cache
+	err = p.Option("allow-external-password-cache")
+	if err != nil {
+		return nil,
+			fmt.Errorf("couldn't set option on passphrase pinentry: %w", err)
+	}
+	err = p.Set("KEYINFO", fingerprint)
+	if err != nil {
+		return nil,
+			fmt.Errorf("couldn't set KEYINFO on passphrase pinentry: %w", err)
+	}
+	return p.GetPin()
+}
+
 // GetPin uses pinentry to get the pin of the given token.
 func GetPin(k SecurityKey) func() (string, error) {
 	return func() (string, error) {

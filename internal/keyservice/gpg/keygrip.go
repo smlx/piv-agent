@@ -3,6 +3,7 @@ package gpg
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/sha1"
 	"fmt"
 	"math/big"
@@ -13,7 +14,7 @@ type part struct {
 	value []byte
 }
 
-// Keygrip calculates a keygrip for an ECDSA public key. This is a SHA1 hash of
+// KeygripECDSA calculates a keygrip for an ECDSA public key. This is a SHA1 hash of
 // public key parameters. It is pretty much undocumented outside of the
 // libgcrypt codebase.
 //
@@ -22,7 +23,7 @@ type part struct {
 // key is byte-encoded, the parts are s-exp encoded in a particular order, and
 // then the s-exp is sha1-hashed to produced the keygrip, which is generally
 // displayed hex-encoded.
-func Keygrip(pubKey *ecdsa.PublicKey) ([]byte, error) {
+func KeygripECDSA(pubKey *ecdsa.PublicKey) ([]byte, error) {
 	if pubKey == nil {
 		return nil, fmt.Errorf("nil key")
 	}
@@ -84,4 +85,12 @@ func compute(parts []part) ([]byte, error) {
 	}
 	s := sha1.Sum(h.Bytes())
 	return s[:], nil
+}
+
+// keygripRSA calculates a keygrip for an RSA public key.
+func keygripRSA(pubKey *rsa.PublicKey) []byte {
+	keygrip := sha1.New()
+	keygrip.Write([]byte{0})
+	keygrip.Write(pubKey.N.Bytes())
+	return keygrip.Sum(nil)
 }

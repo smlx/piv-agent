@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-const _EventName = "INVALIDEVENTCONNECTRESETOPTIONGETINFOHAVEKEYKEYINFOSIGKEYSETKEYDESCSETHASHPKSIGN"
+const _EventName = "INVALIDEVENTCONNECTRESETOPTIONGETINFOHAVEKEYKEYINFOSIGKEYSETKEYDESCSETHASHPKSIGNSETKEYPKDECRYPTSCDREADKEYPASSWD"
 
-var _EventIndex = [...]uint8{0, 12, 19, 24, 30, 37, 44, 51, 57, 67, 74, 80}
+var _EventIndex = [...]uint8{0, 12, 19, 24, 30, 37, 44, 51, 57, 67, 74, 80, 86, 95, 98, 105, 111}
 
-const _EventLowerName = "invalideventconnectresetoptiongetinfohavekeykeyinfosigkeysetkeydescsethashpksign"
+const _EventLowerName = "invalideventconnectresetoptiongetinfohavekeykeyinfosigkeysetkeydescsethashpksignsetkeypkdecryptscdreadkeypasswd"
 
 func (i Event) String() string {
 	if i < 0 || i >= Event(len(_EventIndex)-1) {
@@ -35,33 +35,48 @@ func _EventNoOp() {
 	_ = x[setkeydesc-(8)]
 	_ = x[sethash-(9)]
 	_ = x[pksign-(10)]
+	_ = x[setkey-(11)]
+	_ = x[pkdecrypt-(12)]
+	_ = x[scd-(13)]
+	_ = x[readkey-(14)]
+	_ = x[passwd-(15)]
 }
 
-var _EventValues = []Event{invalidEvent, connect, reset, option, getinfo, havekey, keyinfo, sigkey, setkeydesc, sethash, pksign}
+var _EventValues = []Event{invalidEvent, connect, reset, option, getinfo, havekey, keyinfo, sigkey, setkeydesc, sethash, pksign, setkey, pkdecrypt, scd, readkey, passwd}
 
 var _EventNameToValueMap = map[string]Event{
-	_EventName[0:12]:       invalidEvent,
-	_EventLowerName[0:12]:  invalidEvent,
-	_EventName[12:19]:      connect,
-	_EventLowerName[12:19]: connect,
-	_EventName[19:24]:      reset,
-	_EventLowerName[19:24]: reset,
-	_EventName[24:30]:      option,
-	_EventLowerName[24:30]: option,
-	_EventName[30:37]:      getinfo,
-	_EventLowerName[30:37]: getinfo,
-	_EventName[37:44]:      havekey,
-	_EventLowerName[37:44]: havekey,
-	_EventName[44:51]:      keyinfo,
-	_EventLowerName[44:51]: keyinfo,
-	_EventName[51:57]:      sigkey,
-	_EventLowerName[51:57]: sigkey,
-	_EventName[57:67]:      setkeydesc,
-	_EventLowerName[57:67]: setkeydesc,
-	_EventName[67:74]:      sethash,
-	_EventLowerName[67:74]: sethash,
-	_EventName[74:80]:      pksign,
-	_EventLowerName[74:80]: pksign,
+	_EventName[0:12]:         invalidEvent,
+	_EventLowerName[0:12]:    invalidEvent,
+	_EventName[12:19]:        connect,
+	_EventLowerName[12:19]:   connect,
+	_EventName[19:24]:        reset,
+	_EventLowerName[19:24]:   reset,
+	_EventName[24:30]:        option,
+	_EventLowerName[24:30]:   option,
+	_EventName[30:37]:        getinfo,
+	_EventLowerName[30:37]:   getinfo,
+	_EventName[37:44]:        havekey,
+	_EventLowerName[37:44]:   havekey,
+	_EventName[44:51]:        keyinfo,
+	_EventLowerName[44:51]:   keyinfo,
+	_EventName[51:57]:        sigkey,
+	_EventLowerName[51:57]:   sigkey,
+	_EventName[57:67]:        setkeydesc,
+	_EventLowerName[57:67]:   setkeydesc,
+	_EventName[67:74]:        sethash,
+	_EventLowerName[67:74]:   sethash,
+	_EventName[74:80]:        pksign,
+	_EventLowerName[74:80]:   pksign,
+	_EventName[80:86]:        setkey,
+	_EventLowerName[80:86]:   setkey,
+	_EventName[86:95]:        pkdecrypt,
+	_EventLowerName[86:95]:   pkdecrypt,
+	_EventName[95:98]:        scd,
+	_EventLowerName[95:98]:   scd,
+	_EventName[98:105]:       readkey,
+	_EventLowerName[98:105]:  readkey,
+	_EventName[105:111]:      passwd,
+	_EventLowerName[105:111]: passwd,
 }
 
 var _EventNames = []string{
@@ -76,6 +91,11 @@ var _EventNames = []string{
 	_EventName[57:67],
 	_EventName[67:74],
 	_EventName[74:80],
+	_EventName[80:86],
+	_EventName[86:95],
+	_EventName[95:98],
+	_EventName[98:105],
+	_EventName[105:111],
 }
 
 // EventString retrieves an enum value from the enum constants string name.

@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/coreos/go-systemd/activation"
-	"github.com/smlx/piv-agent/internal/pivservice"
+	"github.com/smlx/piv-agent/internal/keyservice/piv"
+	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/server"
 	"github.com/smlx/piv-agent/internal/ssh"
 	"go.uber.org/zap"
@@ -45,7 +48,7 @@ func (flagAgents *agentTypeFlag) AfterApply() error {
 func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("build date", date))
-	p := pivservice.New(log)
+	p := piv.New(log)
 	// use systemd socket activation
 	ls, err := activation.Listeners()
 	if err != nil {
@@ -72,10 +75,16 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 			return err
 		})
 	}
+	// start GPG agent if given in agent-type flag
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Warn("couldn't determine $HOME", zap.Error(err))
+	}
+	fallbackKeys := filepath.Join(home, ".gnupg", "piv-agent.secring")
 	if _, ok := cmd.AgentTypes["gpg"]; ok {
 		log.Debug("starting GPG server")
 		g.Go(func() error {
-			s := server.NewGPG(p, log)
+			s := server.NewGPG(p, &pinentry.PINEntry{}, log, fallbackKeys)
 			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], exit, cmd.ExitTimeout)
 			if err != nil {
 				log.Debug("exiting GPG server", zap.Error(err))

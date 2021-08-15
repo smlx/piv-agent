@@ -29,14 +29,19 @@ type Entity struct {
 	SigningKey
 }
 
+// Comment returns a comment suitable for e.g. the SSH public key format
+func (k *SecurityKey) Comment(ss *SlotSpec) string {
+	return fmt.Sprintf("%v #%v, touch policy: %s", k.card, k.serial,
+		touchStringMap[ss.TouchPolicy])
+}
+
 // StringsSSH returns an array of commonly formatted SSH keys as strings.
 func (k *SecurityKey) StringsSSH() []string {
 	var ss []string
 	for _, s := range k.SigningKeys() {
 		ss = append(ss, fmt.Sprintf("%s %s\n",
 			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(s.PubSSH)), "\n"),
-			fmt.Sprintf("%v #%v, touch policy: %s", k.Card(), k.Serial(),
-				touchStringMap[s.SlotSpec.TouchPolicy])))
+			k.Comment(s.SlotSpec)))
 	}
 	return ss
 }
@@ -46,10 +51,6 @@ func (k *SecurityKey) StringsSSH() []string {
 // on the yubikey for slots with touch policies that require it.
 func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity, error) {
 	now := time.Now()
-	uid := packet.NewUserId(name, "piv-agent synthesized user ID", email)
-	if uid == nil {
-		return nil, errors.InvalidArgumentError("invalid characters in user ID")
-	}
 	var entities []Entity
 	for _, signingKey := range k.SigningKeys() {
 		cryptoPrivKey, err := k.PrivateKey(&signingKey)
@@ -59,6 +60,12 @@ func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity, error) {
 		signer, ok := cryptoPrivKey.(crypto.Signer)
 		if !ok {
 			return nil, fmt.Errorf("private key is invalid type")
+		}
+		comment := fmt.Sprintf("piv-agent synthesized; touch-policy %s",
+			touchStringMap[signingKey.SlotSpec.TouchPolicy])
+		uid := packet.NewUserId(name, comment, email)
+		if uid == nil {
+			return nil, errors.InvalidArgumentError("invalid characters in user ID")
 		}
 		ecdsaPubKey, ok := signingKey.Public.(*ecdsa.PublicKey)
 		if !ok {
@@ -72,6 +79,7 @@ func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity, error) {
 			CreationTime: now,
 			SigType:      packet.SigTypePositiveCert,
 			// TODO: determine the key type
+			// TODO: support ECDH
 			PubKeyAlgo:  packet.PubKeyAlgoECDSA,
 			Hash:        crypto.SHA256,
 			IssuerKeyId: &pub.KeyId,
@@ -112,7 +120,7 @@ func (k *SecurityKey) StringsGPG(name, email string) ([]string, error) {
 		w, err := armor.Encode(&buf, openpgp.PublicKeyType,
 			map[string]string{
 				"Comment": fmt.Sprintf("%v #%v, touch policy: %s",
-					k.Card(), k.Serial(), touchStringMap[e.SlotSpec.TouchPolicy]),
+					k.card, k.serial, touchStringMap[e.SlotSpec.TouchPolicy]),
 			})
 		if err != nil {
 			return nil, fmt.Errorf("couldn't get PGP public key armorer: %w", err)

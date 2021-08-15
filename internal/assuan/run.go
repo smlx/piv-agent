@@ -1,23 +1,20 @@
 package assuan
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 )
 
 // Run the event machine loop
-func (a *Assuan) Run(conn io.Reader) error {
+func (a *Assuan) Run() error {
 	// register connection
 	if err := a.Occur(connect); err != nil {
 		return fmt.Errorf("error handling connect: %w", err)
 	}
-	// parse incoming messages to events
-	r := bufio.NewReader(conn)
 	var e Event
 	for {
-		line, err := r.ReadBytes(byte('\n'))
+		line, err := a.reader.ReadBytes(byte('\n'))
 		if err != nil {
 			if err == io.EOF {
 				return nil // connection closed

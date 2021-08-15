@@ -2,4 +2,4 @@
 Description=piv-agent service
 
 [Service]
-ExecStart=%h/go/bin/piv-agent serve --debug
+ExecStart=piv-agent serve --debug --agent-types=ssh=0;gpg=1

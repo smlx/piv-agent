@@ -28,7 +28,7 @@ func main() {
 	var log *zap.Logger
 	var err error
 	if cli.Debug {
-		log, err = zap.NewDevelopment()
+		log, err = zap.NewDevelopment(zap.AddStacktrace(zap.ErrorLevel))
 	} else {
 		log, err = zap.NewProduction()
 	}
