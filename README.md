@@ -85,14 +85,15 @@ If you have a Mac, I'd love to add support for `launchd` socket activation. See 
 
 #### gpg-agent
 
-|              | Security Key | Keyfile |
-| ---          | ---          | ---     |
-| ECDSA Sign   | ✅           | ✅      |
-| ECDH Encrypt | ⏳           | ❌      |
-| ECDH Decrypt | ⏳           | ❌      |
-| RSA Sign     | ❌           | ✅      |
-| RSA Encrypt  | ❌           | ❌      |
-| RSA Decrypt  | ❌           | ✅      |
+|                         | Security Key | Keyfile |
+| ---                     | ---          | ---     |
+| ECDSA Sign (NIST P-256) | ✅           | ✅      |
+| EDDSA Sign (Curve25519) | ⏳           | ⏳      |
+| ECDH Encrypt            | ⏳           | ❌      |
+| ECDH Decrypt            | ⏳           | ❌      |
+| RSA Sign                | ❌           | ✅      |
+| RSA Encrypt             | ❌           | ❌      |
+| RSA Decrypt             | ❌           | ✅      |
 
 ## Install
 
@@ -100,8 +101,8 @@ If you have a Mac, I'd love to add support for `launchd` socket activation. See 
 
 #### Consider redundancy
 
-It is important to understand that if you lose access to your security key there is no way to regain the keys stored on it.
-For that reason it is highly recommended that you use fallback keyfiles with `piv-agent`.
+If you lose access to your security key (lost, stolen, broken) **there is no way to recover the keys stored on it**.
+For that reason it is highly recommended that you use multiple security keys and/or fallback keyfiles.
 
 #### Install pcsclite
 
