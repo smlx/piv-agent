@@ -108,20 +108,6 @@ func (mr *MockSecurityKeyMockRecorder) PrivateKey(arg0 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrivateKey", reflect.TypeOf((*MockSecurityKey)(nil).PrivateKey), arg0)
 }
 
-// Serial mocks base method.
-func (m *MockSecurityKey) Serial() uint32 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Serial")
-	ret0, _ := ret[0].(uint32)
-	return ret0
-}
-
-// Serial indicates an expected call of Serial.
-func (mr *MockSecurityKeyMockRecorder) Serial() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Serial", reflect.TypeOf((*MockSecurityKey)(nil).Serial))
-}
-
 // SigningKeys mocks base method.
 func (m *MockSecurityKey) SigningKeys() []securitykey.SigningKey {
 	m.ctrl.T.Helper()
