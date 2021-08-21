@@ -67,7 +67,7 @@ type Assuan struct {
 	hash      []byte
 }
 
-// Occur handles an event occurence.
+// Occur handles an event occurrence.
 func (a *Assuan) Occur(e Event, data ...[]byte) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
