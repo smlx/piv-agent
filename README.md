@@ -2,6 +2,7 @@
 
 ![Tag and Release](https://github.com/smlx/piv-agent/workflows/Tag%20and%20release%20on%20merge/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/smlx/piv-agent/badge.svg?branch=main)](https://coveralls.io/github/smlx/piv-agent?branch=main)
+[![Go Report Card](https://goreportcard.com/badge/github.com/smlx/piv-agent)](https://goreportcard.com/report/github.com/smlx/piv-agent)
 
 ## About
 
