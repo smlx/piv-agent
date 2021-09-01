@@ -36,7 +36,7 @@ const (
 //go:generate enumer -type=State -text -transform upper
 
 // State represents an Assuan state.
-type State fsm.Event
+type State fsm.State
 
 // Enumeration of all possible states in the assuan FSM.
 // connected is the initial state when the client connects.
