@@ -14,18 +14,17 @@
 <link rel=icon type=image/png href=/piv-agent/favicons/android-96x96.png sizes=96x96>
 <link rel=icon type=image/png href=/piv-agent/favicons/android-144x144.png sizes=144x144>
 <link rel=icon type=image/png href=/piv-agent/favicons/android-192x192.png sizes=192x192>
-<title>Documentation | PIV Agent</title>
-<meta name=description content="Install
-Prerequisites
-Consider redundancy
-If you lose access to your security key (lost, stolen, broken) there is no way to recover the keys stored on …">
-<meta property="og:title" content="Documentation">
+<title>PIV Agent Documentation | PIV Agent</title>
+<meta name=description content="PIV Agent must be installed and set up to work with your hardware security device before use.
+See below for instructions.
+">
+<meta property="og:title" content="PIV Agent Documentation">
 <meta property="og:description" content="PIV Agent replaces ssh-agent and gpg-agent, and allows you to use your PIV security token with SSH or GPG">
 <meta property="og:type" content="website">
 <meta property="og:url" content="/piv-agent/docs/"><meta property="og:site_name" content="PIV Agent">
-<meta itemprop=name content="Documentation">
+<meta itemprop=name content="PIV Agent Documentation">
 <meta itemprop=description content="PIV Agent replaces ssh-agent and gpg-agent, and allows you to use your PIV security token with SSH or GPG"><meta name=twitter:card content="summary">
-<meta name=twitter:title content="Documentation">
+<meta name=twitter:title content="PIV Agent Documentation">
 <meta name=twitter:description content="PIV Agent replaces ssh-agent and gpg-agent, and allows you to use your PIV security token with SSH or GPG">
 <link rel=preload href=/piv-agent/scss/main.min.c7864c5e11ce29b0d7fb95d2fbbc92f0cd7d92caacfebfa74a46b09df7d22072.css as=style>
 <link href=/piv-agent/scss/main.min.c7864c5e11ce29b0d7fb95d2fbbc92f0cd7d92caacfebfa74a46b09df7d22072.css rel=stylesheet integrity>
@@ -40,13 +39,10 @@ If you lose access to your security key (lost, stolen, broken) there is no way t
 </a>
 <div class="td-navbar-nav-scroll ml-md-auto" id=main_navbar>
 <ul class="navbar-nav mt-2 mt-lg-0">
-<li class="nav-item mr-4 mb-2 mb-lg-0">
-<a class="nav-link active" href=/piv-agent/docs/><span class=active>Documentation</span></a>
-</li>
 </ul>
 </div>
 <div class="navbar-nav d-none d-lg-block">
-<input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.fb67d4d7b89e5f75f5e73aadb391aad9.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.1c37430012ee4a3aa0211c33e0cc1028.json data-offline-search-base-href=/ data-offline-search-max-results=10>
 </div>
 </nav>
 </header>
@@ -56,14 +52,23 @@ If you lose access to your security key (lost, stolen, broken) there is no way t
 <aside class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
 <div id=td-sidebar-menu class=td-sidebar__inner>
 <form class="td-sidebar__search d-flex align-items-center">
-<input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.fb67d4d7b89e5f75f5e73aadb391aad9.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.1c37430012ee4a3aa0211c33e0cc1028.json data-offline-search-base-href=/ data-offline-search-max-results=10>
 <button class="btn btn-link td-sidebar__toggle d-md-none p-0 ml-3 fas fa-bars" type=button data-toggle=collapse data-target=#td-section-nav aria-controls=td-docs-nav aria-expanded=false aria-label="Toggle section navigation">
 </button>
 </form>
 <nav class="collapse td-sidebar-nav" id=td-section-nav>
 <ul class="td-sidebar-nav__section pr-md-3 ul-0">
-<li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child active-path" id=m-piv-agentdocs-li>
-<a href=/piv-agent/docs/ class="align-left pl-0 active td-sidebar-link td-sidebar-link__section tree-root" id=m-piv-agentdocs><span class=td-sidebar-nav-active-item>Documentation</span></a>
+<li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child active-path" id=m-piv-agentdocs-li>
+<a href=/piv-agent/docs/ class="align-left pl-0 active td-sidebar-link td-sidebar-link__section tree-root" id=m-piv-agentdocs><span class=td-sidebar-nav-active-item>PIV Agent Documentation</span></a>
+<ul class=ul-1>
+<li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id=m-piv-agentdocsinstall-li>
+<a href=/piv-agent/docs/install/ class="align-left pl-0 td-sidebar-link td-sidebar-link__page" id=m-piv-agentdocsinstall><span>Install</span></a>
+</li><li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id=m-piv-agentdocssetup-li>
+<a href=/piv-agent/docs/setup/ class="align-left pl-0 td-sidebar-link td-sidebar-link__page" id=m-piv-agentdocssetup><span>Setup</span></a>
+</li><li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id=m-piv-agentdocsuse-li>
+<a href=/piv-agent/docs/use/ class="align-left pl-0 td-sidebar-link td-sidebar-link__page" id=m-piv-agentdocsuse><span>Use</span></a>
+</li>
+</ul>
 </li>
 </ul>
 </nav>
@@ -73,147 +78,49 @@ If you lose access to your security key (lost, stolen, broken) there is no way t
 <div class="td-page-meta ml-2 pb-1 pt-2 mb-0">
 <a href=https://github.com/smlx/piv-agent/edit/main/docs/content/en/docs/_index.md target=_blank><i class="fa fa-edit fa-fw"></i> Edit this page</a>
 <a href="https://github.com/smlx/piv-agent/new/main/docs/content/en/docs/_index.md?filename=change-me.md&value=---%0Atitle%3A+%22Long+Page+Title%22%0AlinkTitle%3A+%22Short+Nav+Title%22%0Aweight%3A+100%0Adescription%3A+%3E-%0A+++++Page+description+for+heading+and+indexes.%0A---%0A%0A%23%23+Heading%0A%0AEdit+this+template+to+create+your+new+page.%0A%0A%2A+Give+it+a+good+name%2C+ending+in+%60.md%60+-+e.g.+%60getting-started.md%60%0A%2A+Edit+the+%22front+matter%22+section+at+the+top+of+the+page+%28weight+controls+how+its+ordered+amongst+other+pages+in+the+same+directory%3B+lowest+number+first%29.%0A%2A+Add+a+good+commit+message+at+the+bottom+of+the+page+%28%3C80+characters%3B+use+the+extended+description+field+for+more+detail%29.%0A%2A+Create+a+new+branch+so+you+can+preview+your+new+file+and+request+a+review+via+Pull+Request.%0A" target=_blank><i class="fa fa-edit fa-fw"></i> Create child page</a>
-<a href="https://github.com/smlx/piv-agent/issues/new?title=Documentation" target=_blank><i class="fab fa-github fa-fw"></i> Create documentation issue</a>
+<a href="https://github.com/smlx/piv-agent/issues/new?title=PIV%20Agent%20Documentation" target=_blank><i class="fab fa-github fa-fw"></i> Create documentation issue</a>
 <a id=print href=/piv-agent/docs/_print/><i class="fa fa-print fa-fw"></i> Print entire section</a>
 </div>
-<div class=td-toc><nav id=TableOfContents>
-<ul>
-<li><a href=#install>Install</a>
-<ul>
-<li><a href=#prerequisites>Prerequisites</a></li>
-<li><a href=#install-piv-agent>Install piv-agent</a></li>
-</ul>
-</li>
-<li><a href=#setup>Setup</a>
-<ul>
-<li><a href=#hardware>Hardware</a></li>
-<li><a href=#ssh>SSH</a></li>
-<li><a href=#gpg>GPG</a></li>
-</ul>
-</li>
-<li><a href=#use>Use</a>
-<ul>
-<li></li>
-</ul>
-</li>
-</ul>
-</nav></div>
 </aside>
 <main class="col-12 col-md-9 col-xl-8 pl-md-5" role=main>
 <nav aria-label=breadcrumb class="d-none d-md-block d-print-none">
 <ol class="breadcrumb spb-1">
 <li class="breadcrumb-item active" aria-current=page>
-<a href=/piv-agent/docs/>Documentation</a>
+<a href=/piv-agent/docs/>PIV Agent Documentation</a>
 </li>
 </ol>
 </nav>
 <div class=td-content>
-<h1>Documentation</h1>
+<h1>PIV Agent Documentation</h1>
 <header class=article-meta>
 </header>
-<h2 id=install>Install</h2>
-<h3 id=prerequisites>Prerequisites</h3>
-<h4 id=consider-redundancy>Consider redundancy</h4>
-<p>If you lose access to your security key (lost, stolen, broken) <strong>there is no way to recover the keys stored on it</strong>.
-For that reason it is highly recommended that you use fallback SSH or GPG keyfiles and/or multiple hardware security keys.</p>
-<h4 id=install-pcsclite>Install pcsclite</h4>
-<p><code>piv-agent</code> has transitive dependencies through <a href=https://github.com/go-piv/piv-go#installation><code>piv-go</code></a>, on <a href=https://pcsclite.apdu.fr/><code>pcsclite</code></a>.</p>
-<pre><code># debian / ubuntu
-sudo apt install libpcsclite1
-</code></pre><h3 id=install-piv-agent>Install piv-agent</h3>
-<p>Download the latest <a href=https://github.com/smlx/piv-agent/releases>release</a>, and extract it to a temporary location.
-Copy the <code>piv-agent</code> binary into your <code>$PATH</code>, and the systemd unit files to the correct location:</p>
-<pre><code>sudo cp piv-agent /usr/local/bin/
-cp deploy/piv-agent.{socket,service} ~/.config/systemd/user/
-systemctl --user daemon-reload
-</code></pre><h4 id=socket-activation>Socket activation</h4>
-<p><code>piv-agent</code> relies on <a href=https://0pointer.de/blog/projects/socket-activated-containers.html>socket activation</a>, and is currently only tested with <code>systemd</code>.
-It doesn&rsquo;t listen to any sockets directly, and instead requires the init system to pass file descriptors to the process after it is running.
-This requirement makes it possible to exit the process when not in use.</p>
-<p><code>ssh-agent</code> and <code>gpg-agent</code> functionality are enabled by default in <code>piv-agent.service</code> and <code>piv-agent.socket</code>.
-The index of the sockets listed in <code>piv-agent.socket</code> are indicated by the arguments to <code>--agent-types</code>.</p>
-<h2 id=setup>Setup</h2>
-<h3 id=hardware>Hardware</h3>
-<hr>
-<p><strong>WARNING</strong></p>
-<p>This procedure resets the state of the PIV device and wipes any existing keys from PIV slots.</p>
-<hr>
-<p>This procedure is only required once per hardware security device.
-Performing it a second time will change the keys on the device.</p>
-<p>By default, <code>piv-agent</code> uses three slots on your security key to set up keys with different <a href=https://docs.yubico.com/yesdk/users-manual/application-piv/pin-touch-policies.html>touch policies</a>: never required, cached (for 15 seconds), and always.</p>
-<pre><code># find the name of the security keys (cards)
-piv-agent list
-# generate new keys
-piv-agent setup --pin=123456 --card='Yubico YubiKey FIDO+CCID 01 00' --reset-security-key
-# view newly generated keys (SSH only by default)
-piv-agent list
-</code></pre><h3 id=ssh>SSH</h3>
-<h4 id=list-keys>List keys</h4>
-<p>List your hardware SSH keys:</p>
-<pre><code>piv-agent list
-</code></pre><p>Add the public SSH key with the touch policy you want from the list, to any SSH service.</p>
-<h4 id=set-ssh_auth_sock>Set <code>SSH_AUTH_SOCK</code></h4>
-<p>Export the <code>SSH_AUTH_SOCK</code> variable in your shell.</p>
-<pre><code>export SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/piv-agent/ssh.socket
-</code></pre><h4 id=prefer-keys-on-the-hardware-security-device>Prefer keys on the hardware security device</h4>
-<p>It&rsquo;s a good idea to generate an <code>ed25519</code> keyfile and add that to all SSH services too for redundancy.
-<code>piv-agent</code> will fall back to <code>~/.ssh/id_ed25519</code> automatically.</p>
-<p>By default, <code>ssh</code> will offer <a href=https://manpages.debian.org/testing/openssh-client/ssh_config.5.en.html#IdentityFile>keyfiles it finds on disk</a> <em>before</em> those from the agent.
-This is a problem because <code>piv-agent</code> is designed to offer keys from the hardware token first, and only fall back to local keyfiles if token keys are refused.
-To get <code>ssh</code> to ignore local keyfiles and only talk to <code>piv-agent</code>, add this line to your <code>ssh_config</code>, for all hosts:</p>
-<pre><code>IdentityFile /dev/null
-</code></pre><h3 id=gpg>GPG</h3>
-<h4 id=import-public-keys>Import public keys</h4>
-<p><code>gpg</code> requires public keys to be imported for any private keys stored by the agent.
-This structure of a GPG public key contains a <a href=https://datatracker.ietf.org/doc/html/rfc4880#section-5.11>User ID packet</a>, which must be signed by the associated <em>private key</em>.</p>
-<p>The <code>piv-agent list</code> command can synthesize a public key for the private key stored on the security hardware device.
-Listing a GPG key via <code>piv-agent list --key-formats=gpg</code> will require a touch of the security key to perform signing on the keys associated with those slots (due to the User ID packet).
-You should provide a name and email which will be embedded in the synthesized public key (see <code>piv-agent --help list</code>).</p>
-<pre><code>piv-agent list --key-formats=ssh,gpg --pgp-name='Art Vandelay' --pgp-email='art@example.com'
-</code></pre><p>Paste these public keys into a <code>key.asc</code> file, and run <code>gpg --import key.asc</code>.</p>
-<h4 id=export-fallback-keys>Export fallback keys</h4>
-<p>Private GPG keys to be used by <code>piv-agent</code> must be exported to the directory<code>~/.gnupg/piv-agent.secring/</code>.</p>
-<hr>
-<p><strong>NOTE</strong></p>
-<p>This step requires <code>gpg-agent</code> to be running, not <code>piv-agent</code>.</p>
-<hr>
-<pre><code># set umask for user-only permissions
-umask 77
-mkdir -p ~/.gnupg/piv-agent.secring
-gpg --export-secret-key 0xB346A434C7652C02 &gt; ~/.gnupg/piv-agent.secring/art@example.com.gpg
-</code></pre><h4 id=disable-gpg-agent>Disable gpg-agent</h4>
-<p>Because <code>piv-agent</code> takes over the role of <code>gpg-agent</code>, the latter should be disabled:</p>
-<ul>
-<li>Add <code>no-autostart</code> to <code>~/.gnupg/gpg.conf</code>.</li>
-<li><code>systemctl --user disable --now gpg-agent.socket gpg-agent.service; pkill gpg-agent</code></li>
-</ul>
-<h2 id=use>Use</h2>
-<p>Start the agent sockets, and test:</p>
-<pre><code>systemctl --user enable --now piv-agent.socket
-ssh-add -l
-gpg -K
-</code></pre><h4 id=pin--passphrase-caching>PIN / Passphrase caching</h4>
-<p>If your pinentry supports storing credentials you can the PIN of the security key, but not the passphrase of any fallback keys, as a usability/security tradeoff.
-This ensures that at least the encrypted key file and its passphrase aren&rsquo;t stored together.
-It also has the advantage of ensuring that you don&rsquo;t forget your keyfile passphrase.
-But you might forget your PIN, so maybe don&rsquo;t store that either if you&rsquo;re concerned about that possibility? 🤷</p>
-<h4 id=add-security-key-as-a-openpgp-signing-subkey>Add Security Key as a OpenPGP signing subkey</h4>
-<hr>
-<p><strong>NOTE</strong></p>
-<p>There is a <a href=https://dev.gnupg.org/T5555>bug</a> in certain versions of GnuPG which doesn&rsquo;t allow ECDSA keys to be added as subkeys correctly.
-You&rsquo;ll need a verion of GnuPG where that bug is fixed for this procedure to work.</p>
-<hr>
-<p>Adding a <code>piv-agent</code> OpenPGP key as a signing subkey of an existing OpenPGP key is a convenient way to integrate a physical Security Key with your existing <code>gpg</code> workflow.
-This allows you to do things like sign <code>git</code> commits using your Yubikey, while keeping the same OpenPGP key ID.
-Adding a subkey requires cross-signing, so you need to export the master secret key of your existing OpenPGP key as described above to make it available to <code>piv-agent</code>.
-There are instructions for adding an existing key as a subkey <a href=https://security.stackexchange.com/a/160847>here</a>.</p>
-<p><code>gpg</code> will choose the <em>newest</em> available subkey to perform an action. So it will automatically prefer a newly added <code>piv-agent</code> subkey over any existing keyfile subkeys, but fall back to keyfiles if e.g. the Yubikey is not plugged in.</p>
+<p>PIV Agent must be installed and set up to work with your hardware security device before use.
+See below for instructions.</p>
 <div class=section-index>
+<hr class=panel-line>
+<div class=entry>
+<h5>
+<a href=/piv-agent/docs/install/>Install</a>
+</h5>
+<p></p>
+</div>
+<div class=entry>
+<h5>
+<a href=/piv-agent/docs/setup/>Setup</a>
+</h5>
+<p></p>
+</div>
+<div class=entry>
+<h5>
+<a href=/piv-agent/docs/use/>Use</a>
+</h5>
+<p></p>
+</div>
 </div>
 <div class="text-muted mt-5 pt-3 border-top">
 Last modified
-August 22, 2021
-: <a href=https://github.com/smlx/piv-agent/commit/8a1c45cd24bf498ea734469128b26a2f6a4f7399>chore: move documentation out of README (8a1c45c)</a>
+September 12, 2021
+: <a href=https://github.com/smlx/piv-agent/commit/b9a23a15ac2d79af64eacd10e69b1eaf4bcf2ad5>chore: restructure documentation (b9a23a1)</a>
 </div>
 </div>
 </main>
