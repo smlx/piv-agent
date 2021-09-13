@@ -42,7 +42,7 @@ func (s *SSH) Serve(ctx context.Context, a *ssh.Agent, l net.Listener,
 			s.log.Debug("start serving SSH connection")
 			if err := agent.ServeAgent(a, conn); err != nil {
 				if errors.Is(err, io.EOF) {
-					s.log.Debug("finish serving connection")
+					s.log.Debug("finish serving SSH connection")
 					continue
 				}
 				return fmt.Errorf("ssh Serve error: %w", err)
