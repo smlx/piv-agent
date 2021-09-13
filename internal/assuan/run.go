@@ -2,18 +2,24 @@ package assuan
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 )
 
 // Run the event machine loop
-func (a *Assuan) Run() error {
+func (a *Assuan) Run(ctx context.Context) error {
 	// register connection
 	if err := a.Occur(connect); err != nil {
 		return fmt.Errorf("error handling connect: %w", err)
 	}
 	var e Event
 	for {
+		// check for cancellation
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		// get the next command. returns at latest after conn deadline expiry.
 		line, err := a.reader.ReadBytes(byte('\n'))
 		if err != nil {
 			if err == io.EOF {

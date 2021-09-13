@@ -2,6 +2,7 @@ package assuan_test
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"encoding/hex"
@@ -153,7 +154,7 @@ func TestSign(t *testing.T) {
 				}
 			}
 			// start the state machine
-			if err := a.Run(); err != nil {
+			if err := a.Run(context.Background()); err != nil {
 				tt.Fatal(err)
 			}
 			// check the responses
@@ -226,7 +227,7 @@ func TestKeyinfo(t *testing.T) {
 				}
 			}
 			// start the state machine
-			if err := a.Run(); err != nil {
+			if err := a.Run(context.Background()); err != nil {
 				tt.Fatal(err)
 			}
 			// check the responses
@@ -349,7 +350,7 @@ func TestDecryptRSAKeyfile(t *testing.T) {
 				}
 			}
 			// start the state machine
-			if err := a.Run(); err != nil {
+			if err := a.Run(context.Background()); err != nil {
 				tt.Fatal(err)
 			}
 			// check the responses
@@ -447,7 +448,7 @@ func TestSignRSAKeyfile(t *testing.T) {
 				}
 			}
 			// start the state machine
-			if err := a.Run(); err != nil {
+			if err := a.Run(context.Background()); err != nil {
 				tt.Fatal(err)
 			}
 			// check the responses
@@ -533,7 +534,7 @@ func TestReadKey(t *testing.T) {
 				}
 			}
 			// start the state machine
-			if err := a.Run(); err != nil {
+			if err := a.Run(context.Background()); err != nil {
 				tt.Fatal(err)
 			}
 			// check the responses

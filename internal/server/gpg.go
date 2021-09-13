@@ -12,6 +12,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const connTimeout = 4 * time.Minute
+
 // GPG represents a gpg-agent server.
 type GPG struct {
 	log           *zap.Logger
@@ -39,26 +41,31 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 	timeout time.Duration) error {
 	// start serving connections
 	conns := accept(g.log, l)
-	g.log.Debug("accepted gpg-agent connection")
 	for {
 		select {
 		case conn, ok := <-conns:
 			if !ok {
 				return fmt.Errorf("listen socket closed")
 			}
+			g.log.Debug("accepted gpg-agent connection")
 			// reset the exit timer
 			exit.Reset(timeout)
-			// if the client stops responding for 300 seconds, give up.
-			if err := conn.SetDeadline(time.Now().Add(300 * time.Second)); err != nil {
+			// if the client takes too long, give up
+			if err := conn.SetDeadline(time.Now().Add(connTimeout)); err != nil {
 				return fmt.Errorf("couldn't set deadline: %v", err)
 			}
 			// init protocol state machine
 			a := assuan.New(conn, g.log, g.pivKeyService, g.gpgKeyService)
-			// run the protocol state machine to completion
-			// (client severs connection)
-			if err := a.Run(); err != nil {
-				return err
-			}
+			// this goroutine will exit by either:
+			// * client severs connection (the usual case)
+			// * conn deadline reached (client stopped responding)
+			//   err will be non-nil in this case.
+			go func() {
+				// run the protocol state machine to completion
+				if err := a.Run(ctx); err != nil {
+					g.log.Error("gpg-agent error", zap.Error(err))
+				}
+			}()
 		case <-ctx.Done():
 			return nil
 		}
