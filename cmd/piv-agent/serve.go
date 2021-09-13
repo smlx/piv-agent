@@ -21,7 +21,8 @@ type agentTypeFlag map[string]uint
 // ServeCmd represents the listen command.
 type ServeCmd struct {
 	LoadKeyfile bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
-	ExitTimeout time.Duration `kong:"default=32m,help='Exit after this period to drop transaction and key file passphrase cache'"`
+	ExitTimeout time.Duration `kong:"default=12h,help='Exit after this period to drop transaction and key file passphrase cache, even if service is in use'"`
+	IdleTimeout time.Duration `kong:"default=32m,help='Exit after this period of disuse'"`
 	AgentTypes  agentTypeFlag `kong:"default='ssh=0;gpg=1',help='Agent types to handle'"`
 }
 
@@ -62,7 +63,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	// prepare dependencies
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	exit := time.NewTicker(cmd.ExitTimeout)
+	idle := time.NewTicker(cmd.IdleTimeout)
 	g := errgroup.Group{}
 	// start SSH agent if given in agent-type flag
 	if _, ok := cmd.AgentTypes["ssh"]; ok {
@@ -70,7 +71,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 		g.Go(func() error {
 			s := server.NewSSH(log)
 			a := ssh.NewAgent(p, log, cmd.LoadKeyfile)
-			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], exit, cmd.ExitTimeout)
+			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], idle, cmd.IdleTimeout)
 			cancel()
 			return err
 		})
@@ -85,7 +86,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 		log.Debug("starting GPG server")
 		g.Go(func() error {
 			s := server.NewGPG(p, &pinentry.PINEntry{}, log, fallbackKeys)
-			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], exit, cmd.ExitTimeout)
+			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], idle, cmd.IdleTimeout)
 			if err != nil {
 				log.Debug("exiting GPG server", zap.Error(err))
 			} else {
@@ -95,11 +96,16 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 			return err
 		})
 	}
+	exit := time.NewTicker(cmd.ExitTimeout)
 loop:
 	for {
 		select {
 		case <-ctx.Done():
 			log.Debug("exit done")
+			break loop
+		case <-idle.C:
+			log.Debug("idle timeout")
+			cancel()
 			break loop
 		case <-exit.C:
 			log.Debug("exit timeout")
