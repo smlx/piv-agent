@@ -13,9 +13,12 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
+// retries is the passphrase attempt limit when decrypting GPG keyfiles
+const retries = 3
+
 // PINEntryService provides an interface to talk to a pinentry program.
 type PINEntryService interface {
-	GetPGPPassphrase(string, string) ([]byte, error)
+	GetPassphrase(string, string, int) ([]byte, error)
 }
 
 type privateKeyfile struct {
@@ -67,10 +70,32 @@ func (g *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 	return false, nil, nil
 }
 
+// doDecrypt prompts for a passphrase via pinentry and uses the passphrase to
+// decrypt the given private key
+func (g *KeyService) doDecrypt(k *packet.PrivateKey, uid string) error {
+	var pass []byte
+	var err error
+	for i := 0; i < retries; i++ {
+		pass, err = g.pinentry.GetPassphrase(
+			fmt.Sprintf("UserID: %s\rFingerprint: %X %X %X %X", uid,
+				k.Fingerprint[:5], k.Fingerprint[5:10], k.Fingerprint[10:15],
+				k.Fingerprint[15:]),
+			uid, retries-i)
+		if err != nil {
+			return fmt.Errorf("couldn't get passphrase for key %s: %v",
+				k.KeyIdString(), err)
+		}
+		if err = k.Decrypt(pass); err == nil {
+			g.passphrases = append(g.passphrases, pass)
+			return nil
+		}
+	}
+	return fmt.Errorf("couldn't decrypt key %s: %v", k.KeyIdString(), err)
+}
+
 // decryptPrivateKey decrypts the given private key.
 // Returns nil if successful, or an error if the key could not be decrypted.
 func (g *KeyService) decryptPrivateKey(k *packet.PrivateKey, uid string) error {
-	var pass []byte
 	var err error
 	if k.Encrypted {
 		// try existing passphrases
@@ -83,18 +108,8 @@ func (g *KeyService) decryptPrivateKey(k *packet.PrivateKey, uid string) error {
 		}
 	}
 	if k.Encrypted {
-		// ask for a passphrase
-		pass, err = g.pinentry.GetPGPPassphrase(uid,
-			fmt.Sprintf("%X %X %X %X", k.Fingerprint[:5], k.Fingerprint[5:10],
-				k.Fingerprint[10:15], k.Fingerprint[15:]))
-		if err != nil {
-			return fmt.Errorf("couldn't get passphrase for key %s: %v",
-				k.KeyIdString(), err)
-		}
-		g.passphrases = append(g.passphrases, pass)
-		if err = k.Decrypt(pass); err != nil {
-			return fmt.Errorf("couldn't decrypt key %s: %v",
-				k.KeyIdString(), err)
+		if err := g.doDecrypt(k, uid); err != nil {
+			return err
 		}
 		g.log.Debug("decrypted using passphrase",
 			zap.String("fingerprint", k.KeyIdString()))

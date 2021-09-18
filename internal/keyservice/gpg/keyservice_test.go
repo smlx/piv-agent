@@ -44,7 +44,7 @@ func TestGetSigner(t *testing.T) {
 			defer ctrl.Finish()
 			var mockPES = mock.NewMockPINEntryService(ctrl)
 			if tc.protected {
-				mockPES.EXPECT().GetPGPPassphrase(gomock.Any(), gomock.Any()).
+				mockPES.EXPECT().GetPassphrase(gomock.Any(), gomock.Any(), 3).
 					Return([]byte("trustno1"), nil)
 			}
 			ks, err := gpg.New(log, mockPES, tc.path)
