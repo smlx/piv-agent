@@ -33,17 +33,17 @@ func (m *MockPINEntryService) EXPECT() *MockPINEntryServiceMockRecorder {
 	return m.recorder
 }
 
-// GetPGPPassphrase mocks base method.
-func (m *MockPINEntryService) GetPGPPassphrase(arg0, arg1 string) ([]byte, error) {
+// GetPassphrase mocks base method.
+func (m *MockPINEntryService) GetPassphrase(arg0, arg1 string, arg2 int) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPGPPassphrase", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetPassphrase", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetPGPPassphrase indicates an expected call of GetPGPPassphrase.
-func (mr *MockPINEntryServiceMockRecorder) GetPGPPassphrase(arg0, arg1 interface{}) *gomock.Call {
+// GetPassphrase indicates an expected call of GetPassphrase.
+func (mr *MockPINEntryServiceMockRecorder) GetPassphrase(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPGPPassphrase", reflect.TypeOf((*MockPINEntryService)(nil).GetPGPPassphrase), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPassphrase", reflect.TypeOf((*MockPINEntryService)(nil).GetPassphrase), arg0, arg1, arg2)
 }

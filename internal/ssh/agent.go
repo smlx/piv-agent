@@ -18,12 +18,16 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
+// retries is the passphrase attempt limit when decrypting SSH keyfiles
+const retries = 3
+
 // Agent implements the crypto/ssh Agent interface
 // https://pkg.go.dev/golang.org/x/crypto/ssh/agent#Agent
 type Agent struct {
 	mu          sync.Mutex
 	piv         *piv.KeyService
 	log         *zap.Logger
+	pinentry    *pinentry.PINEntry
 	loadKeyfile bool
 }
 
@@ -220,6 +224,35 @@ func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 	return signers, nil
 }
 
+// doDecrypt prompts for a passphrase via pinentry and uses the passphrase to
+// decrypt the given private key
+func (a *Agent) doDecrypt(keyPath string,
+	pub gossh.PublicKey, priv []byte) (gossh.Signer, error) {
+	var passphrase []byte
+	var signer gossh.Signer
+	var err error
+	for i := 0; i < retries; i++ {
+		passphrase = passphrases[string(pub.Marshal())]
+		if passphrase == nil {
+			fingerprint := gossh.FingerprintSHA256(pub)
+			passphrase, err = a.pinentry.GetPassphrase(
+				fmt.Sprintf("%s %s %s", keyPath, fingerprint[:25], fingerprint[25:]),
+				fingerprint, retries-i)
+			if err != nil {
+				return nil, err
+			}
+		}
+		signer, err = gossh.ParsePrivateKeyWithPassphrase(priv, passphrase)
+		if err == nil {
+			a.log.Debug("loaded key from disk",
+				zap.Binary("public key bytes", signer.PublicKey().Marshal()))
+			passphrases[string(signer.PublicKey().Marshal())] = passphrase
+			return signer, nil
+		}
+	}
+	return nil, fmt.Errorf("couldn't decrypt and parse private key %v", err)
+}
+
 // get signers for all keys stored in files on disk
 func (a *Agent) keyfileSigners() ([]gossh.Signer, error) {
 	var signers []gossh.Signer
@@ -228,33 +261,22 @@ func (a *Agent) keyfileSigners() ([]gossh.Signer, error) {
 		return nil, err
 	}
 	keyPath := filepath.Join(home, ".ssh/id_ed25519")
-	privBytes, err := ioutil.ReadFile(keyPath)
+	priv, err := ioutil.ReadFile(keyPath)
 	if err != nil {
 		a.log.Debug("couldn't load keyfile", zap.String("path", keyPath),
 			zap.Error(err))
 		return signers, nil
 	}
-	signer, err := gossh.ParsePrivateKey(privBytes)
+	signer, err := gossh.ParsePrivateKey(priv)
 	if err != nil {
 		pmErr, ok := err.(*gossh.PassphraseMissingError)
 		if !ok {
 			return nil, err
 		}
-		passphrase := passphrases[string(pmErr.PublicKey.Marshal())]
-		if passphrase == nil {
-			passphrase, err = pinentry.GetPassphrase(keyPath,
-				string(gossh.FingerprintSHA256(pmErr.PublicKey)))
-			if err != nil {
-				return nil, err
-			}
-		}
-		signer, err = gossh.ParsePrivateKeyWithPassphrase(privBytes, passphrase)
+		signer, err = a.doDecrypt(keyPath, pmErr.PublicKey, priv)
 		if err != nil {
 			return nil, err
 		}
-		a.log.Debug("loaded key from disk",
-			zap.Binary("public key bytes", signer.PublicKey().Marshal()))
-		passphrases[string(signer.PublicKey().Marshal())] = passphrase
 	}
 	signers = append(signers, signer)
 	return signers, nil
