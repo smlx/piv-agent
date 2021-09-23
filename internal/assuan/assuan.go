@@ -77,8 +77,8 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 					}
 					keyFound, _, err = haveKey(ks, keygrips)
 					if err != nil {
-						_, _ = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
-						return fmt.Errorf("couldn't check keygrips: %v", err)
+						_, err = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
+						return err
 					}
 					if keyFound {
 						_, err = io.WriteString(rw, "OK\n")
