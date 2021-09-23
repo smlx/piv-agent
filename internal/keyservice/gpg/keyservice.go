@@ -55,21 +55,6 @@ func (*KeyService) Name() string {
 	return "GPG Keyfile"
 }
 
-// HaveKey takes a list of keygrips, and returns a boolean indicating if any of
-// the given keygrips were found, the found keygrip, and an error, if any.
-func (g *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
-	for _, kg := range keygrips {
-		key, err := g.getRSAKey(kg)
-		if err != nil {
-			return false, nil, err
-		}
-		if key != nil {
-			return true, kg, nil
-		}
-	}
-	return false, nil, nil
-}
-
 // doDecrypt prompts for a passphrase via pinentry and uses the passphrase to
 // decrypt the given private key
 func (g *KeyService) doDecrypt(k *packet.PrivateKey, uid string) error {
@@ -120,14 +105,17 @@ func (g *KeyService) decryptPrivateKey(k *packet.PrivateKey, uid string) error {
 // getRSAKey returns a matching private RSA key if the keygrip matches. If a key
 // is returned err will be nil. If no key is found, both values may be nil.
 func (g *KeyService) getRSAKey(keygrip []byte) (*rsa.PrivateKey, error) {
-	var err error
 	for _, pk := range g.privKeys {
 		for _, k := range pk.keys {
 			pubKey, ok := k.PublicKey.PublicKey.(*rsa.PublicKey)
 			if !ok {
 				continue
 			}
-			if !bytes.Equal(keygrip, keygripRSA(pubKey)) {
+			pubKeygrip, err := keygripRSA(pubKey)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get RSA keygrip: %v", err)
+			}
+			if !bytes.Equal(keygrip, pubKeygrip) {
 				continue
 			}
 			err = g.decryptPrivateKey(k,

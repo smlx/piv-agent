@@ -88,9 +88,12 @@ func compute(parts []part) ([]byte, error) {
 }
 
 // keygripRSA calculates a keygrip for an RSA public key.
-func keygripRSA(pubKey *rsa.PublicKey) []byte {
+func keygripRSA(pubKey *rsa.PublicKey) ([]byte, error) {
+	if pubKey == nil {
+		return nil, fmt.Errorf("nil key")
+	}
 	keygrip := sha1.New()
 	keygrip.Write([]byte{0})
 	keygrip.Write(pubKey.N.Bytes())
-	return keygrip.Sum(nil)
+	return keygrip.Sum(nil), nil
 }
