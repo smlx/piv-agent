@@ -1,6 +1,7 @@
 ---
 title: "Use"
 weight: 30
+description: Use piv-agent with ssh and gpg.
 ---
 
 ## Start `piv-agent.socket`
@@ -15,6 +16,23 @@ gpg -K
 
 This should be enough to allow you to use `piv-agent`.
 
+## Common operations
+
+### List keys
+
+```
+piv-agent list
+```
+
+If this command returns an empty list, it may be because the running agent is holding a transaction to the hardware security device.
+The solution is to stop the agent and run the list command again.
+
+```
+systemctl --user stop piv-agent
+# should work now..
+piv-agent list
+```
+
 ## Advanced
 
 This section describes some ways to enhance the usability of `piv-agent`.
@@ -28,20 +46,3 @@ This is a usability/security tradeoff that ensures that at least the encrypted p
 It also has the advantage of ensuring that you don't forget your keyfile passphrase, as you'll need to enter it periodically.
 
 However you might also forget your device PIN, so maybe don't cache that either if you're concerned about that possibility.
-
-### Add hardware key as a OpenPGP signing subkey
-
----
-**NOTE**
-
-There is a [bug](https://dev.gnupg.org/T5555) in certain versions of GnuPG which doesn't allow ECDSA keys to be added as subkeys correctly.
-You'll need a verion of GnuPG where that bug is fixed for this procedure to work.
-
----
-
-Adding a `piv-agent` OpenPGP key as a signing subkey of an existing OpenPGP key is a convenient way to integrate a hardware security device with your existing `gpg` workflow.
-This allows you to do things like sign `git` commits using your Yubikey, while keeping the same OpenPGP key ID.
-Adding a subkey requires cross-signing, so you need to export the master secret key of your existing OpenPGP key as described above to make it available to `piv-agent`.
-There are instructions for adding an existing key as a subkey [here](https://security.stackexchange.com/a/160847).
-
-`gpg` will choose the _newest_ available subkey to perform an action. So it will automatically prefer a newly added `piv-agent` subkey over any existing keyfile subkeys, but fall back to keyfiles if e.g. the Yubikey is not plugged in.
