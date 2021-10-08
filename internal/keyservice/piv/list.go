@@ -20,7 +20,7 @@ type SecurityKey interface {
 	Card() string
 	Close() error
 	Comment(*securitykey.SlotSpec) string
-	PrivateKey(*securitykey.SigningKey) (crypto.PrivateKey, error)
+	PrivateKey(*securitykey.CryptoKey) (crypto.PrivateKey, error)
 	SigningKeys() []securitykey.SigningKey
 	StringsGPG(string, string) ([]string, error)
 	StringsSSH() []string

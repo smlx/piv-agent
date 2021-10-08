@@ -77,7 +77,7 @@ func (p *KeyService) GetSigner(keygrip []byte) (crypto.Signer, error) {
 				return nil, fmt.Errorf("couldn't get keygrip: %w", err)
 			}
 			if bytes.Equal(thisKeygrip, keygrip) {
-				cryptoPrivKey, err := sk.PrivateKey(&signingKey)
+				cryptoPrivKey, err := sk.PrivateKey(&signingKey.CryptoKey)
 				if err != nil {
 					return nil, fmt.Errorf("couldn't get private key from slot")
 				}

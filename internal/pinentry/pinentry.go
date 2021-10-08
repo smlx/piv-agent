@@ -8,6 +8,7 @@ import (
 
 // A SecurityKey is a physical hardware token that requires a PIN.
 type SecurityKey interface {
+	Card() string
 	Retries() (int, error)
 	Serial() uint32
 }
@@ -32,7 +33,8 @@ func GetPin(k SecurityKey) func() (string, error) {
 			return "", fmt.Errorf("couldn't get retries for security key: %w", err)
 		}
 		err = p.Set("desc",
-			fmt.Sprintf("serial number: %d, attempts remaining: %d", k.Serial(), r))
+			fmt.Sprintf("%s #%d\r(%d attempts remaining)",
+				k.Card(), k.Serial(), r))
 		if err != nil {
 			return "", fmt.Errorf("couldn't set desc on PIN pinentry: %w", err)
 		}

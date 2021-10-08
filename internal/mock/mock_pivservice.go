@@ -94,7 +94,7 @@ func (mr *MockSecurityKeyMockRecorder) Comment(arg0 interface{}) *gomock.Call {
 }
 
 // PrivateKey mocks base method.
-func (m *MockSecurityKey) PrivateKey(arg0 *securitykey.SigningKey) (crypto.PrivateKey, error) {
+func (m *MockSecurityKey) PrivateKey(arg0 *securitykey.CryptoKey) (crypto.PrivateKey, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PrivateKey", arg0)
 	ret0, _ := ret[0].(crypto.PrivateKey)

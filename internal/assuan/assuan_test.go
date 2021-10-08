@@ -208,7 +208,9 @@ func TestKeyinfo(t *testing.T) {
 			defer ctrl.Finish()
 			var mockSecurityKey = mock.NewMockSecurityKey(ctrl)
 			mockSecurityKey.EXPECT().SigningKeys().AnyTimes().Return(
-				[]securitykey.SigningKey{{Public: pubKey}})
+				[]securitykey.SigningKey{
+					{CryptoKey: securitykey.CryptoKey{Public: pubKey}},
+				})
 			keyService := mock.NewMockKeyService(ctrl)
 			keyService.EXPECT().HaveKey(gomock.Any()).AnyTimes().Return(
 				true, keygrip, nil)
