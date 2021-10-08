@@ -14,8 +14,8 @@ var (
 type CLI struct {
 	Debug bool     `kong:"help='Enable debug logging'"`
 	Serve ServeCmd `kong:"cmd,default=1,help='(default) Listen for signing requests'"`
-	Setup SetupCmd `kong:"cmd,help='Set up the security key for use with SSH'"`
-	List  ListCmd  `kong:"cmd,help='List signing keys available on each security key'"`
+	Setup SetupCmd `kong:"cmd,help='Set up the hardware security key for use with piv-agent'"`
+	List  ListCmd  `kong:"cmd,help='List cryptographic keys available on each hardware security key'"`
 }
 
 func main() {
