@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -26,9 +25,6 @@ type KeyService interface {
 	GetSigner([]byte) (crypto.Signer, error)
 	GetDecrypter([]byte) (crypto.Decrypter, error)
 }
-
-var ciphertextRegex = regexp.MustCompile(
-	`^D \(7:enc-val\(3:rsa\(1:a(\d+):(.+)\)\)\)$`)
 
 // New initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
@@ -83,7 +79,7 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 						}
 						// apply buggy libgcrypt encoding
 						_, err = io.WriteString(rw, fmt.Sprintf("D %s\nOK\n",
-							percentEncodeSExp(grips)))
+							PercentEncodeSExp(grips)))
 						return err
 					}
 					// handle list of keygrips
@@ -281,27 +277,13 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 					if len(chunks) < 1 {
 						return fmt.Errorf("invalid ciphertext format")
 					}
-					sexp := bytes.Join(chunks[:], []byte("\n"))
-					matches := ciphertextRegex.FindAllSubmatch(sexp, -1)
 					var plaintext, ciphertext []byte
-					ciphertext = matches[0][2]
-					log.Debug("raw ciphertext",
-						zap.Binary("sexp", sexp), zap.Binary("ciphertext", ciphertext))
-					// undo the buggy encoding sent by gpg
-					ciphertext = percentDecodeSExp(ciphertext)
-					log.Debug("normalised ciphertext",
-						zap.Binary("ciphertext", ciphertext))
+					ciphertext = bytes.Join(chunks[:], []byte("\n"))
 					plaintext, err = assuan.decrypter.Decrypt(nil, ciphertext, nil)
 					if err != nil {
 						return fmt.Errorf("couldn't decrypt: %v", err)
 					}
-					// gnupg uses the pre-buggy-encoding length in the sexp
-					plaintextLen := len(plaintext)
-					// apply the buggy encoding as expected by gpg
-					plaintext = percentEncodeSExp(plaintext)
-					plaintextSexp := fmt.Sprintf("D (5:value%d:%s)\x00\nOK\n",
-						plaintextLen, plaintext)
-					_, err = io.WriteString(rw, plaintextSexp)
+					_, err = rw.Write(plaintext)
 				case setkeydesc:
 					// ignore this event since we don't currently use the client's
 					// description in the prompt
@@ -390,30 +372,4 @@ func hexDecode(data ...[]byte) ([][]byte, error) {
 		decoded = append(decoded, dst)
 	}
 	return decoded, nil
-}
-
-// Work around bug(?) in gnupg where some byte sequences are
-// percent-encoded in the sexp. Yes, really. NFI what to do if the
-// percent-encoded byte sequences themselves are part of the
-// ciphertext. Yikes.
-//
-// These two functions represent over a week of late nights stepping through
-// debug builds of libcrypt in gdb :-(
-
-// percentDecodeSExp replaces the percent-encoded byte sequences with their raw
-// byte values.
-func percentDecodeSExp(data []byte) []byte {
-	data = bytes.ReplaceAll(data, []byte{0x25, 0x32, 0x35}, []byte{0x25}) // %
-	data = bytes.ReplaceAll(data, []byte{0x25, 0x30, 0x41}, []byte{0x0a}) // \n
-	data = bytes.ReplaceAll(data, []byte{0x25, 0x30, 0x44}, []byte{0x0d}) // \r
-	return data
-}
-
-// percentEncodeSExp replaces the raw byte values with their percent-encoded
-// byte sequences.
-func percentEncodeSExp(data []byte) []byte {
-	data = bytes.ReplaceAll(data, []byte{0x25}, []byte{0x25, 0x32, 0x35})
-	data = bytes.ReplaceAll(data, []byte{0x0a}, []byte{0x25, 0x30, 0x41})
-	data = bytes.ReplaceAll(data, []byte{0x0d}, []byte{0x25, 0x30, 0x44})
-	return data
 }

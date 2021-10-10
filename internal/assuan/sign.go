@@ -31,7 +31,7 @@ func (a *Assuan) signRSA() ([]byte, error) {
 		return nil, fmt.Errorf("couldn't sign: %v", err)
 	}
 	return []byte(fmt.Sprintf(`D (7:sig-val(3:rsa(1:s%d:%s)))`, len(signature),
-		percentEncodeSExp(signature))), nil
+		PercentEncodeSExp(signature))), nil
 }
 
 // signECDSA returns a signature for the given hash.

@@ -135,8 +135,9 @@ func (g *KeyService) getRSAKey(keygrip []byte) (*rsa.PrivateKey, error) {
 	return nil, nil
 }
 
-// getECDSAKey returns a matching private RSA key if the keygrip matches. If a key
-// is returned err will be nil. If no key is found, both values may be nil.
+// getECDSAKey returns a matching private ECDSA key if the keygrip matches. If
+// a key is returned err will be nil. If no key is found, both values may be
+// nil.
 func (g *KeyService) getECDSAKey(keygrip []byte) (*ecdsa.PrivateKey, error) {
 	for _, pk := range g.privKeys {
 		for _, k := range pk.keys {
@@ -193,8 +194,15 @@ func (g *KeyService) GetDecrypter(keygrip []byte) (crypto.Decrypter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't getRSAKey: %v", err)
 	}
-	if rsaPrivKey == nil {
-		return nil, fmt.Errorf("couldn't get decrypter for keygrip %X", keygrip)
+	if rsaPrivKey != nil {
+		return &RSAKey{rsa: rsaPrivKey}, nil
 	}
-	return &RSAKey{rsa: rsaPrivKey}, nil
+	ecdsaPrivKey, err := g.getECDSAKey(keygrip)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't getECDSAKey: %v", err)
+	}
+	if ecdsaPrivKey != nil {
+		return &ECDHKey{ecdsa: ecdsaPrivKey}, nil
+	}
+	return nil, fmt.Errorf("couldn't get decrypter for keygrip %X", keygrip)
 }

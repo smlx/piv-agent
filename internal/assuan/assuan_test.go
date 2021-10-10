@@ -545,3 +545,114 @@ func TestReadKey(t *testing.T) {
 		})
 	}
 }
+
+func TestDecryptECDHKeyfile(t *testing.T) {
+	var testCases = map[string]struct {
+		keyPath string
+		input   []string
+		expect  []string
+	}{
+		// test data is taken from a successful decrypt by gpg-agent
+		"decrypt file": {
+			keyPath: "testdata/private/test-assuan2@example.com.gpg",
+			input: []string{
+				"RESET\n",
+				"OPTION ttyname=/dev/pts/12\n",
+				"OPTION ttytype=xterm-256color\n",
+				"OPTION display=:0\n",
+				"OPTION xauthority=/run/user/1000/.mutter-Xwaylandauth.PAZSA1\n",
+				"OPTION putenv=XMODIFIERS=@im=ibus\n",
+				"OPTION putenv=WAYLAND_DISPLAY=wayland-0\n",
+				"OPTION putenv=XDG_SESSION_TYPE=wayland\n",
+				"OPTION putenv=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus\n",
+				"OPTION putenv=QT_IM_MODULE=ibus\n",
+				"OPTION lc-ctype=en_AU.UTF-8\n",
+				"OPTION lc-messages=en_AU.UTF-8\n",
+				"GETINFO version\n",
+				"OPTION allow-pinentry-notify\n",
+				"OPTION agent-awareness=2.1.0\n",
+				"SCD SERIALNO\n",
+				"SCD SERIALNO\n",
+				"SCD KEYINFO --list=encr\n",
+				"HAVEKEY --list=1000\n",
+				"RESET\n",
+				"SETKEY 98E3311ADC66E078D1A4BEBEBBC498D1E5765A8D\n",
+				"SETKEYDESC Please+enter+the+passphrase+to+unlock+the+OpenPGP+secret+key:%0A%22test-assuan@example.com%22%0A256-bit+ECDH+key,+ID+0x419969CE7D167442,%0Acreated+2021-10-10+(main+key+ID+0xFDB0A7FF92431C37).%0A\n",
+				"PKDECRYPT\n",
+				"\x44\x20\x28\x37\x3a\x65\x6e\x63\x2d\x76\x61\x6c\x28\x34\x3a\x65\x63\x64\x68\x28\x31\x3a\x73\x34\x39\x3a\x30\xc0\xc4\x09\xb5\x8a\x36\xb8\x09\xa6\xcc\xaf\x9c\x46\x65\x92\xaa\xef\xe8\xae\x67\xb5\x28\x65\xfa\x8a\x8f\x11\x38\xed\xcc\xa5\xe6\x7a\xcf\xcb\x82\xc3\x51\xe9\xa8\x8d\xbd\xb1\x43\x49\x50\x8e\x82\x29\x28\x31\x3a\x65\x36\x35\x3a\x04\xcb\x0c\x10\x45\xaf\x3b\xfa\x3e\x44\x3c\x35\xe0\xf8\xa8\x11\xa9\xd0\x3f\x50\xc0\x93\xea\x71\x99\x81\x39\x51\xa1\x2e\x7f\xd8\x90\xd4\x1d\x89\x9f\x62\x1d\x08\xfa\x15\x81\x45\x10\x42\x92\x17\xd7\x97\xf0\x8d\x86\x9a\x74\x3d\x8a\x5e\xfb\xa3\xc3\x98\x06\xbd\x50\x29\x29\x29\x0a",
+				"END\n",
+			},
+			expect: []string{
+				"OK Pleased to meet you, process 123456789\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"D 2.2.27\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"ERR 100696144 No such device <SCD>\n",
+				"ERR 100696144 No such device <SCD>\n",
+				"ERR 100696144 No such device <SCD>\n",
+				"\x44\x20\x98\xe3\x31\x1a\xdc\x66\xe0\x78\xd1\xa4\xbe\xbe\xbb\xc4\x98\xd1\xe5\x76\x5a\x8d\x0a",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"OK\n",
+				"S INQUIRE_MAXLEN 4096\n",
+				"INQUIRE CIPHERTEXT\n",
+				"\x44\x20\x28\x35\x3a\x76\x61\x6c\x75\x65\x36\x35\x3a\x04\xc8\x50\x0c\x67\x98\x95\x86\x1b\x6c\xa4\x4f\x9f\x8d\x17\xf2\xf8\x71\xbc\xe5\xa3\xe5\xe6\xc4\xae\x01\xfa\x04\x6c\xc9\xc4\x2c\x9a\x56\x52\x2b\xab\x62\xa6\x29\xdb\x12\xc0\xc2\x62\xa0\x36\xd0\x93\x46\x99\xe5\x35\xca\xc4\xbe\xe6\x05\xa5\xae\x7f\xb2\x3c\xbb\x2f\x29\x0a",
+				"OK\n",
+			},
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(tt *testing.T) {
+			ctrl := gomock.NewController(tt)
+			defer ctrl.Finish()
+			// no securityKeys available
+			mockPES := mock.NewMockPINEntryService(ctrl)
+			log, err := zap.NewDevelopment()
+			if err != nil {
+				tt.Fatal(err)
+			}
+			// mockConn is a pair of buffers that the assuan statemachine reads/write
+			// to/from.
+			mockConn := MockConn{}
+			a := assuan.New(&mockConn, log, gpg.New(log, mockPES, tc.keyPath))
+			// write all the lines into the statemachine
+			for _, in := range tc.input {
+				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {
+					tt.Fatal(err)
+				}
+			}
+			// start the state machine
+			if err := a.Run(context.Background()); err != nil {
+				tt.Fatal(err)
+			}
+			// check the responses
+			for _, expected := range tc.expect {
+				line, err := mockConn.WriteBuf.ReadString(byte('\n'))
+				if err != nil && err != io.EOF {
+					tt.Fatal(err)
+				}
+				if line != expected {
+					fmt.Println("got")
+					spew.Dump(line)
+					fmt.Println("expected")
+					spew.Dump(expected)
+					tt.Fatalf("error")
+				}
+			}
+		})
+	}
+}
