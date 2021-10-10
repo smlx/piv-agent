@@ -22,6 +22,7 @@ import (
 type KeyService interface {
 	Name() string
 	HaveKey([][]byte) (bool, []byte, error)
+	Keygrips() ([][]byte, error)
 	GetSigner([]byte) (crypto.Signer, error)
 	GetDecrypter([]byte) (crypto.Decrypter, error)
 }
@@ -68,16 +69,31 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 						err = fmt.Errorf("unknown getinfo command: %q", assuan.data[0])
 					}
 				case havekey:
-					// HAVEKEY arguments are a list of keygrips
-					// if _any_ key is available, we return OK, otherwise
-					// No_Secret_Key.
+					// HAVEKEY arguments are either:
+					// * a list of keygrips; or
+					// * --list=1000
+					// if _any_ key is available, we return OK, otherwise No_Secret_Key.
+					// handle --list
+					if bytes.HasPrefix(assuan.data[0], []byte("--list")) {
+						var grips []byte
+						grips, err = allKeygrips(ks)
+						if err != nil {
+							_, _ = io.WriteString(rw, "ERR 1 couldn't list keygrips\n")
+							return err
+						}
+						// apply buggy libgcrypt encoding
+						_, err = io.WriteString(rw, fmt.Sprintf("D %s\nOK\n",
+							percentEncodeSExp(grips)))
+						return err
+					}
+					// handle list of keygrips
 					keygrips, err = hexDecode(assuan.data...)
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
 					keyFound, _, err = haveKey(ks, keygrips)
 					if err != nil {
-						_, err = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
+						_, _ = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
 						return err
 					}
 					if keyFound {
@@ -343,6 +359,22 @@ func haveKey(ks []KeyService, keygrips [][]byte) (bool, []byte, error) {
 		}
 	}
 	return false, nil, nil
+}
+
+// allKeygrips returns all keygrips available for any keyservice, concatenated
+// into a single byte slice.
+func allKeygrips(ks []KeyService) ([]byte, error) {
+	var grips []byte
+	for _, k := range ks {
+		kgs, err := k.Keygrips()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get keygrips for %s: %v", k.Name(), err)
+		}
+		for _, kg := range kgs {
+			grips = append(grips, kg...)
+		}
+	}
+	return grips, nil
 }
 
 // hexDecode take a list of hex-encoded bytestring values and converts them to

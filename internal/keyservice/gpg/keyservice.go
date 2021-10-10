@@ -38,16 +38,16 @@ type KeyService struct {
 
 // New returns a keyservice initialised with keys found at path.
 // Path can be a file or directory.
-func New(l *zap.Logger, pe PINEntryService, path string) (*KeyService, error) {
+func New(l *zap.Logger, pe PINEntryService, path string) *KeyService {
 	p, err := keyfilePrivateKeys(path)
 	if err != nil {
-		return nil, err
+		l.Info("couldn't load keyfiles", zap.String("path", path), zap.Error(err))
 	}
 	return &KeyService{
 		privKeys: p,
 		log:      l,
 		pinentry: pe,
-	}, nil
+	}
 }
 
 // Name returns the name of the keyservice.

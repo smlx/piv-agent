@@ -337,14 +337,10 @@ func TestDecryptRSAKeyfile(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			keyfileService, err := gpg.New(log, mockPES, tc.keyPath)
-			if err != nil {
-				tt.Fatal(err)
-			}
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
-			a := assuan.New(&mockConn, log, keyfileService)
+			a := assuan.New(&mockConn, log, gpg.New(log, mockPES, tc.keyPath))
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {
@@ -435,14 +431,10 @@ func TestSignRSAKeyfile(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			keyfileService, err := gpg.New(log, mockPES, tc.keyPath)
-			if err != nil {
-				tt.Fatal(err)
-			}
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
-			a := assuan.New(&mockConn, log, keyfileService)
+			a := assuan.New(&mockConn, log, gpg.New(log, mockPES, tc.keyPath))
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {
@@ -521,14 +513,10 @@ func TestReadKey(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			keyfileService, err := gpg.New(log, mockPES, tc.keyPath)
-			if err != nil {
-				tt.Fatal(err)
-			}
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
-			a := assuan.New(&mockConn, log, keyfileService)
+			a := assuan.New(&mockConn, log, gpg.New(log, mockPES, tc.keyPath))
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {

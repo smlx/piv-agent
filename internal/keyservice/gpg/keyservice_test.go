@@ -47,10 +47,7 @@ func TestGetSigner(t *testing.T) {
 				mockPES.EXPECT().GetPassphrase(gomock.Any(), gomock.Any(), 3).
 					Return([]byte("trustno1"), nil)
 			}
-			ks, err := gpg.New(log, mockPES, tc.path)
-			if err != nil {
-				tt.Fatal(err)
-			}
+			ks := gpg.New(log, mockPES, tc.path)
 			if _, err := ks.GetSigner(tc.keygrip); err != nil {
 				tt.Fatal(err)
 			}

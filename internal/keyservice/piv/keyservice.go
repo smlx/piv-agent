@@ -31,6 +31,31 @@ func (*KeyService) Name() string {
 	return "PIV"
 }
 
+// Keygrips returns a single slice of concatenated keygrip byteslices - one for
+// each cryptographic key available on the keyservice.
+func (p *KeyService) Keygrips() ([][]byte, error) {
+	var grips [][]byte
+	securityKeys, err := p.SecurityKeys()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get security keys: %w", err)
+	}
+	for _, sk := range securityKeys {
+		for _, signingKey := range sk.SigningKeys() {
+			ecdsaPubKey, ok := signingKey.Public.(*ecdsa.PublicKey)
+			if !ok {
+				// TODO: handle other key types
+				continue
+			}
+			kg, err := gpg.KeygripECDSA(ecdsaPubKey)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get keygrip: %w", err)
+			}
+			grips = append(grips, kg)
+		}
+	}
+	return grips, nil
+}
+
 // HaveKey takes a list of keygrips, and returns a boolean indicating if any of
 // the given keygrips were found, the found keygrip, and an error, if any.
 func (p *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
