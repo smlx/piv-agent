@@ -93,6 +93,20 @@ func (mr *MockSecurityKeyMockRecorder) Comment(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Comment", reflect.TypeOf((*MockSecurityKey)(nil).Comment), arg0)
 }
 
+// CryptoKeys mocks base method.
+func (m *MockSecurityKey) CryptoKeys() []securitykey.CryptoKey {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CryptoKeys")
+	ret0, _ := ret[0].([]securitykey.CryptoKey)
+	return ret0
+}
+
+// CryptoKeys indicates an expected call of CryptoKeys.
+func (mr *MockSecurityKeyMockRecorder) CryptoKeys() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CryptoKeys", reflect.TypeOf((*MockSecurityKey)(nil).CryptoKeys))
+}
+
 // PrivateKey mocks base method.
 func (m *MockSecurityKey) PrivateKey(arg0 *securitykey.CryptoKey) (crypto.PrivateKey, error) {
 	m.ctrl.T.Helper()

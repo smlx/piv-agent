@@ -22,6 +22,7 @@ type SecurityKey interface {
 	Comment(*securitykey.SlotSpec) string
 	PrivateKey(*securitykey.CryptoKey) (crypto.PrivateKey, error)
 	SigningKeys() []securitykey.SigningKey
+	CryptoKeys() []securitykey.CryptoKey
 	StringsGPG(string, string) ([]string, error)
 	StringsSSH() []string
 }

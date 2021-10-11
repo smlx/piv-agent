@@ -103,7 +103,10 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 					// ignore scdaemon requests
 					_, err = io.WriteString(rw, "ERR 100696144 No such device <SCD>\n")
 				case readkey:
-					// READKEY argument is a keygrip
+					// READKEY argument is a keygrip, optionally prefixed by "--".
+					if bytes.Equal(assuan.data[0], []byte("--")) {
+						assuan.data = assuan.data[1:]
+					}
 					// return information about the given key
 					keygrips, err = hexDecode(assuan.data...)
 					if err != nil {
