@@ -65,8 +65,8 @@ func (p *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 		return false, nil, fmt.Errorf("couldn't get security keys: %w", err)
 	}
 	for _, sk := range securityKeys {
-		for _, signingKey := range sk.SigningKeys() {
-			ecdsaPubKey, ok := signingKey.Public.(*ecdsa.PublicKey)
+		for _, cryptoKey := range sk.CryptoKeys() {
+			ecdsaPubKey, ok := cryptoKey.Public.(*ecdsa.PublicKey)
 			if !ok {
 				// TODO: handle other key types
 				continue
