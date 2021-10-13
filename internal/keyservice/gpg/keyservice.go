@@ -136,7 +136,7 @@ func (g *KeyService) getRSAKey(keygrip []byte) (*rsa.PrivateKey, error) {
 }
 
 // getECDSAKey returns a matching private ECDSA key if the keygrip matches. If
-// a key is returned err will be nil. If no key is found, both values may be
+// a key is returned err will be nil. If no key is found, both values will be
 // nil.
 func (g *KeyService) getECDSAKey(keygrip []byte) (*ecdsa.PrivateKey, error) {
 	for _, pk := range g.privKeys {

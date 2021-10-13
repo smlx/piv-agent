@@ -85,8 +85,7 @@ func (p *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 	return false, nil, nil
 }
 
-// GetSigner returns a crypto.Signer associated with the given keygrip.
-func (p *KeyService) GetSigner(keygrip []byte) (crypto.Signer, error) {
+func (p *KeyService) getPrivateKey(keygrip []byte) (crypto.PrivateKey, error) {
 	securityKeys, err := p.SecurityKeys()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get security keys: %w", err)
@@ -103,50 +102,39 @@ func (p *KeyService) GetSigner(keygrip []byte) (crypto.Signer, error) {
 				return nil, fmt.Errorf("couldn't get keygrip: %w", err)
 			}
 			if bytes.Equal(thisKeygrip, keygrip) {
-				cryptoPrivKey, err := sk.PrivateKey(&cryptoKey)
+				privKey, err := sk.PrivateKey(&cryptoKey)
 				if err != nil {
 					return nil, fmt.Errorf("couldn't get private key from slot")
 				}
-				signingPrivKey, ok := cryptoPrivKey.(crypto.Signer)
-				if !ok {
-					return nil, fmt.Errorf("private key is invalid type")
-				}
-				return signingPrivKey, nil
+				return privKey, nil
 			}
 		}
 	}
-	return nil, fmt.Errorf("couldn't find keygrip")
+	return nil, fmt.Errorf("couldn't match keygrip")
+}
+
+// GetSigner returns a crypto.Signer associated with the given keygrip.
+func (p *KeyService) GetSigner(keygrip []byte) (crypto.Signer, error) {
+	privKey, err := p.getPrivateKey(keygrip)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get private key: %v", err)
+	}
+	signingPrivKey, ok := privKey.(crypto.Signer)
+	if !ok {
+		return nil, fmt.Errorf("private key is invalid type")
+	}
+	return signingPrivKey, nil
 }
 
 // GetDecrypter returns a crypto.Decrypter associated with the given keygrip.
 func (p *KeyService) GetDecrypter(keygrip []byte) (crypto.Decrypter, error) {
-	securityKeys, err := p.SecurityKeys()
+	privKey, err := p.getPrivateKey(keygrip)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get security keys: %w", err)
+		return nil, fmt.Errorf("couldn't get private key: %v", err)
 	}
-	for _, sk := range securityKeys {
-		for _, cryptoKey := range sk.CryptoKeys() {
-			ecdsaPubKey, ok := cryptoKey.Public.(*ecdsa.PublicKey)
-			if !ok {
-				// TODO: handle other key types
-				continue
-			}
-			thisKeygrip, err := gpg.KeygripECDSA(ecdsaPubKey)
-			if err != nil {
-				return nil, fmt.Errorf("couldn't get keygrip: %w", err)
-			}
-			if bytes.Equal(thisKeygrip, keygrip) {
-				cryptoPrivKey, err := sk.PrivateKey(&cryptoKey)
-				if err != nil {
-					return nil, fmt.Errorf("couldn't get private key from slot")
-				}
-				privKey, ok := cryptoPrivKey.(*pivgo.ECDSAPrivateKey)
-				if !ok {
-					return nil, fmt.Errorf("private key is invalid type")
-				}
-				return &ECDHKey{ecdsa: privKey}, nil
-			}
-		}
+	ecdsaPrivKey, ok := privKey.(*pivgo.ECDSAPrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("private key is invalid type")
 	}
-	return nil, fmt.Errorf("couldn't find keygrip")
+	return &ECDHKey{ecdsa: ecdsaPrivKey}, nil
 }
