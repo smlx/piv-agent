@@ -41,10 +41,10 @@ func (g *KeyService) Keygrips() ([][]byte, error) {
 func (g *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 	for _, keyfile := range g.privKeys {
 		for _, privKey := range keyfile.keys {
-			pubKeyRSA, ok := privKey.PublicKey.PublicKey.(*rsa.PublicKey)
-			if ok {
+			switch pubKey := privKey.PublicKey.PublicKey.(type) {
+			case *rsa.PublicKey:
 				for _, kg := range keygrips {
-					rsaKG, err := keygripRSA(pubKeyRSA)
+					rsaKG, err := keygripRSA(pubKey)
 					if err != nil {
 						return false, nil, err
 					}
@@ -52,11 +52,9 @@ func (g *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 						return true, kg, nil
 					}
 				}
-			}
-			pubKeyECDSA, ok := privKey.PublicKey.PublicKey.(*ecdsa.PublicKey)
-			if ok {
+			case *ecdsa.PublicKey:
 				for _, kg := range keygrips {
-					ecdsaKG, err := KeygripECDSA(pubKeyECDSA)
+					ecdsaKG, err := KeygripECDSA(pubKey)
 					if err != nil {
 						return false, nil, err
 					}
@@ -64,6 +62,9 @@ func (g *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 						return true, kg, nil
 					}
 				}
+			default:
+				// unknown public key type
+				continue
 			}
 		}
 	}
