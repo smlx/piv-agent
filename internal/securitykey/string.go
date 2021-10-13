@@ -72,7 +72,6 @@ func (k *SecurityKey) synthesizeEntity(ck *CryptoKey, now time.Time, name, email
 		CreationTime: now,
 		SigType:      packet.SigTypePositiveCert,
 		// TODO: determine the key type
-		// TODO: support ECDH
 		PubKeyAlgo:  packet.PubKeyAlgoECDSA,
 		Hash:        crypto.SHA256,
 		IssuerKeyId: &pub.KeyId,
