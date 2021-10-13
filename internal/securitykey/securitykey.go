@@ -17,7 +17,7 @@ type SecurityKey struct {
 	serial         uint32
 	yubikey        *piv.YubiKey
 	signingKeys    []SigningKey
-	decryptionKeys []DecryptionKey
+	decryptingKeys []DecryptingKey
 	cryptoKeys     []CryptoKey
 }
 
@@ -39,30 +39,30 @@ func New(card string) (*SecurityKey, error) {
 			card, err)
 	}
 
-	signingKeys, err := signingKeys(yk)
+	sks, err := signingKeys(yk)
 	if err != nil {
 		return nil, fmt.Errorf(`couldn't get signing keys for card "%s": %v`,
 			card, err)
 	}
 	var cryptoKeys []CryptoKey
-	for _, k := range signingKeys {
+	for _, k := range sks {
 		cryptoKeys = append(cryptoKeys, k.CryptoKey)
 	}
 
-	decryptionKeys, err := decryptionKeys(yk)
+	dks, err := decryptingKeys(yk)
 	if err != nil {
-		return nil, fmt.Errorf(`couldn't get decryption keys for card "%s": %v`,
+		return nil, fmt.Errorf(`couldn't get decrypting keys for card "%s": %v`,
 			card, err)
 	}
-	for _, k := range decryptionKeys {
+	for _, k := range dks {
 		cryptoKeys = append(cryptoKeys, k.CryptoKey)
 	}
 	return &SecurityKey{
 		card:           card,
 		serial:         serial,
 		yubikey:        yk,
-		signingKeys:    signingKeys,
-		decryptionKeys: decryptionKeys,
+		signingKeys:    sks,
+		decryptingKeys: dks,
 		cryptoKeys:     cryptoKeys,
 	}, nil
 }
@@ -77,17 +77,19 @@ func (k *SecurityKey) Serial() uint32 {
 	return k.serial
 }
 
-// SigningKeys returns the slice of signing keys held by the SecurityKey.
+// SigningKeys returns the slice of cryptographic signing keys held by the
+// SecurityKey.
 func (k *SecurityKey) SigningKeys() []SigningKey {
 	return k.signingKeys
 }
 
-// DecryptionKeys returns the slice of decryption keys held by the SecurityKey.
-func (k *SecurityKey) DecryptionKeys() []DecryptionKey {
-	return k.decryptionKeys
+// DecryptingKeys returns the slice of cryptographic decrypting keys held by
+// the SecurityKey.
+func (k *SecurityKey) DecryptingKeys() []DecryptingKey {
+	return k.decryptingKeys
 }
 
-// CryptoKeys returns the slice of cryptographic signing and decryption keys
+// CryptoKeys returns the slice of cryptographic signing and decrypting keys
 // held by the SecurityKey.
 func (k *SecurityKey) CryptoKeys() []CryptoKey {
 	return k.cryptoKeys

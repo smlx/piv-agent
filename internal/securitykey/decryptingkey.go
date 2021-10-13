@@ -9,16 +9,16 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
-// DecryptionKey is a cryptographic decryption key on a hardware security
+// DecryptingKey is a cryptographic decrypting key on a hardware security
 // device.
-type DecryptionKey struct {
+type DecryptingKey struct {
 	CryptoKey
 	PubPGP *packet.PublicKey
 }
 
-// decryptionKeys returns the decryption keys available on the given yubikey.
-func decryptionKeys(yk *piv.YubiKey) ([]DecryptionKey, error) {
-	var decryptionKeys []DecryptionKey
+// decryptingKeys returns the decrypting keys available on the given yubikey.
+func decryptingKeys(yk *piv.YubiKey) ([]DecryptingKey, error) {
+	var decryptingKeys []DecryptingKey
 	for _, s := range defaultDecryptSlots {
 		cert, err := yk.Certificate(s.Slot)
 		if err != nil {
@@ -32,7 +32,7 @@ func decryptionKeys(yk *piv.YubiKey) ([]DecryptionKey, error) {
 		if !ok {
 			return nil, fmt.Errorf("invalid public key type: %T", cert.PublicKey)
 		}
-		decryptionKeys = append(decryptionKeys, DecryptionKey{
+		decryptingKeys = append(decryptingKeys, DecryptingKey{
 			CryptoKey: CryptoKey{
 				Public:   pubKey,
 				SlotSpec: s,
@@ -40,5 +40,5 @@ func decryptionKeys(yk *piv.YubiKey) ([]DecryptionKey, error) {
 			PubPGP: packet.NewECDSAPublicKey(cert.NotBefore, pubKey),
 		})
 	}
-	return decryptionKeys, nil
+	return decryptingKeys, nil
 }

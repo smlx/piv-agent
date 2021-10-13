@@ -97,14 +97,14 @@ func (k *SecurityKey) synthesizeEntity(ck *CryptoKey, now time.Time, name, email
 	}, nil
 }
 
-// synthesizeEntities returns an array of signing and decryption Entities for
+// synthesizeEntities returns an array of signing and decrypting Entities for
 // k's cryptographic keys.
 // Because OpenPGP entities must be self-signed, this function needs a physical
 // touch on the yubikey for slots with touch policies that require it.
 func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity,
 	[]Entity, error) {
 	now := time.Now()
-	var signing, decryption []Entity
+	var signing, decrypting []Entity
 	for _, sk := range k.SigningKeys() {
 		e, err := k.synthesizeEntity(&sk.CryptoKey, now, name, email)
 		if err != nil {
@@ -112,20 +112,19 @@ func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity,
 		}
 		signing = append(signing, Entity{Entity: *e, CryptoKey: sk.CryptoKey})
 	}
-	for _, dk := range k.DecryptionKeys() {
+	for _, dk := range k.DecryptingKeys() {
 		e, err := k.synthesizeEntity(&dk.CryptoKey, now, name, email)
 		if err != nil {
 			return nil, nil, fmt.Errorf("couldn't synthesize entity: %v", err)
 		}
-		decryption = append(decryption, Entity{Entity: *e, CryptoKey: dk.CryptoKey})
+		decrypting = append(decrypting, Entity{Entity: *e, CryptoKey: dk.CryptoKey})
 	}
-	return signing, decryption, nil
+	return signing, decrypting, nil
 }
 
 func (k *SecurityKey) armorEntity(e *openpgp.Entity,
 	t piv.TouchPolicy) (string, error) {
 	buf := bytes.Buffer{}
-	// TODO: print Signing Keys: ... Decryption Keys: ..
 	w, err := armor.Encode(&buf, openpgp.PublicKeyType,
 		map[string]string{
 			"Comment": fmt.Sprintf("%v #%v, touch policy: %s",
@@ -148,7 +147,7 @@ func (k *SecurityKey) armorEntity(e *openpgp.Entity,
 // StringsGPG returns an array of commonly formatted GPG keys as strings.
 func (k *SecurityKey) StringsGPG(name, email string) ([]string, error) {
 	var ss []string
-	signing, decryption, err := k.synthesizeEntities(name, email)
+	signing, decrypting, err := k.synthesizeEntities(name, email)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't synthesize entities: %v", err)
 	}
@@ -160,8 +159,8 @@ func (k *SecurityKey) StringsGPG(name, email string) ([]string, error) {
 		}
 		ss = append(ss, s)
 	}
-	ss = append(ss, "\nDecryption GPG Keys:")
-	for _, key := range decryption {
+	ss = append(ss, "\nDecrypting GPG Keys:")
+	for _, key := range decrypting {
 		s, err := k.armorEntity(&key.Entity, key.SlotSpec.TouchPolicy)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't armor entity: %v", err)

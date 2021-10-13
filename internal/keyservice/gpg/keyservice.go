@@ -29,7 +29,7 @@ type privateKeyfile struct {
 // KeyService implements an interface for getting cryptographic keys from
 // keyfiles on disk.
 type KeyService struct {
-	// cache passphrases used for decryption
+	// cache passphrases used for keyfile decryption
 	passphrases [][]byte
 	privKeys    []privateKeyfile
 	log         *zap.Logger

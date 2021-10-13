@@ -35,7 +35,7 @@ var defaultSignSlots = map[string]SlotSpec{
 	"never": {piv.SlotCardAuthentication, piv.TouchPolicyNever},
 }
 
-// defaultDecryptSlots represents the slot specifications for decryption
+// defaultDecryptSlots represents the slot specifications for decrypting
 // operations.
 var defaultDecryptSlots = map[string]SlotSpec{
 	// Slot 9d: Key Management

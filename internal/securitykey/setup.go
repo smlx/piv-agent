@@ -20,7 +20,7 @@ var ErrNotReset = errors.New("security key already set up")
 
 // Setup configures the SecurityKey to work with piv-agent.
 func (k *SecurityKey) Setup(pin, version string, reset bool,
-	signingKeys []string, decryptionKey bool) error {
+	signingKeys []string, decryptingKey bool) error {
 	_, err := k.yubikey.Certificate(piv.SlotAuthentication)
 	if err == nil {
 		if !reset {
@@ -58,7 +58,7 @@ func (k *SecurityKey) Setup(pin, version string, reset bool,
 		}
 	}
 	// setup decrypt key
-	if decryptionKey {
+	if decryptingKey {
 		err := k.configureSlot(mgmtKey, defaultDecryptSlots["cached"], version)
 		if err != nil {
 			return fmt.Errorf("couldn't configure slot %v: %v",
