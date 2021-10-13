@@ -21,7 +21,7 @@ jobs:
     - name: Install Dependencies
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
     - name: Calculate coverage
-      run: go test -v -covermode=count -coverprofile=coverage.out ./...
+      run: go test -v -covermode=count -coverprofile=coverage.out -coverpkg=./... ./...
     - name: Convert coverage to lcov
       uses: jandelgado/gcov2lcov-action@v1.0.8
     - name: Coveralls
