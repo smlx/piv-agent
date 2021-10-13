@@ -77,7 +77,7 @@ func (a *Agent) securityKeyIDs() ([]*agent.Key, error) {
 			keys = append(keys, &agent.Key{
 				Format:  s.PubSSH.Type(),
 				Blob:    s.PubSSH.Marshal(),
-				Comment: k.Comment(s.SlotSpec),
+				Comment: k.Comment(&s.SlotSpec),
 			})
 		}
 	}
@@ -207,7 +207,7 @@ func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 	}
 	for _, k := range securityKeys {
 		for _, s := range k.SigningKeys() {
-			privKey, err := k.PrivateKey(&s)
+			privKey, err := k.PrivateKey(&s.CryptoKey)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get private key for slot %x: %v",
 					s.SlotSpec.Slot.Key, err)

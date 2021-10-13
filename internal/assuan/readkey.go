@@ -16,7 +16,7 @@ func readKeyData(pub crypto.PublicKey) (string, error) {
 	case *rsa.PublicKey:
 		n := k.N.Bytes()
 		nLen := len(n)           // need the actual byte length before munging
-		n = percentEncodeSExp(n) // ugh
+		n = PercentEncodeSExp(n) // ugh
 		ei := new(big.Int)
 		ei.SetInt64(int64(k.E))
 		e := ei.Bytes()

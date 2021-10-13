@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -22,12 +21,10 @@ import (
 type KeyService interface {
 	Name() string
 	HaveKey([][]byte) (bool, []byte, error)
+	Keygrips() ([][]byte, error)
 	GetSigner([]byte) (crypto.Signer, error)
 	GetDecrypter([]byte) (crypto.Decrypter, error)
 }
-
-var ciphertextRegex = regexp.MustCompile(
-	`^D \(7:enc-val\(3:rsa\(1:a(\d+):(.+)\)\)\)$`)
 
 // New initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
@@ -68,16 +65,31 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 						err = fmt.Errorf("unknown getinfo command: %q", assuan.data[0])
 					}
 				case havekey:
-					// HAVEKEY arguments are a list of keygrips
-					// if _any_ key is available, we return OK, otherwise
-					// No_Secret_Key.
+					// HAVEKEY arguments are either:
+					// * a list of keygrips; or
+					// * --list=1000
+					// if _any_ key is available, we return OK, otherwise No_Secret_Key.
+					// handle --list
+					if bytes.HasPrefix(assuan.data[0], []byte("--list")) {
+						var grips []byte
+						grips, err = allKeygrips(ks)
+						if err != nil {
+							_, _ = io.WriteString(rw, "ERR 1 couldn't list keygrips\n")
+							return err
+						}
+						// apply buggy libgcrypt encoding
+						_, err = io.WriteString(rw, fmt.Sprintf("D %s\nOK\n",
+							PercentEncodeSExp(grips)))
+						return err
+					}
+					// handle list of keygrips
 					keygrips, err = hexDecode(assuan.data...)
 					if err != nil {
 						return fmt.Errorf("couldn't decode keygrips: %v", err)
 					}
 					keyFound, _, err = haveKey(ks, keygrips)
 					if err != nil {
-						_, err = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
+						_, _ = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
 						return err
 					}
 					if keyFound {
@@ -91,7 +103,10 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 					// ignore scdaemon requests
 					_, err = io.WriteString(rw, "ERR 100696144 No such device <SCD>\n")
 				case readkey:
-					// READKEY argument is a keygrip
+					// READKEY argument is a keygrip, optionally prefixed by "--".
+					if bytes.Equal(assuan.data[0], []byte("--")) {
+						assuan.data = assuan.data[1:]
+					}
 					// return information about the given key
 					keygrips, err = hexDecode(assuan.data...)
 					if err != nil {
@@ -265,27 +280,13 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 					if len(chunks) < 1 {
 						return fmt.Errorf("invalid ciphertext format")
 					}
-					sexp := bytes.Join(chunks[:], []byte("\n"))
-					matches := ciphertextRegex.FindAllSubmatch(sexp, -1)
 					var plaintext, ciphertext []byte
-					ciphertext = matches[0][2]
-					log.Debug("raw ciphertext",
-						zap.Binary("sexp", sexp), zap.Binary("ciphertext", ciphertext))
-					// undo the buggy encoding sent by gpg
-					ciphertext = percentDecodeSExp(ciphertext)
-					log.Debug("normalised ciphertext",
-						zap.Binary("ciphertext", ciphertext))
+					ciphertext = bytes.Join(chunks[:], []byte("\n"))
 					plaintext, err = assuan.decrypter.Decrypt(nil, ciphertext, nil)
 					if err != nil {
 						return fmt.Errorf("couldn't decrypt: %v", err)
 					}
-					// gnupg uses the pre-buggy-encoding length in the sexp
-					plaintextLen := len(plaintext)
-					// apply the buggy encoding as expected by gpg
-					plaintext = percentEncodeSExp(plaintext)
-					plaintextSexp := fmt.Sprintf("D (5:value%d:%s)\x00\nOK\n",
-						plaintextLen, plaintext)
-					_, err = io.WriteString(rw, plaintextSexp)
+					_, err = rw.Write(plaintext)
 				case setkeydesc:
 					// ignore this event since we don't currently use the client's
 					// description in the prompt
@@ -345,6 +346,22 @@ func haveKey(ks []KeyService, keygrips [][]byte) (bool, []byte, error) {
 	return false, nil, nil
 }
 
+// allKeygrips returns all keygrips available for any keyservice, concatenated
+// into a single byte slice.
+func allKeygrips(ks []KeyService) ([]byte, error) {
+	var grips []byte
+	for _, k := range ks {
+		kgs, err := k.Keygrips()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get keygrips for %s: %v", k.Name(), err)
+		}
+		for _, kg := range kgs {
+			grips = append(grips, kg...)
+		}
+	}
+	return grips, nil
+}
+
 // hexDecode take a list of hex-encoded bytestring values and converts them to
 // their raw byte representation.
 func hexDecode(data ...[]byte) ([][]byte, error) {
@@ -358,30 +375,4 @@ func hexDecode(data ...[]byte) ([][]byte, error) {
 		decoded = append(decoded, dst)
 	}
 	return decoded, nil
-}
-
-// Work around bug(?) in gnupg where some byte sequences are
-// percent-encoded in the sexp. Yes, really. NFI what to do if the
-// percent-encoded byte sequences themselves are part of the
-// ciphertext. Yikes.
-//
-// These two functions represent over a week of late nights stepping through
-// debug builds of libcrypt in gdb :-(
-
-// percentDecodeSExp replaces the percent-encoded byte sequences with their raw
-// byte values.
-func percentDecodeSExp(data []byte) []byte {
-	data = bytes.ReplaceAll(data, []byte{0x25, 0x32, 0x35}, []byte{0x25}) // %
-	data = bytes.ReplaceAll(data, []byte{0x25, 0x30, 0x41}, []byte{0x0a}) // \n
-	data = bytes.ReplaceAll(data, []byte{0x25, 0x30, 0x44}, []byte{0x0d}) // \r
-	return data
-}
-
-// percentEncodeSExp replaces the raw byte values with their percent-encoded
-// byte sequences.
-func percentEncodeSExp(data []byte) []byte {
-	data = bytes.ReplaceAll(data, []byte{0x25}, []byte{0x25, 0x32, 0x35})
-	data = bytes.ReplaceAll(data, []byte{0x0a}, []byte{0x25, 0x30, 0x41})
-	data = bytes.ReplaceAll(data, []byte{0x0d}, []byte{0x25, 0x30, 0x44})
-	return data
 }

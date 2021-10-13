@@ -24,14 +24,10 @@ type GPG struct {
 // NewGPG initialises a new gpg-agent server.
 func NewGPG(piv *piv.KeyService, pinentry gpg.PINEntryService,
 	log *zap.Logger, path string) *GPG {
-	kfs, err := gpg.New(log, pinentry, path)
-	if err != nil {
-		log.Info("couldn't load keyfiles", zap.String("path", path), zap.Error(err))
-	}
 	return &GPG{
 		log:           log,
 		pivKeyService: piv,
-		gpgKeyService: kfs,
+		gpgKeyService: gpg.New(log, pinentry, path),
 	}
 }
 

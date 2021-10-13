@@ -80,6 +80,21 @@ func (mr *MockKeyServiceMockRecorder) HaveKey(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HaveKey", reflect.TypeOf((*MockKeyService)(nil).HaveKey), arg0)
 }
 
+// Keygrips mocks base method.
+func (m *MockKeyService) Keygrips() ([][]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Keygrips")
+	ret0, _ := ret[0].([][]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Keygrips indicates an expected call of Keygrips.
+func (mr *MockKeyServiceMockRecorder) Keygrips() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Keygrips", reflect.TypeOf((*MockKeyService)(nil).Keygrips))
+}
+
 // Name mocks base method.
 func (m *MockKeyService) Name() string {
 	m.ctrl.T.Helper()

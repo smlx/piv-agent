@@ -39,7 +39,6 @@ func (cmd *ListCmd) Run(l *zap.Logger) error {
 		}
 	}
 	if keyformats["gpg"] {
-		fmt.Println("\nGPG keys:")
 		for _, k := range securityKeys {
 			ss, err := k.StringsGPG(cmd.PGPName, cmd.PGPEmail)
 			if err != nil {

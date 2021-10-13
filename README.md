@@ -90,7 +90,7 @@ If you have a Mac, I'd love to add support for `launchd` socket activation. See 
 | ---                     | ---          | ---     |
 | ECDSA Sign (NIST P-256) | ✅           | ✅      |
 | EDDSA Sign (Curve25519) | ⏳           | ⏳      |
-| ECDH Decrypt            | ⏳           | ❌      |
+| ECDH Decrypt            | ✅           | ✅      |
 | RSA Sign                | ❌           | ✅      |
 | RSA Decrypt             | ❌           | ✅      |
 
