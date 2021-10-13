@@ -45,5 +45,5 @@ var defaultDecryptSlots = map[string]SlotSpec{
 	// private key operations. Once the PIN has been provided successfully,
 	// multiple private key operations may be performed without additional
 	// cardholder consent.
-	"cached": {piv.SlotKeyManagement, piv.TouchPolicyCached},
+	"never": {piv.SlotKeyManagement, piv.TouchPolicyNever},
 }
