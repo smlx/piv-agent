@@ -46,7 +46,8 @@ func (k *SecurityKey) StringsSSH() []string {
 	return ss
 }
 
-func (k *SecurityKey) synthesizeEntity(ck *CryptoKey, now time.Time, name, email string) (*openpgp.Entity, error) {
+func (k *SecurityKey) synthesizeEntity(ck *CryptoKey, now time.Time,
+	name, email, comment string) (*openpgp.Entity, error) {
 	cryptoPrivKey, err := k.PrivateKey(ck)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get private key: %v", err)
@@ -55,8 +56,6 @@ func (k *SecurityKey) synthesizeEntity(ck *CryptoKey, now time.Time, name, email
 	if !ok {
 		return nil, fmt.Errorf("private key is invalid type")
 	}
-	comment := fmt.Sprintf("piv-agent synthesized; touch-policy %s",
-		touchStringMap[ck.SlotSpec.TouchPolicy])
 	uid := packet.NewUserId(name, comment, email)
 	if uid == nil {
 		return nil, errors.InvalidArgumentError("invalid characters in user ID")
@@ -105,14 +104,18 @@ func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity,
 	now := time.Now()
 	var signing, decrypting []Entity
 	for _, sk := range k.SigningKeys() {
-		e, err := k.synthesizeEntity(&sk.CryptoKey, now, name, email)
+		e, err := k.synthesizeEntity(&sk.CryptoKey, now, name, email,
+			fmt.Sprintf("piv-agent signing key; touch-policy %s",
+				touchStringMap[sk.CryptoKey.SlotSpec.TouchPolicy]))
 		if err != nil {
 			return nil, nil, fmt.Errorf("couldn't synthesize entity: %v", err)
 		}
 		signing = append(signing, Entity{Entity: *e, CryptoKey: sk.CryptoKey})
 	}
 	for _, dk := range k.DecryptingKeys() {
-		e, err := k.synthesizeEntity(&dk.CryptoKey, now, name, email)
+		e, err := k.synthesizeEntity(&dk.CryptoKey, now, name, email,
+			fmt.Sprintf("piv-agent decrypting key; touch-policy %s",
+				touchStringMap[dk.CryptoKey.SlotSpec.TouchPolicy]))
 		if err != nil {
 			return nil, nil, fmt.Errorf("couldn't synthesize entity: %v", err)
 		}

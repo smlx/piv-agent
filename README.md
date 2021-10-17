@@ -7,7 +7,7 @@
 
 ## About
 
-* `piv-agent` is an SSH and GPG agent providing simple integration of [PIV](https://csrc.nist.gov/projects/piv/piv-standards-and-supporting-documentation) hardware (e.g. a [Yubikey](https://developers.yubico.com/yubico-piv-tool/YubiKey_PIV_introduction.html)) with existing SSH and GPG workflows.
+* `piv-agent` is an SSH and GPG agent providing simple integration of [PIV](https://csrc.nist.gov/projects/piv/piv-standards-and-supporting-documentation) hardware (e.g. a [Yubikey](https://developers.yubico.com/yubico-piv-tool/YubiKey_PIV_introduction.html)) with `ssh` and `gpg` workflows such as [`git`](https://git-scm.com/) signing, [`pass`](https://www.passwordstore.org/) encryption, or [keybase](https://keybase.io/) chat.
 * `piv-agent` originated as a reimplementation of [yubikey-agent](https://github.com/FiloSottile/yubikey-agent) because I needed some extra features, and also to gain a better understanding of the PIV applet on security key hardware.
 * `piv-agent` makes heavy use of the Go standard library and supplementary `crypto` packages, as well as [`piv-go`](https://github.com/go-piv/piv-go/) and [`pcsclite`](https://pcsclite.apdu.fr/). Thanks for the great software!
 
