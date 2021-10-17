@@ -2,8 +2,7 @@
 <head>
 <meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no">
-<meta name=generator content="Hugo 0.87.0"><link rel=canonical type=text/html href=/piv-agent/docs/>
-<meta name=ROBOTS content="NOINDEX, NOFOLLOW">
+<meta name=generator content="Hugo 0.87.0"><meta name=ROBOTS content="INDEX, FOLLOW">
 <link rel="shortcut icon" href=/piv-agent/favicons/favicon.ico>
 <link rel=apple-touch-icon href=/piv-agent/favicons/apple-touch-icon-180x180.png sizes=180x180>
 <link rel=icon type=image/png href=/piv-agent/favicons/favicon-16x16.png sizes=16x16>
@@ -14,23 +13,26 @@
 <link rel=icon type=image/png href=/piv-agent/favicons/android-96x96.png sizes=96x96>
 <link rel=icon type=image/png href=/piv-agent/favicons/android-144x144.png sizes=144x144>
 <link rel=icon type=image/png href=/piv-agent/favicons/android-192x192.png sizes=192x192>
-<title>PIV Agent Documentation | PIV Agent</title>
-<meta name=description content="PIV Agent must be installed and set up to work with your hardware security device before use.
-">
-<meta property="og:title" content="PIV Agent Documentation">
-<meta property="og:description" content="PIV Agent replaces ssh-agent and gpg-agent, and allows you to use your PIV security token with SSH or GPG">
-<meta property="og:type" content="website">
-<meta property="og:url" content="/piv-agent/docs/"><meta property="og:site_name" content="PIV Agent">
-<meta itemprop=name content="PIV Agent Documentation">
-<meta itemprop=description content="PIV Agent replaces ssh-agent and gpg-agent, and allows you to use your PIV security token with SSH or GPG"><meta name=twitter:card content="summary">
-<meta name=twitter:title content="PIV Agent Documentation">
-<meta name=twitter:description content="PIV Agent replaces ssh-agent and gpg-agent, and allows you to use your PIV security token with SSH or GPG">
+<title>GPG Walkthrough | PIV Agent</title>
+<meta name=description content="Full example of how you might set up and use piv-agent with gpg.">
+<meta property="og:title" content="GPG Walkthrough">
+<meta property="og:description" content="Full example of how you might set up and use piv-agent with gpg.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="/piv-agent/docs/gpg-walkthrough/"><meta property="article:section" content="docs">
+<meta property="article:modified_time" content="2021-10-07T16:41:05+08:00"><meta property="og:site_name" content="PIV Agent">
+<meta itemprop=name content="GPG Walkthrough">
+<meta itemprop=description content="Full example of how you might set up and use piv-agent with gpg.">
+<meta itemprop=dateModified content="2021-10-07T16:41:05+08:00">
+<meta itemprop=wordCount content="1973">
+<meta itemprop=keywords content><meta name=twitter:card content="summary">
+<meta name=twitter:title content="GPG Walkthrough">
+<meta name=twitter:description content="Full example of how you might set up and use piv-agent with gpg.">
 <link rel=preload href=/piv-agent/scss/main.min.77ad8086257c5b04aec72128f0eebde3c7c6696b921b68c53e5e0d3f187d0a84.css as=style>
 <link href=/piv-agent/scss/main.min.77ad8086257c5b04aec72128f0eebde3c7c6696b921b68c53e5e0d3f187d0a84.css rel=stylesheet integrity>
 <script src=https://code.jquery.com/jquery-3.5.1.min.js integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin=anonymous></script>
 <script src=https://unpkg.com/lunr@2.3.8/lunr.min.js integrity=sha384-vRQ9bDyE0Wnu+lMfm57BlYLO0/XauFuKpVsZPs7KEDwYKktWi5+Kz3MP8++DFlRY crossorigin=anonymous></script>
 </head>
-<body class=td-section>
+<body class=td-page>
 <header>
 <nav class="js-navbar-scroll navbar navbar-expand navbar-dark flex-column flex-md-row td-navbar">
 <a class=navbar-brand href=/piv-agent/>
@@ -47,196 +49,81 @@
 <div class="container-fluid td-outer">
 <div class=td-main>
 <div class="row flex-xl-nowrap">
-<div class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
+<aside class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
+<div id=td-sidebar-menu class=td-sidebar__inner>
+<form class="td-sidebar__search d-flex align-items-center">
+<input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.a559d1d12c3d3088dfed71e57c6e8fd9.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<button class="btn btn-link td-sidebar__toggle d-md-none p-0 ml-3 fas fa-bars" type=button data-toggle=collapse data-target=#td-section-nav aria-controls=td-docs-nav aria-expanded=false aria-label="Toggle section navigation">
+</button>
+</form>
+<nav class="collapse td-sidebar-nav" id=td-section-nav>
+<ul class="td-sidebar-nav__section pr-md-3 ul-0">
+<li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child active-path" id=m-piv-agentdocs-li>
+<a href=/piv-agent/docs/ class="align-left pl-0 td-sidebar-link td-sidebar-link__section tree-root" id=m-piv-agentdocs><span>PIV Agent Documentation</span></a>
+<ul class=ul-1>
+<li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id=m-piv-agentdocsinstall-li>
+<a href=/piv-agent/docs/install/ class="align-left pl-0 td-sidebar-link td-sidebar-link__page" id=m-piv-agentdocsinstall><span>Install</span></a>
+</li><li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id=m-piv-agentdocssetup-li>
+<a href=/piv-agent/docs/setup/ class="align-left pl-0 td-sidebar-link td-sidebar-link__page" id=m-piv-agentdocssetup><span>Setup</span></a>
+</li><li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id=m-piv-agentdocsuse-li>
+<a href=/piv-agent/docs/use/ class="align-left pl-0 td-sidebar-link td-sidebar-link__page" id=m-piv-agentdocsuse><span>Use</span></a>
+</li><li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id=m-piv-agentdocsfaq-li>
+<a href=/piv-agent/docs/faq/ class="align-left pl-0 td-sidebar-link td-sidebar-link__page" id=m-piv-agentdocsfaq><span>FAQ</span></a>
+</li><li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child active-path" id=m-piv-agentdocsgpg-walkthrough-li>
+<a href=/piv-agent/docs/gpg-walkthrough/ class="align-left pl-0 active td-sidebar-link td-sidebar-link__page" id=m-piv-agentdocsgpg-walkthrough><span class=td-sidebar-nav-active-item>GPG Walkthrough</span></a>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
 </div>
-<div class="d-none d-xl-block col-xl-2 td-toc d-print-none">
+</aside>
+<aside class="d-none d-xl-block col-xl-2 td-sidebar-toc d-print-none">
+<div class="td-page-meta ml-2 pb-1 pt-2 mb-0">
+<a href=https://github.com/smlx/piv-agent/edit/main/docs/content/en/docs/gpg-walkthrough.md target=_blank><i class="fa fa-edit fa-fw"></i> Edit this page</a>
+<a href="https://github.com/smlx/piv-agent/new/main/docs/content/en/docs/gpg-walkthrough.md?filename=change-me.md&value=---%0Atitle%3A+%22Long+Page+Title%22%0AlinkTitle%3A+%22Short+Nav+Title%22%0Aweight%3A+100%0Adescription%3A+%3E-%0A+++++Page+description+for+heading+and+indexes.%0A---%0A%0A%23%23+Heading%0A%0AEdit+this+template+to+create+your+new+page.%0A%0A%2A+Give+it+a+good+name%2C+ending+in+%60.md%60+-+e.g.+%60getting-started.md%60%0A%2A+Edit+the+%22front+matter%22+section+at+the+top+of+the+page+%28weight+controls+how+its+ordered+amongst+other+pages+in+the+same+directory%3B+lowest+number+first%29.%0A%2A+Add+a+good+commit+message+at+the+bottom+of+the+page+%28%3C80+characters%3B+use+the+extended+description+field+for+more+detail%29.%0A%2A+Create+a+new+branch+so+you+can+preview+your+new+file+and+request+a+review+via+Pull+Request.%0A" target=_blank><i class="fa fa-edit fa-fw"></i> Create child page</a>
+<a href="https://github.com/smlx/piv-agent/issues/new?title=GPG%20Walkthrough" target=_blank><i class="fab fa-github fa-fw"></i> Create documentation issue</a>
+<a id=print href=/piv-agent/docs/_print/><i class="fa fa-print fa-fw"></i> Print entire section</a>
 </div>
+<div class=td-toc><nav id=TableOfContents>
+<ul>
+<li><a href=#overview>Overview</a></li>
+<li><a href=#setup>Setup</a>
+<ul>
+<li><a href=#export-rsa-keyfiles>Export RSA keyfiles</a></li>
+<li><a href=#setup-yubikey>Setup Yubikey</a></li>
+<li><a href=#import-yubikey-cryptographic-keys>Import Yubikey cryptographic keys</a></li>
+<li><a href=#add-decrypting-subkey>Add decrypting subkey</a></li>
+<li><a href=#add-signing-subkey>Add signing subkey</a></li>
+<li><a href=#inspect-subkeys>Inspect subkeys</a></li>
+</ul>
+</li>
+<li><a href=#use>Use</a>
+<ul>
+<li><a href=#publish-public-key>Publish public key</a></li>
+<li><a href=#signing-example>Signing Example</a></li>
+<li><a href=#decrypting-example>Decrypting Example</a></li>
+</ul>
+</li>
+</ul>
+</nav></div>
+</aside>
 <main class="col-12 col-md-9 col-xl-8 pl-md-5" role=main>
+<nav aria-label=breadcrumb class="d-none d-md-block d-print-none">
+<ol class="breadcrumb spb-1">
+<li class=breadcrumb-item>
+<a href=/piv-agent/docs/>PIV Agent Documentation</a>
+</li>
+<li class="breadcrumb-item active" aria-current=page>
+<a href=/piv-agent/docs/gpg-walkthrough/>GPG Walkthrough</a>
+</li>
+</ol>
+</nav>
 <div class=td-content>
-<div class="pageinfo pageinfo-primary d-print-none">
-<p>
-This the multi-page printable view of this section.
-<a href=# onclick="return print(),!1">Click here to print</a>.
-</p><p>
-<a href=/piv-agent/docs/>Return to the regular view of this page</a>.
-</p>
-</div>
-<h1 class=title>PIV Agent Documentation</h1>
-<ul>
-<li>1: <a href=#pg-64407d3e6d5ef382426bdfbcae040c6a>Install</a></li>
-<li>2: <a href=#pg-85ad37f4d4d62ce0f24ea8a26b95ba09>Setup</a></li>
-<li>3: <a href=#pg-a4b7eec254cc5e87ab47922f32fbc64b>Use</a></li>
-<li>4: <a href=#pg-956da29f025cba37fca9fe6b80ab5d48>FAQ</a></li>
-<li>5: <a href=#pg-671ba55e5fa3b5d9ea81e2f7aab5ef61>GPG Walkthrough</a></li>
-</ul>
-<div class=content>
-<p>PIV Agent must be installed and set up to work with your hardware security device before use.</p>
-</div>
-</div>
-<div class=td-content>
-<h1 id=pg-64407d3e6d5ef382426bdfbcae040c6a>1 - Install</h1>
-<h2 id=prerequisites>Prerequisites</h2>
-<h3 id=consider-redundancy>Consider redundancy</h3>
-<p>If you lose access to your hardware security device (for example if it is lost, stolen, or broken) <strong>there is no way to recover the keys stored on it</strong>.
-For that reason it is highly recommended that you use fallback SSH or GPG keyfiles and/or multiple hardware security devices.</p>
-<h3 id=install-pcsclite>Install pcsclite</h3>
-<p><code>piv-agent</code> has transitive dependencies through <a href=https://github.com/go-piv/piv-go#installation><code>piv-go</code></a>, on <a href=https://pcsclite.apdu.fr/><code>pcsclite</code></a>.</p>
-<pre><code># debian / ubuntu
-sudo apt install libpcsclite1
-# TODO: other platforms
-...
-</code></pre><h2 id=install-piv-agent>Install piv-agent</h2>
-<p>Download the latest <a href=https://github.com/smlx/piv-agent/releases>release</a>, and extract it to a temporary location.
-Copy the <code>piv-agent</code> binary into your <code>$PATH</code>, and the <code>systemd</code> unit files to the correct location:</p>
-<pre><code>sudo cp piv-agent /usr/local/bin/
-cp deploy/piv-agent.{socket,service} ~/.config/systemd/user/
-systemctl --user daemon-reload
-</code></pre><h3 id=socket-activation>Socket activation</h3>
-<p><code>piv-agent</code> relies on <a href=https://0pointer.de/blog/projects/socket-activated-containers.html>socket activation</a>, and is currently only tested with <code>systemd</code>.
-It doesn&rsquo;t listen to any sockets directly, and instead requires the init system to pass file descriptors to the <code>piv-agent</code> process after it is running.
-This requirement makes it possible to exit the process when not in use.</p>
-<p><code>ssh-agent</code> and <code>gpg-agent</code> functionality are enabled by default in <code>piv-agent.service</code> and <code>piv-agent.socket</code>.
-The index of the sockets listed in <code>piv-agent.socket</code> are indicated by the arguments to <code>--agent-types</code>.</p>
-</div>
-<div class=td-content style=page-break-before:always>
-<h1 id=pg-85ad37f4d4d62ce0f24ea8a26b95ba09>2 - Setup</h1>
-<div class=lead>Set up piv-agent to work with your hardware.</div>
-<h2 id=hardware>Hardware</h2>
-<div class="alert alert-warning" role=alert>
-<h4 class=alert-heading>Warning</h4>
-This procedure resets the state of the PIV applet and wipes any existing keys from PIV slots.
-</div>
-<p>This procedure is only required once per hardware security device.
-Performing it a second time will reset the keys on the PIV applet of the device.
-It will not make any changes to other functionality the device may have, such as WebAuthn.</p>
-<p>By default, <code>piv-agent</code> uses four slots on your hardware security device to set up three signing keys, and one decrypting key.
-The signing keys each have different <a href=https://docs.yubico.com/yesdk/users-manual/application-piv/pin-touch-policies.html>touch policies</a>: never required, cached (for 15 seconds), and always.
-The touch policy for the decrypting key is &ldquo;never required&rdquo;.</p>
-<p>The three signing keys are used for both SSH and GPG signing.
-The decrypting key is only used for GPG.</p>
-<p>These default policies are very roughly based on the <a href=https://developers.yubico.com/PIV/Introduction/Certificate_slots.html>Yubikey certificate slot usage description</a>.
-They are designed to facilitate practical use of the hardware security device.</p>
-<p>It is highly recommended to use the default multi-key setup procedure as this has had the most usability testing.</p>
-<pre><code># find the name of the hardware security devices (cards)
-piv-agent list
-# generate new keys
-piv-agent setup --pin=123456 --card='Yubico YubiKey FIDO+CCID 01 00' --reset-security-key
-# view newly generated keys (SSH only by default)
-piv-agent list
-</code></pre><h2 id=ssh>SSH</h2>
-<h3 id=list-keys>List keys</h3>
-<p>List your hardware SSH keys:</p>
-<pre><code>piv-agent list
-</code></pre><p>Add the public SSH key with the touch policy you want from the list, to any SSH service.</p>
-<h3 id=set-ssh_auth_sock>Set <code>SSH_AUTH_SOCK</code></h3>
-<p>Export the <code>SSH_AUTH_SOCK</code> variable in your shell.</p>
-<pre><code>export SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/piv-agent/ssh.socket
-</code></pre><h3 id=prefer-keys-on-the-hardware-security-device>Prefer keys on the hardware security device</h3>
-<p>If you don&rsquo;t already have one, it&rsquo;s a good idea to generate an <code>ed25519</code> keyfile and add that to all SSH services too for redundancy.
-<code>piv-agent</code> will automatically load and use <code>~/.ssh/id_ed25519</code> as a fallback.</p>
-<p>By default, <code>ssh</code> will offer <a href=https://manpages.debian.org/testing/openssh-client/ssh_config.5.en.html#IdentityFile>keyfiles it finds on disk</a> <em>before</em> those from the agent.
-This is a problem because <code>piv-agent</code> is designed to offer keys from the hardware token first, and only fall back to local keyfiles if token keys are refused.
-To get <code>ssh</code> to ignore local keyfiles and only talk to <code>piv-agent</code>, add this line to your <code>ssh_config</code>, for all hosts:</p>
-<pre><code>IdentityFile /dev/null
-</code></pre><h2 id=gpg>GPG</h2>
-<h3 id=export-fallback-cryptographic-keys>Export fallback cryptographic keys</h3>
-<p>Private GPG keys to be used by <code>piv-agent</code> must be exported to the directory <code>~/.gnupg/piv-agent.secring/</code>.</p>
-<div class="alert alert-primary" role=alert>
-<h4 class=alert-heading>Note</h4>
-This step requires <code>gpg-agent</code> to be running, not <code>piv-agent</code>.
-See the <a href=/docs/faq>FAQ</a> for how to switch between the two services.
-</div>
-<div class="alert alert-primary" role=alert>
-<h4 class=alert-heading>Note</h4>
-If your private key is encrypted using a password (it should be!), the encryption is retained during export.
-The key is still stored encrypted in the exported keyfile - it&rsquo;s just converted into a standard OpenPGP format that <code>piv-agent</code> can read.
-</div>
-<pre><code># example
-# set umask for user-only permissions
-umask 77
-mkdir -p ~/.gnupg/piv-agent.secring
-gpg --export-secret-key 0xB346A434C7652C02 &gt; ~/.gnupg/piv-agent.secring/art@example.com.gpg
-</code></pre><h3 id=disable-gpg-agent>Disable gpg-agent</h3>
-<p>It is not possible to set a custom path for the <code>gpg-agent</code> socket in a similar manner to <code>ssh-agent</code>.
-Instead <code>gpg-agent</code> always uses a hard-coded path for its socket.
-In order for <code>piv-agent</code> to work with <code>gpg</code>, it sets up a socket in this same default location.
-To avoid conflict over this path, <code>gpg-agent</code> should be disabled.</p>
-<p>This is how you can disable <code>gpg-agent</code> on Debian/Ubuntu:</p>
-<ul>
-<li>Add <code>no-autostart</code> to <code>~/.gnupg/gpg.conf</code>.</li>
-<li><code>systemctl --user disable --now gpg-agent.socket gpg-agent.service; pkill gpg-agent</code></li>
-</ul>
-<p>Other platforms may have slightly different instructions - PRs welcome.</p>
-<h3 id=import-public-cryptographic-keys-from-the-security-hardware>Import public cryptographic keys from the security hardware</h3>
-<p>Before any private GPG keys on the hardware dvice can be used, <code>gpg</code> requires their public keys to be imported.
-This structure of a GPG public key contains a <a href=https://datatracker.ietf.org/doc/html/rfc4880#section-5.11>User ID packet</a>, which must be signed by the associated <em>private key</em>.</p>
-<p>The <code>piv-agent list</code> command can synthesize a public key for the private key stored on the security hardware device.
-Listing a GPG key via <code>piv-agent list --key-formats=gpg</code> will require a touch to perform signing on the keys associated with those slots (due to the User ID packet).
-You should provide a name and email which will be embedded in the synthesized public key (see <code>piv-agent --help list</code>).</p>
-<pre><code># example
-piv-agent list --key-formats=ssh,gpg --pgp-name='Art Vandelay' --pgp-email='art@example.com'
-</code></pre><p>Paste the public key(s) you would like to use into a <code>key.asc</code> file, and run <code>gpg --import key.asc</code>.</p>
-<h2 id=gpg-advanced>GPG Advanced</h2>
-<p>If you have followed the setup instructions to this point you should have a functional <code>gpg-agent</code> backed by a PIV hardware device.
-The following instructions allow deeper integration of the hardware with existing GPG keys and workflows.</p>
-<h3 id=add-cryptographic-key-stored-in-hardware-as-a-gpg-signing-subkey>Add cryptographic key stored in hardware as a GPG signing subkey</h3>
-<div class="alert alert-primary" role=alert>
-<h4 class=alert-heading>Note</h4>
-There is a <a href=https://dev.gnupg.org/T5555>bug</a> in certain versions of GnuPG which doesn&rsquo;t allow ECDSA keys to be added as signing subkeys.
-This is unfortunate since signing is much more useful than decryption.
-You&rsquo;ll need a verion of GnuPG where that bug is fixed for this procedure to work.
-</div>
-<p>Adding a <code>piv-agent</code> OpenPGP key as a signing subkey of an existing OpenPGP key is a convenient way to integrate a hardware security device with your existing <code>gpg</code> workflow.
-This allows you to do things like sign <code>git</code> commits using your Yubikey, while keeping the same OpenPGP key ID.
-Adding a subkey requires cross-signing between the master key and sub key, so you need to export the master secret key of your existing OpenPGP key as described above to make it available to <code>piv-agent</code>.</p>
-<p><code>gpg</code> will choose the <em>newest</em> available subkey to perform an action. So it will automatically prefer a newly added <code>piv-agent</code> subkey over any existing keyfile subkeys, but fall back to keyfiles if e.g. the Yubikey is not plugged in.</p>
-<p>See the <a href=/docs/gpg-walkthrough>GPG Walkthrough</a> for an example of this procedure.</p>
-</div>
-<div class=td-content style=page-break-before:always>
-<h1 id=pg-a4b7eec254cc5e87ab47922f32fbc64b>3 - Use</h1>
-<div class=lead>Use piv-agent with ssh and gpg.</div>
-<h2 id=start-piv-agentsocket>Start <code>piv-agent.socket</code></h2>
-<p>Start the agent sockets, and test:</p>
-<pre><code>systemctl --user enable --now piv-agent.socket
-ssh-add -l
-gpg -K
-</code></pre><p>This should be enough to allow you to use <code>piv-agent</code>.</p>
-<h2 id=common-operations>Common operations</h2>
-<h3 id=list-keys>List keys</h3>
-<pre><code>piv-agent list
-</code></pre><p>If this command returns an empty list, it may be because the running agent is holding a transaction to the hardware security device.
-The solution is to stop the agent and run the list command again.</p>
-<pre><code>systemctl --user stop piv-agent
-# should work now..
-piv-agent list
-</code></pre><h2 id=advanced>Advanced</h2>
-<p>This section describes some ways to enhance the usability of <code>piv-agent</code>.</p>
-<h3 id=pin--passphrase-caching>PIN / Passphrase caching</h3>
-<p>If your pinentry supports caching credentials, <code>piv-agent</code> will offer to cache the PIN of the hardware security device.
-It will not cache the passphrase of any fallback keys.</p>
-<p>This is a usability/security tradeoff that ensures that at least the encrypted private key file and its passphrase aren&rsquo;t stored together on disk.
-It also has the advantage of ensuring that you don&rsquo;t forget your keyfile passphrase, as you&rsquo;ll need to enter it periodically.</p>
-<p>However you might also forget your device PIN, so maybe don&rsquo;t cache that either if you&rsquo;re concerned about that possibility.</p>
-</div>
-<div class=td-content style=page-break-before:always>
-<h1 id=pg-956da29f025cba37fca9fe6b80ab5d48>4 - FAQ</h1>
-<h2 id=how-do-i-switch-between-gpg-agent-and-piv-agent>How do I switch between gpg-agent and piv-agent</h2>
-<h3 id=linux-systemd>Linux (systemd)</h3>
-<p>Stop both <code>gpg-agent</code> and <code>piv-agent</code>:</p>
-<div class="alert alert-primary" role=alert>
-<h4 class=alert-heading>Note</h4>
-The <code>pkill</code> is required because <code>gpg</code> may be configured to automatically start <code>gpg-agent</code> in a manner which is not managed by <code>systemd</code>.
-</div>
-<pre><code>systemctl --user stop gpg-agent.socket gpg-agent.service piv-agent.socket piv-agent.service; pkill gpg-agent
-</code></pre><p>Start <code>piv-agent</code>:</p>
-<pre><code>systemctl --user start piv-agent.socket
-</code></pre><p>Or start <code>gpg-agent</code>:</p>
-<pre><code>systemctl --user start gpg-agent.socket
-</code></pre>
-</div>
-<div class=td-content style=page-break-before:always>
-<h1 id=pg-671ba55e5fa3b5d9ea81e2f7aab5ef61>5 - GPG Walkthrough</h1>
+<h1>GPG Walkthrough</h1>
 <div class=lead>Full example of how you might set up and use piv-agent with gpg.</div>
+<header class=article-meta>
+</header>
 <h2 id=overview>Overview</h2>
 <p>GnuPG being a complex piece of software, setup with <code>piv-agent</code> is a bit fiddly.
 This example is intended to illustrate how <code>piv-agent</code> can integrate with existing GnuPG keys and workflows.</p>
@@ -698,6 +585,9 @@ gpg: AES256 encrypted data
 gpg: original file name='foo'
 bar
 </code></pre>
+<div class="text-muted mt-5 pt-3 border-top">
+Last modified October 7, 2021: <a href=https://github.com/smlx/piv-agent/commit/5062dc295eee5a0ee0a09b674bbeff2cbedc30be>chore: improve documentation (5062dc2)</a>
+</div>
 </div>
 </main>
 </div>
