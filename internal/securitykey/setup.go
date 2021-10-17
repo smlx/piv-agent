@@ -59,7 +59,7 @@ func (k *SecurityKey) Setup(pin, version string, reset bool,
 	}
 	// setup decrypt key
 	if decryptingKey {
-		err := k.configureSlot(mgmtKey, defaultDecryptSlots["cached"], version)
+		err := k.configureSlot(mgmtKey, defaultDecryptSlots["never"], version)
 		if err != nil {
 			return fmt.Errorf("couldn't configure slot %v: %v",
 				defaultDecryptSlots["cached"], err)
@@ -76,7 +76,7 @@ func (k *SecurityKey) configureSlot(mgmtKey [24]byte, spec SlotSpec,
 		TouchPolicy: spec.TouchPolicy,
 	})
 	if err != nil {
-		return fmt.Errorf("couldn't generate key: %v", err)
+		return fmt.Errorf("couldn't generate key for spec %v: %v", spec, err)
 	}
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
