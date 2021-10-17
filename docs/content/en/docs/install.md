@@ -23,14 +23,20 @@ sudo apt install libpcsclite1
 
 ## Install piv-agent
 
+### Linux
+
 Download the latest [release](https://github.com/smlx/piv-agent/releases), and extract it to a temporary location.
 Copy the `piv-agent` binary into your `$PATH`, and the `systemd` unit files to the correct location:
 
 ```
 sudo cp piv-agent /usr/local/bin/
-cp deploy/piv-agent.{socket,service} ~/.config/systemd/user/
+cp deploy/systemd/piv-agent.{socket,service} ~/.config/systemd/user/
 systemctl --user daemon-reload
 ```
+
+### macOS
+
+Similarly to Linux, copy `piv-agent` to `/usr/local/bin/`, edit the `.plist` file with the correct home directory, and drop it in `~/Library/LaunchAgents`.
 
 ### Socket activation
 
@@ -38,5 +44,5 @@ systemctl --user daemon-reload
 It doesn't listen to any sockets directly, and instead requires the init system to pass file descriptors to the `piv-agent` process after it is running.
 This requirement makes it possible to exit the process when not in use.
 
-`ssh-agent` and `gpg-agent` functionality are enabled by default in `piv-agent.service` and `piv-agent.socket`.
-The index of the sockets listed in `piv-agent.socket` are indicated by the arguments to `--agent-types`.
+`ssh-agent` and `gpg-agent` functionality are enabled by default in the systemd and launchd configuration files.
+On Linux, index of the sockets listed in `piv-agent.socket` are indicated by the arguments to `--agent-types`.
