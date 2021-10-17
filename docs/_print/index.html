@@ -40,7 +40,7 @@
 <ul class="navbar-nav mt-2 mt-lg-0">
 </ul>
 </div>
-<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.a559d1d12c3d3088dfed71e57c6e8fd9.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.6f360e63bf22e2074828b1fe902cdef5.json data-offline-search-base-href=/ data-offline-search-max-results=10>
 </div>
 </nav>
 </header>
@@ -86,17 +86,20 @@ sudo apt install libpcsclite1
 # TODO: other platforms
 ...
 </code></pre><h2 id=install-piv-agent>Install piv-agent</h2>
+<h3 id=linux>Linux</h3>
 <p>Download the latest <a href=https://github.com/smlx/piv-agent/releases>release</a>, and extract it to a temporary location.
 Copy the <code>piv-agent</code> binary into your <code>$PATH</code>, and the <code>systemd</code> unit files to the correct location:</p>
 <pre><code>sudo cp piv-agent /usr/local/bin/
-cp deploy/piv-agent.{socket,service} ~/.config/systemd/user/
+cp deploy/systemd/piv-agent.{socket,service} ~/.config/systemd/user/
 systemctl --user daemon-reload
-</code></pre><h3 id=socket-activation>Socket activation</h3>
+</code></pre><h3 id=macos>macOS</h3>
+<p>Similarly to Linux, copy <code>piv-agent</code> to <code>/usr/local/bin/</code>, edit the <code>.plist</code> file with the correct home directory, and drop it in <code>~/Library/LaunchAgents</code>.</p>
+<h3 id=socket-activation>Socket activation</h3>
 <p><code>piv-agent</code> relies on <a href=https://0pointer.de/blog/projects/socket-activated-containers.html>socket activation</a>, and is currently only tested with <code>systemd</code>.
 It doesn&rsquo;t listen to any sockets directly, and instead requires the init system to pass file descriptors to the <code>piv-agent</code> process after it is running.
 This requirement makes it possible to exit the process when not in use.</p>
-<p><code>ssh-agent</code> and <code>gpg-agent</code> functionality are enabled by default in <code>piv-agent.service</code> and <code>piv-agent.socket</code>.
-The index of the sockets listed in <code>piv-agent.socket</code> are indicated by the arguments to <code>--agent-types</code>.</p>
+<p><code>ssh-agent</code> and <code>gpg-agent</code> functionality are enabled by default in the systemd and launchd configuration files.
+On Linux, index of the sockets listed in <code>piv-agent.socket</code> are indicated by the arguments to <code>--agent-types</code>.</p>
 </div>
 <div class=td-content style=page-break-before:always>
 <h1 id=pg-85ad37f4d4d62ce0f24ea8a26b95ba09>2 - Setup</h1>
