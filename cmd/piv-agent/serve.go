@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/go-systemd/activation"
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/server"
+	"github.com/smlx/piv-agent/internal/sockets"
 	"github.com/smlx/piv-agent/internal/ssh"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -50,8 +50,8 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("build date", date))
 	p := piv.New(log)
-	// use systemd socket activation
-	ls, err := activation.Listeners()
+	// use FDs passed via socket activation
+	ls, err := sockets.Get(validAgents)
 	if err != nil {
 		return fmt.Errorf("cannot retrieve listeners: %w", err)
 	}

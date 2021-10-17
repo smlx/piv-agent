@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.github.smlx.piv-agent</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/piv-agent</string>
+		<string>serve</string>
+	</array>
+	<key>Sockets</key>
+	<dict>
+		<key>ssh</key>
+		<dict>
+			<key>SecureSocketWithKey</key>
+			<string>SSH_AUTH_SOCK</string>
+		</dict>
+		<key>gpg</key>
+		<dict>
+			<key>SockPathName</key>
+			<string>/Users/ExampleUserName/.gnupg/S.gpg-agent</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

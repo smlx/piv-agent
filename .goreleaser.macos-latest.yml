@@ -1,0 +1,13 @@
+archives:
+- files:
+  - deploy/*
+  - LICENSE
+  - README.md
+builds:
+- dir: cmd/piv-agent
+  goos:
+  - darwin
+  goarch:
+  - amd64
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_darwin_checksums.txt"
