@@ -23,6 +23,8 @@ jobs:
     - name: Install Dependencies (ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
+    - name: Set up environment
+      run: echo "GOVERSION=$(go version)" >> $GITHUB_ENV
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v2
       with:
