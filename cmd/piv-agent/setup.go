@@ -62,7 +62,7 @@ func (cmd *SetupCmd) Run() error {
 	}
 	err = k.Setup(strconv.FormatUint(cmd.PIN, 10), version,
 		cmd.ResetSecurityKey, cmd.SigningKeys, cmd.DecryptingKey)
-	if errors.Is(err, securitykey.ErrNotReset) {
+	if errors.Is(err, securitykey.ErrKeySetUp) {
 		return fmt.Errorf("--reset-security-key not specified: %w", err)
 	}
 	return err

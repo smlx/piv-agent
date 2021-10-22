@@ -14,24 +14,65 @@ import (
 	"github.com/go-piv/piv-go/piv"
 )
 
-// ErrNotReset is returned from Setup when the security key is already set up
+// ErrKeySetUp is returned from Setup when the security key is already set up
 // and reset is false.
-var ErrNotReset = errors.New("security key already set up")
+var ErrKeySetUp = errors.New("security key already set up")
+
+// checkSlotSetUp checks if the provided slot is set up, returning true if the slot
+// is set up and false otherwise.
+func (k *SecurityKey) checkSlotSetUp(s SlotSpec) (bool, error) {
+	_, err := k.yubikey.Certificate(s.Slot)
+	if err == nil {
+		return true, nil
+	} else if errors.Is(err, piv.ErrNotFound) {
+		return false, nil
+	}
+	return false, fmt.Errorf("couldn't check slot certificate: %v", err)
+}
+
+// checkSlotsSetUp checks if the provided slots are set up returning true if any of
+// the slots are set up, and false otherwise.
+func (k *SecurityKey) checkSlotsSetUp(signingKeys []string,
+	decryptingKey bool) (bool, error) {
+	for _, p := range signingKeys {
+		setUp, err := k.checkSlotSetUp(defaultSignSlots[p])
+		if err != nil {
+			return false, err
+		}
+		if setUp {
+			return true, nil
+		}
+	}
+	if decryptingKey {
+		setUp, err := k.checkSlotSetUp(defaultDecryptSlots["never"])
+		if err != nil {
+			return false, err
+		}
+		if setUp {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 // Setup configures the SecurityKey to work with piv-agent.
 func (k *SecurityKey) Setup(pin, version string, reset bool,
 	signingKeys []string, decryptingKey bool) error {
-	_, err := k.yubikey.Certificate(piv.SlotAuthentication)
-	if err == nil {
-		if !reset {
-			return ErrNotReset
+	var err error
+	if !reset {
+		setUp, err := k.checkSlotsSetUp(signingKeys, decryptingKey)
+		if err != nil {
+			return fmt.Errorf("couldn't check slots: %v", err)
 		}
-		if err = k.yubikey.Reset(); err != nil {
-			return fmt.Errorf("couldn't reset security key: %v", err)
+		if setUp {
+			return ErrKeySetUp
 		}
-	} else if !errors.Is(err, piv.ErrNotFound) {
-		return fmt.Errorf("couldn't get certificate: %v", err)
 	}
+	// reset security key
+	if err = k.yubikey.Reset(); err != nil {
+		return fmt.Errorf("couldn't reset security key: %v", err)
+	}
+	// generate management key and store on the security key
 	var mgmtKey [24]byte
 	if _, err := rand.Read(mgmtKey[:]); err != nil {
 		return fmt.Errorf("couldn't get random bytes: %v", err)
@@ -44,6 +85,7 @@ func (k *SecurityKey) Setup(pin, version string, reset bool,
 	if err != nil {
 		return fmt.Errorf("couldn't store management key: %v", err)
 	}
+	// set pin/puk
 	if err = k.yubikey.SetPIN(piv.DefaultPIN, pin); err != nil {
 		return fmt.Errorf("couldn't set PIN: %v", err)
 	}
