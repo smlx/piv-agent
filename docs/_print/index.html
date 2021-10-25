@@ -41,7 +41,7 @@
 <ul class="navbar-nav mt-2 mt-lg-0">
 </ul>
 </div>
-<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.19ab177ee28dfedcc07101426c992f06.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.91505521fcc95f92c3d5a6db30cbe30b.json data-offline-search-base-href=/ data-offline-search-max-results=10>
 </div>
 </nav>
 </header>
@@ -106,9 +106,10 @@ On Linux, index of the sockets listed in <code>piv-agent.socket</code> are indic
 <h1 id=pg-85ad37f4d4d62ce0f24ea8a26b95ba09>2 - Setup</h1>
 <div class=lead>Set up piv-agent to work with your hardware.</div>
 <h2 id=hardware>Hardware</h2>
+<h3 id=default-setup>Default setup</h3>
 <div class="alert alert-warning" role=alert>
 <h4 class=alert-heading>Warning</h4>
-This procedure resets the state of the PIV applet and wipes any existing keys from PIV slots.
+This procedure resets the state of the PIV applet and wipes any existing keys from <em>all</em> PIV slots.
 </div>
 <p>This procedure is only required once per hardware security device.
 Performing it a second time will reset the keys on the PIV applet of the device.
@@ -127,6 +128,21 @@ piv-agent list
 piv-agent setup --pin=123456 --card='Yubico YubiKey FIDO+CCID 01 00' --reset-security-key
 # view newly generated keys (SSH only by default)
 piv-agent list
+</code></pre><h3 id=single-slot-setup>Single slot setup</h3>
+<div class="alert alert-warning" role=alert>
+<h4 class=alert-heading>Warning</h4>
+<p><code>piv-agent</code> has been designed to work best with the default setup.
+Only set up single slots if you know what you are doing.</p>
+<p>This action can be destructive.
+If you reset a slot which already contains a key, that key will be lost.</p>
+</div>
+<p>It is possible to set up a single PIV slot on your hardware device without resetting the device.
+This means that you target a single slot to set up a key if the slot has not been set up yet, or reset a key if the slot already contains one.
+Other PIV slots will not be affected, and will retain their existing keys.</p>
+<p>For example this command will reset just the decrypting slot on your Yubikey:</p>
+<pre><code>piv-agent setup-slots --card=&quot;Yubico YubiKey FIDO+CCID 01 00&quot; --pin=123456 --decrypting-key --reset-slots
+</code></pre><p>See the interactive help for more usage details:</p>
+<pre><code>piv-agent setup-slots --help
 </code></pre><h2 id=ssh>SSH</h2>
 <h3 id=list-keys>List keys</h3>
 <p>List your hardware SSH keys:</p>
