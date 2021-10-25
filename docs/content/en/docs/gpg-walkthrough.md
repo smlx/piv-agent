@@ -11,7 +11,7 @@ This example is intended to illustrate how `piv-agent` can integrate with existi
 
 {{% alert title="Note" %}}
 This example requires switching between `gpg-agent` and `piv-agent`.
-See the [FAQ](/docs/faq) for how to do that.
+See the [FAQ](../../docs/faq) for how to do that.
 {{% /alert %}}
 
 ## Setup
@@ -397,14 +397,6 @@ The subkey with the most recent date is preferred by `gpg`.
 
 Importantly the master key ID is the same after adding the subkeys, so any existing workflows will continue to work as before.
 
-```
-# example ~/.config/git/config
-[user]
-	name = Scott Leggett
-	email = scott@sl.id.au
-	signingKey = 9FA216008BDF1AE5E1BCAEC3EC26B2E4240DD2A9
-```
-
 ### Publish public key
 
 The public key can now be distributed to keyservers and other services such as Github.
@@ -546,4 +538,30 @@ gpg: encrypted with 3072-bit RSA key, ID 42B99C3339C9FBC1, created 2021-10-17
 gpg: AES256 encrypted data
 gpg: original file name='foo'
 bar
+```
+
+### Common software integration
+
+#### git
+
+The same master key ID will work as before, but signing will prefer to use the hardware security device if it is plugged in.
+
+```
+# example ~/.config/git/config
+[user]
+	name = Scott Leggett
+	email = scott@sl.id.au
+	signingKey = 9FA216008BDF1AE5E1BCAEC3EC26B2E4240DD2A9
+[commit]
+	gpgSign = true
+```
+
+#### pass
+
+`pass` has the ability to encrypt to multiple key-ids.
+Running `pass init` will re-encrypt existing passwords and configure `pass` to use the specified key-ids for encryption.
+As usual, `piv-agent` will use the cryptographic key stored in hardware for decryption if it is available, but fall back to the keyfile otherwise.
+
+```
+pass init 0x42B99C3339C9FBC1! 0x84F7BF2FEAC32674!
 ```

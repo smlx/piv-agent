@@ -76,7 +76,7 @@ Private GPG keys to be used by `piv-agent` must be exported to the directory `~/
 
 {{% alert title="Note" %}}
 This step requires `gpg-agent` to be running, not `piv-agent`.
-See the [FAQ](/docs/faq) for how to switch between the two services.
+See the [FAQ](../../docs/faq) for how to switch between the two services.
 {{% /alert %}}
 
 {{% alert title="Note" %}}
@@ -141,4 +141,4 @@ Adding a subkey requires cross-signing between the master key and sub key, so yo
 
 `gpg` will choose the _newest_ available subkey to perform an action. So it will automatically prefer a newly added `piv-agent` subkey over any existing keyfile subkeys, but fall back to keyfiles if e.g. the Yubikey is not plugged in.
 
-See the [GPG Walkthrough](/docs/gpg-walkthrough) for an example of this procedure.
+See the [GPG Walkthrough](../../docs/gpg-walkthrough) for an example of this procedure.
