@@ -13,7 +13,7 @@ type SetupSlotsCmd struct {
 	Card          string   `kong:"help='Specify a smart card device'"`
 	ResetSlots    bool     `kong:"help='Overwrite existing keys in the targeted slots'"`
 	PIN           uint64   `kong:"help='The PIN/PUK of the device (6-8 digits). Will be prompted interactively if not provided.'"`
-	SigningKeys   []string `kong:"default='',enum='cached,always,never',help='Set up slots for signing keys with various touch policies (default none)'"`
+	SigningKeys   []string `kong:"default='',enum='cached,always,never',help='Set up slots for signing keys with various touch policies (default none, possible values cached,always,never)'"`
 	DecryptingKey bool     `kong:"default='false',help='Set up slot for a decrypting key (default false)'"`
 }
 
