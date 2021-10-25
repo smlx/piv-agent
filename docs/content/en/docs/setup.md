@@ -6,8 +6,10 @@ description: Set up piv-agent to work with your hardware.
 
 ## Hardware
 
+### Default setup
+
 {{% alert title="Warning" color="warning" %}}
-This procedure resets the state of the PIV applet and wipes any existing keys from PIV slots.
+This procedure resets the state of the PIV applet and wipes any existing keys from _all_ PIV slots.
 {{% /alert %}}
 
 This procedure is only required once per hardware security device.
@@ -33,6 +35,32 @@ piv-agent list
 piv-agent setup --pin=123456 --card='Yubico YubiKey FIDO+CCID 01 00' --reset-security-key
 # view newly generated keys (SSH only by default)
 piv-agent list
+```
+
+### Single slot setup
+
+{{% alert title="Warning" color="warning" %}}
+`piv-agent` has been designed to work best with the default setup.
+Only set up single slots if you know what you are doing.
+
+This action can be destructive.
+If you reset a slot which already contains a key, that key will be lost.
+{{% /alert %}}
+
+It is possible to set up a single PIV slot on your hardware device without resetting the device.
+This means that you target a single slot to set up a key if the slot has not been set up yet, or reset a key if the slot already contains one.
+Other PIV slots will not be affected, and will retain their existing keys.
+
+For example this command will reset just the decrypting slot on your Yubikey:
+
+```
+piv-agent setup-slots --card="Yubico YubiKey FIDO+CCID 01 00" --pin=123456 --decrypting-key --reset-slots
+```
+
+See the interactive help for more usage details:
+
+```
+piv-agent setup-slots --help
 ```
 
 ## SSH
