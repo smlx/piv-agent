@@ -20,11 +20,11 @@
 <meta property="og:description" content="Full example of how you might set up and use piv-agent with gpg.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="/piv-agent/docs/gpg-walkthrough/"><meta property="article:section" content="docs">
-<meta property="article:modified_time" content="2021-10-07T16:41:05+08:00"><meta property="og:site_name" content="PIV Agent">
+<meta property="article:modified_time" content="2021-10-25T13:43:46+08:00"><meta property="og:site_name" content="PIV Agent">
 <meta itemprop=name content="GPG Walkthrough">
 <meta itemprop=description content="Full example of how you might set up and use piv-agent with gpg.">
-<meta itemprop=dateModified content="2021-10-07T16:41:05+08:00">
-<meta itemprop=wordCount content="1973">
+<meta itemprop=dateModified content="2021-10-25T13:43:46+08:00">
+<meta itemprop=wordCount content="2060">
 <meta itemprop=keywords content><meta name=twitter:card content="summary">
 <meta name=twitter:title content="GPG Walkthrough">
 <meta name=twitter:description content="Full example of how you might set up and use piv-agent with gpg.">
@@ -43,7 +43,7 @@
 <ul class="navbar-nav mt-2 mt-lg-0">
 </ul>
 </div>
-<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.6f360e63bf22e2074828b1fe902cdef5.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.19ab177ee28dfedcc07101426c992f06.json data-offline-search-base-href=/ data-offline-search-max-results=10>
 </div>
 </nav>
 </header>
@@ -53,7 +53,7 @@
 <aside class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
 <div id=td-sidebar-menu class=td-sidebar__inner>
 <form class="td-sidebar__search d-flex align-items-center">
-<input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.6f360e63bf22e2074828b1fe902cdef5.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.19ab177ee28dfedcc07101426c992f06.json data-offline-search-base-href=/ data-offline-search-max-results=10>
 <button class="btn btn-link td-sidebar__toggle d-md-none p-0 ml-3 fas fa-bars" type=button data-toggle=collapse data-target=#td-section-nav aria-controls=td-docs-nav aria-expanded=false aria-label="Toggle section navigation">
 </button>
 </form>
@@ -104,6 +104,7 @@
 <li><a href=#publish-public-key>Publish public key</a></li>
 <li><a href=#signing-example>Signing Example</a></li>
 <li><a href=#decrypting-example>Decrypting Example</a></li>
+<li><a href=#common-software-integration>Common software integration</a></li>
 </ul>
 </li>
 </ul>
@@ -131,7 +132,7 @@ This example is intended to illustrate how <code>piv-agent</code> can integrate 
 <div class="alert alert-primary" role=alert>
 <h4 class=alert-heading>Note</h4>
 This example requires switching between <code>gpg-agent</code> and <code>piv-agent</code>.
-See the <a href=/docs/faq>FAQ</a> for how to do that.
+See the <a href=../../docs/faq>FAQ</a> for how to do that.
 </div>
 <h2 id=setup>Setup</h2>
 <p>Suppose I have an existing RSA OpenPGP key that I use with <code>gpg</code>.
@@ -460,12 +461,7 @@ uid                 [ unknown] piv-agent (piv-agent decrypting key; touch-policy
 Specify the master key ID (e.g. <code>0x9FA216008BDF1AE5E1BCAEC3EC26B2E4240DD2A9</code> or <code>0xEC26B2E4240DD2A9</code>) to use the subkeys.
 The subkey with the most recent date is preferred by <code>gpg</code>.</p>
 <p>Importantly the master key ID is the same after adding the subkeys, so any existing workflows will continue to work as before.</p>
-<pre><code># example ~/.config/git/config
-[user]
-	name = Scott Leggett
-	email = scott@sl.id.au
-	signingKey = 9FA216008BDF1AE5E1BCAEC3EC26B2E4240DD2A9
-</code></pre><h3 id=publish-public-key>Publish public key</h3>
+<h3 id=publish-public-key>Publish public key</h3>
 <p>The public key can now be distributed to keyservers and other services such as Github.
 The subkeys are included in the exported master public key.</p>
 <pre><code>$ gpg --export --armor 0xEC26B2E4240DD2A9
@@ -585,9 +581,24 @@ gpg: encrypted with 3072-bit RSA key, ID 42B99C3339C9FBC1, created 2021-10-17
 gpg: AES256 encrypted data
 gpg: original file name='foo'
 bar
+</code></pre><h3 id=common-software-integration>Common software integration</h3>
+<h4 id=git>git</h4>
+<p>The same master key ID will work as before, but signing will prefer to use the hardware security device if it is plugged in.</p>
+<pre><code># example ~/.config/git/config
+[user]
+	name = Scott Leggett
+	email = scott@sl.id.au
+	signingKey = 9FA216008BDF1AE5E1BCAEC3EC26B2E4240DD2A9
+[commit]
+	gpgSign = true
+</code></pre><h4 id=pass>pass</h4>
+<p><code>pass</code> has the ability to encrypt to multiple key-ids.
+Running <code>pass init</code> will re-encrypt existing passwords and configure <code>pass</code> to use the specified key-ids for encryption.
+As usual, <code>piv-agent</code> will use the cryptographic key stored in hardware for decryption if it is available, but fall back to the keyfile otherwise.</p>
+<pre><code>pass init 0x42B99C3339C9FBC1! 0x84F7BF2FEAC32674!
 </code></pre>
 <div class="text-muted mt-5 pt-3 border-top">
-Last modified October 7, 2021: <a href=https://github.com/smlx/piv-agent/commit/5062dc295eee5a0ee0a09b674bbeff2cbedc30be>chore: improve documentation (5062dc2)</a>
+Last modified October 25, 2021: <a href=https://github.com/smlx/piv-agent/commit/47c8d0ee2096ef670e5a0b6fd2eebde4889a9719>chore: update docs and fix broken links (47c8d0e)</a>
 </div>
 </div>
 </main>

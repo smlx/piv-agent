@@ -20,10 +20,10 @@
 <meta property="og:description" content="Set up piv-agent to work with your hardware.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="/piv-agent/docs/setup/"><meta property="article:section" content="docs">
-<meta property="article:modified_time" content="2021-10-07T16:41:05+08:00"><meta property="og:site_name" content="PIV Agent">
+<meta property="article:modified_time" content="2021-10-25T13:43:46+08:00"><meta property="og:site_name" content="PIV Agent">
 <meta itemprop=name content="Setup">
 <meta itemprop=description content="Set up piv-agent to work with your hardware.">
-<meta itemprop=dateModified content="2021-10-07T16:41:05+08:00">
+<meta itemprop=dateModified content="2021-10-25T13:43:46+08:00">
 <meta itemprop=wordCount content="920">
 <meta itemprop=keywords content><meta name=twitter:card content="summary">
 <meta name=twitter:title content="Setup">
@@ -43,7 +43,7 @@
 <ul class="navbar-nav mt-2 mt-lg-0">
 </ul>
 </div>
-<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.6f360e63bf22e2074828b1fe902cdef5.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.19ab177ee28dfedcc07101426c992f06.json data-offline-search-base-href=/ data-offline-search-max-results=10>
 </div>
 </nav>
 </header>
@@ -53,7 +53,7 @@
 <aside class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
 <div id=td-sidebar-menu class=td-sidebar__inner>
 <form class="td-sidebar__search d-flex align-items-center">
-<input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.6f360e63bf22e2074828b1fe902cdef5.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.19ab177ee28dfedcc07101426c992f06.json data-offline-search-base-href=/ data-offline-search-max-results=10>
 <button class="btn btn-link td-sidebar__toggle d-md-none p-0 ml-3 fas fa-bars" type=button data-toggle=collapse data-target=#td-section-nav aria-controls=td-docs-nav aria-expanded=false aria-label="Toggle section navigation">
 </button>
 </form>
@@ -170,7 +170,7 @@ To get <code>ssh</code> to ignore local keyfiles and only talk to <code>piv-agen
 <div class="alert alert-primary" role=alert>
 <h4 class=alert-heading>Note</h4>
 This step requires <code>gpg-agent</code> to be running, not <code>piv-agent</code>.
-See the <a href=/docs/faq>FAQ</a> for how to switch between the two services.
+See the <a href=../../docs/faq>FAQ</a> for how to switch between the two services.
 </div>
 <div class="alert alert-primary" role=alert>
 <h4 class=alert-heading>Note</h4>
@@ -216,9 +216,9 @@ You&rsquo;ll need a verion of GnuPG where that bug is fixed for this procedure t
 This allows you to do things like sign <code>git</code> commits using your Yubikey, while keeping the same OpenPGP key ID.
 Adding a subkey requires cross-signing between the master key and sub key, so you need to export the master secret key of your existing OpenPGP key as described above to make it available to <code>piv-agent</code>.</p>
 <p><code>gpg</code> will choose the <em>newest</em> available subkey to perform an action. So it will automatically prefer a newly added <code>piv-agent</code> subkey over any existing keyfile subkeys, but fall back to keyfiles if e.g. the Yubikey is not plugged in.</p>
-<p>See the <a href=/docs/gpg-walkthrough>GPG Walkthrough</a> for an example of this procedure.</p>
+<p>See the <a href=../../docs/gpg-walkthrough>GPG Walkthrough</a> for an example of this procedure.</p>
 <div class="text-muted mt-5 pt-3 border-top">
-Last modified October 7, 2021: <a href=https://github.com/smlx/piv-agent/commit/5062dc295eee5a0ee0a09b674bbeff2cbedc30be>chore: improve documentation (5062dc2)</a>
+Last modified October 25, 2021: <a href=https://github.com/smlx/piv-agent/commit/47c8d0ee2096ef670e5a0b6fd2eebde4889a9719>chore: update docs and fix broken links (47c8d0e)</a>
 </div>
 </div>
 </main>
