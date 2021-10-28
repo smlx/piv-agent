@@ -66,9 +66,7 @@ If you have tested another device with `piv-agent` successfully, please send a P
 
 ### Platform support
 
-Currently tested on Linux with `systemd`.
-
-If you have a Mac, I'd love to add support for `launchd` socket activation. See issue https://github.com/smlx/piv-agent/issues/12.
+Currently tested on Linux with `systemd` and macOS with `launchd`.
 
 ### Protocol / Encryption Algorithm support
 
