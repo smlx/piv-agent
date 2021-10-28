@@ -17,14 +17,28 @@ The `pkill` is required because `gpg` may be configured to automatically start `
 systemctl --user stop gpg-agent.socket gpg-agent.service piv-agent.socket piv-agent.service; pkill gpg-agent
 ```
 
-Start `piv-agent`:
+Start `piv-agent` sockets:
 
 ```
 systemctl --user start piv-agent.socket
 ```
 
-Or start `gpg-agent`:
+Or start `gpg-agent` socket:
 
 ```
 systemctl --user start gpg-agent.socket
+```
+
+### macOS (launchd)
+
+Stop `piv-agent`:
+
+```
+launchctl disable gui/$UID/com.github.smlx.piv-agent
+```
+
+Start `piv-agent` sockets:
+
+```
+launchctl enable gui/$UID/com.github.smlx.piv-agent
 ```
