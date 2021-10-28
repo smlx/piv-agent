@@ -4,6 +4,10 @@
 <dict>
 	<key>Label</key>
 	<string>com.github.smlx.piv-agent</string>
+	<key>StandardErrorPath</key>
+	<string>/tmp/piv-agent.err</string>
+	<key>StandardOutPath</key>
+	<string>/tmp/piv-agent.out</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/bin/piv-agent</string>
