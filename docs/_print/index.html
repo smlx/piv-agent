@@ -41,7 +41,7 @@
 <ul class="navbar-nav mt-2 mt-lg-0">
 </ul>
 </div>
-<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.91505521fcc95f92c3d5a6db30cbe30b.json data-offline-search-base-href=/ data-offline-search-max-results=10>
+<div class="navbar-nav d-none d-lg-block"><input type=search class="form-control td-search-input" placeholder="&#xf002; Search this site…" aria-label="Search this site…" autocomplete=off data-offline-search-index-json-src=/piv-agent/offline-search-index.0eb31c3253f32eaa2a383fc8d0773377.json data-offline-search-base-href=/ data-offline-search-max-results=10>
 </div>
 </nav>
 </header>
@@ -87,20 +87,40 @@ sudo apt install libpcsclite1
 # TODO: other platforms
 ...
 </code></pre><h2 id=install-piv-agent>Install piv-agent</h2>
+<p>Download the latest <a href=https://github.com/smlx/piv-agent/releases>release</a>, and extract it to a temporary location.</p>
 <h3 id=linux>Linux</h3>
-<p>Download the latest <a href=https://github.com/smlx/piv-agent/releases>release</a>, and extract it to a temporary location.
-Copy the <code>piv-agent</code> binary into your <code>$PATH</code>, and the <code>systemd</code> unit files to the correct location:</p>
+<p>Copy the <code>piv-agent</code> binary into your <code>$PATH</code>, and the <code>systemd</code> unit files to the correct location:</p>
 <pre><code>sudo cp piv-agent /usr/local/bin/
 cp deploy/systemd/piv-agent.{socket,service} ~/.config/systemd/user/
 systemctl --user daemon-reload
 </code></pre><h3 id=macos>macOS</h3>
-<p>Similarly to Linux, copy <code>piv-agent</code> to <code>/usr/local/bin/</code>, edit the <code>.plist</code> file with the correct home directory, and drop it in <code>~/Library/LaunchAgents</code>.</p>
+<p><code>piv-agent</code> requires <a href=https://brew.sh>Homebrew</a> in order to install dependencies.
+So install that first.</p>
+<p>Copy the <code>piv-agent</code> binary into your <code>$PATH</code>, and the <code>launchd</code> <code>.plist</code> files to the correct location:</p>
+<pre><code>sudo cp piv-agent /usr/local/bin/
+cp deploy/launchd/com.github.smlx.piv-agent.plist ~/Library/LaunchAgents/
+</code></pre><p>From what I can tell <code>.plist</code> files only support absolute file paths, even for user agents.
+So edit <code>~/Library/LaunchAgents/com.github.smlx.piv-agent.plist</code> and update the path to <code>$HOME/.gnupg/S.gpg-agent</code>.</p>
+<p>If you plan to use <code>gpg</code>, install it via <code>brew install gnupg</code>.
+If not, you still need a <code>pinentry</code>, so <code>brew install pinentry</code>.</p>
+<p>If <code>~/.gnupg</code> doesn&rsquo;t already exist, create it.</p>
+<pre><code>mkdir ~/.gnupg
+chmod 700 ~/.gnupg
+</code></pre><p>Then enable the service:</p>
+<pre><code>launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.github.smlx.piv-agent.plist
+launchctl enable gui/$UID/com.github.smlx.piv-agent
+</code></pre><p>A socket should appear in <code>~/.gnupg/S.gpg-agent</code>.</p>
+<p>Disable <code>ssh-agent</code> to avoid <code>SSH_AUTH_SOCK</code> environment variable conflict.</p>
+<pre><code>launchctl disable gui/$UID/com.openssh.ssh-agent
+</code></pre><p>Set <code>launchd</code> user path to include <code>/usr/local/bin/</code> for <code>pinentry</code>.</p>
+<pre><code>sudo launchctl config user path $PATH
+</code></pre><p>Reboot and log back in.</p>
 <h3 id=socket-activation>Socket activation</h3>
-<p><code>piv-agent</code> relies on <a href=https://0pointer.de/blog/projects/socket-activated-containers.html>socket activation</a>, and is currently only tested with <code>systemd</code>.
+<p><code>piv-agent</code> relies on <a href=https://0pointer.de/blog/projects/socket-activated-containers.html>socket activation</a>, and is currently tested with <code>systemd</code> on Linux, and <code>launchd</code> on macOS.
 It doesn&rsquo;t listen to any sockets directly, and instead requires the init system to pass file descriptors to the <code>piv-agent</code> process after it is running.
 This requirement makes it possible to exit the process when not in use.</p>
-<p><code>ssh-agent</code> and <code>gpg-agent</code> functionality are enabled by default in the systemd and launchd configuration files.
-On Linux, index of the sockets listed in <code>piv-agent.socket</code> are indicated by the arguments to <code>--agent-types</code>.</p>
+<p><code>ssh-agent</code> and <code>gpg-agent</code> functionality are enabled by default in the <code>systemd</code> and <code>launchd</code> configuration files.</p>
+<p>On Linux, the index of the sockets listed in <code>piv-agent.socket</code> are indicated by the arguments to <code>--agent-types</code>.</p>
 </div>
 <div class=td-content style=page-break-before:always>
 <h1 id=pg-85ad37f4d4d62ce0f24ea8a26b95ba09>2 - Setup</h1>
@@ -248,10 +268,15 @@ It also has the advantage of ensuring that you don&rsquo;t forget your keyfile p
 The <code>pkill</code> is required because <code>gpg</code> may be configured to automatically start <code>gpg-agent</code> in a manner which is not managed by <code>systemd</code>.
 </div>
 <pre><code>systemctl --user stop gpg-agent.socket gpg-agent.service piv-agent.socket piv-agent.service; pkill gpg-agent
-</code></pre><p>Start <code>piv-agent</code>:</p>
+</code></pre><p>Start <code>piv-agent</code> sockets:</p>
 <pre><code>systemctl --user start piv-agent.socket
-</code></pre><p>Or start <code>gpg-agent</code>:</p>
+</code></pre><p>Or start <code>gpg-agent</code> socket:</p>
 <pre><code>systemctl --user start gpg-agent.socket
+</code></pre><h3 id=macos-launchd>macOS (launchd)</h3>
+<p>Stop <code>piv-agent</code>:</p>
+<pre><code>launchctl disable gui/$UID/com.github.smlx.piv-agent
+</code></pre><p>Start <code>piv-agent</code> sockets:</p>
+<pre><code>launchctl enable gui/$UID/com.github.smlx.piv-agent
 </code></pre>
 </div>
 <div class=td-content style=page-break-before:always>
