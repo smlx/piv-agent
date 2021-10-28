@@ -1,6 +1,6 @@
 archives:
 - files:
-  - deploy/*
+  - deploy/launchd
   - LICENSE
   - README.md
 builds:

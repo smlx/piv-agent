@@ -1,6 +1,6 @@
 archives:
 - files:
-  - deploy/*
+  - deploy/systemd
   - LICENSE
   - README.md
 builds:
