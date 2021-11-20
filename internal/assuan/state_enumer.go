@@ -68,8 +68,8 @@ func StateString(s string) (State, error) {
 	if val, ok := _StateNameToValueMap[s]; ok {
 		return val, nil
 	}
-	s = strings.ToLower(s)
-	if val, ok := _StateNameToValueMap[s]; ok {
+
+	if val, ok := _StateNameToValueMap[strings.ToLower(s)]; ok {
 		return val, nil
 	}
 	return 0, fmt.Errorf("%s does not belong to State values", s)
