@@ -156,5 +156,9 @@ var assuanTransitions = []fsm.Transition{
 		Src:   fsm.State(decryptingKeyIsSet),
 		Event: fsm.Event(pkdecrypt),
 		Dst:   fsm.State(waitingForCiphertext),
+	}, {
+		Src:   fsm.State(waitingForCiphertext),
+		Event: fsm.Event(havekey),
+		Dst:   fsm.State(connected),
 	},
 }

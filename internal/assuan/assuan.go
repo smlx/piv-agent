@@ -29,7 +29,6 @@ type KeyService interface {
 // New initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
 func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
-	var keyFound bool
 	var signature []byte
 	var keygrips, hash [][]byte
 	assuan := Assuan{
@@ -49,10 +48,7 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 					_, err = io.WriteString(rw,
 						"OK Pleased to meet you, process 123456789\n")
 				case reset:
-					assuan.signer = nil
-					assuan.decrypter = nil
-					assuan.hashAlgo = 0
-					assuan.hash = []byte{}
+					assuan.reset()
 					_, err = io.WriteString(rw, "OK\n")
 				case option:
 					// ignore option values - piv-agent doesn't use them
@@ -65,38 +61,7 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 						err = fmt.Errorf("unknown getinfo command: %q", assuan.data[0])
 					}
 				case havekey:
-					// HAVEKEY arguments are either:
-					// * a list of keygrips; or
-					// * --list=1000
-					// if _any_ key is available, we return OK, otherwise No_Secret_Key.
-					// handle --list
-					if bytes.HasPrefix(assuan.data[0], []byte("--list")) {
-						var grips []byte
-						grips, err = allKeygrips(ks)
-						if err != nil {
-							_, _ = io.WriteString(rw, "ERR 1 couldn't list keygrips\n")
-							return err
-						}
-						// apply buggy libgcrypt encoding
-						_, err = io.WriteString(rw, fmt.Sprintf("D %s\nOK\n",
-							PercentEncodeSExp(grips)))
-						return err
-					}
-					// handle list of keygrips
-					keygrips, err = hexDecode(assuan.data...)
-					if err != nil {
-						return fmt.Errorf("couldn't decode keygrips: %v", err)
-					}
-					keyFound, _, err = haveKey(ks, keygrips)
-					if err != nil {
-						_, _ = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
-						return err
-					}
-					if keyFound {
-						_, err = io.WriteString(rw, "OK\n")
-					} else {
-						_, err = io.WriteString(rw, "No_Secret_Key\n")
-					}
+					err = assuan.havekey(rw, ks)
 				case keyinfo:
 					err = doKeyinfo(rw, assuan.data, ks)
 				case scd:
@@ -291,6 +256,14 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 					// ignore this event since we don't currently use the client's
 					// description in the prompt
 					_, err = io.WriteString(rw, "OK\n")
+				case havekey:
+					// gpg skips the RESET command occasionally so we have to emulate it.
+					assuan.reset()
+					// now jump straight to havekey
+					if err = assuan.havekey(rw, ks); err != nil {
+						return err
+					}
+					_, err = io.WriteString(rw, "OK\n")
 				default:
 					return fmt.Errorf("unknown event: %v", Event(e))
 				}
@@ -299,6 +272,52 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 		},
 	}
 	return &assuan
+}
+
+func (assuan *Assuan) reset() {
+	assuan.signer = nil
+	assuan.decrypter = nil
+	assuan.hashAlgo = 0
+	assuan.hash = []byte{}
+}
+
+func (assuan *Assuan) havekey(rw io.ReadWriter, ks []KeyService) error {
+	var err error
+	var keyFound bool
+	var keygrips [][]byte
+	// HAVEKEY arguments are either:
+	// * a list of keygrips; or
+	// * --list=1000
+	// if _any_ key is available, we return OK, otherwise No_Secret_Key.
+	// handle --list
+	if bytes.HasPrefix(assuan.data[0], []byte("--list")) {
+		var grips []byte
+		grips, err = allKeygrips(ks)
+		if err != nil {
+			_, _ = io.WriteString(rw, "ERR 1 couldn't list keygrips\n")
+			return err
+		}
+		// apply buggy libgcrypt encoding
+		_, err = io.WriteString(rw, fmt.Sprintf("D %s\nOK\n",
+			PercentEncodeSExp(grips)))
+		return err
+	}
+	// handle list of keygrips
+	keygrips, err = hexDecode(assuan.data...)
+	if err != nil {
+		return fmt.Errorf("couldn't decode keygrips: %v", err)
+	}
+	keyFound, _, err = haveKey(ks, keygrips)
+	if err != nil {
+		_, _ = io.WriteString(rw, "ERR 1 couldn't check for keygrip\n")
+		return err
+	}
+	if keyFound {
+		_, err = io.WriteString(rw, "OK\n")
+	} else {
+		_, err = io.WriteString(rw, "No_Secret_Key\n")
+	}
+	return err
 }
 
 // doKeyinfo checks for key availability by keygrip, writing the result to rw.

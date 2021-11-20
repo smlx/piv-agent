@@ -104,8 +104,8 @@ func EventString(s string) (Event, error) {
 	if val, ok := _EventNameToValueMap[s]; ok {
 		return val, nil
 	}
-	s = strings.ToLower(s)
-	if val, ok := _EventNameToValueMap[s]; ok {
+
+	if val, ok := _EventNameToValueMap[strings.ToLower(s)]; ok {
 		return val, nil
 	}
 	return 0, fmt.Errorf("%s does not belong to Event values", s)
