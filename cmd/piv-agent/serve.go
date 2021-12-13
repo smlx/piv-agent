@@ -50,6 +50,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("build date", date))
 	p := piv.New(log)
+	defer p.CloseAll()
 	// use FDs passed via socket activation
 	ls, err := sockets.Get(validAgents)
 	if err != nil {

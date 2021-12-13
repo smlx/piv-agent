@@ -138,3 +138,11 @@ func (p *KeyService) GetDecrypter(keygrip []byte) (crypto.Decrypter, error) {
 	}
 	return &ECDHKey{ecdsa: ecdsaPrivKey}, nil
 }
+
+// CloseAll closes all security keys without checking for errors.
+// This should be called to clean up connections to `pcscd`.
+func (p *KeyService) CloseAll() {
+	for _, k := range p.securityKeys {
+		_ = k.Close()
+	}
+}
