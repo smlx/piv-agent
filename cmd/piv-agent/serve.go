@@ -73,6 +73,11 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 			s := server.NewSSH(log)
 			a := ssh.NewAgent(p, log, cmd.LoadKeyfile)
 			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], idle, cmd.IdleTimeout)
+			if err != nil {
+				log.Debug("exiting SSH server", zap.Error(err))
+			} else {
+				log.Debug("exiting SSH server successfully")
+			}
 			cancel()
 			return err
 		})

@@ -142,7 +142,10 @@ func (p *KeyService) GetDecrypter(keygrip []byte) (crypto.Decrypter, error) {
 // CloseAll closes all security keys without checking for errors.
 // This should be called to clean up connections to `pcscd`.
 func (p *KeyService) CloseAll() {
+	p.log.Debug("closing security keys", zap.Int("count", len(p.securityKeys)))
 	for _, k := range p.securityKeys {
-		_ = k.Close()
+		if err := k.Close(); err != nil {
+			p.log.Debug("couldn't close key", zap.Error(err))
+		}
 	}
 }
