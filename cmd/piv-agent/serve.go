@@ -50,6 +50,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("build date", date))
 	p := piv.New(log)
+	defer p.CloseAll()
 	// use FDs passed via socket activation
 	ls, err := sockets.Get(validAgents)
 	if err != nil {
@@ -72,6 +73,11 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 			s := server.NewSSH(log)
 			a := ssh.NewAgent(p, log, cmd.LoadKeyfile)
 			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], idle, cmd.IdleTimeout)
+			if err != nil {
+				log.Debug("exiting SSH server", zap.Error(err))
+			} else {
+				log.Debug("exiting SSH server successfully")
+			}
 			cancel()
 			return err
 		})
