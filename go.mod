@@ -3,7 +3,7 @@ module github.com/smlx/piv-agent
 go 1.15
 
 require (
-	github.com/alecthomas/kong v0.4.0
+	github.com/alecthomas/kong v0.4.1
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/davecgh/go-spew v1.1.1
 	github.com/gen2brain/beeep v0.0.0-20200526185328-e9c15c258e28
