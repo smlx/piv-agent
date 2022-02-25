@@ -1,6 +1,6 @@
 module github.com/smlx/piv-agent
 
-go 1.15
+go 1.17
 
 require (
 	github.com/alecthomas/kong v0.4.1
