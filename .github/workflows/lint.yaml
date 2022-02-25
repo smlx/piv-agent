@@ -10,7 +10,7 @@ jobs:
     - name: Install Dependencies
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v2.5.2
+      uses: golangci/golangci-lint-action@v3
       with:
         version: latest
   commitlint:
