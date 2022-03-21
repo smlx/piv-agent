@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -29,6 +30,7 @@ type Agent struct {
 	log         *zap.Logger
 	pinentry    *pinentry.PINEntry
 	loadKeyfile bool
+	cancel      context.CancelFunc
 }
 
 // ErrNotImplemented is returned from any unimplemented method.
@@ -41,8 +43,9 @@ var ErrUnknownKey = errors.New("requested signature of unknown key")
 var passphrases = map[string][]byte{}
 
 // NewAgent returns a new Agent.
-func NewAgent(p *piv.KeyService, log *zap.Logger, loadKeyfile bool) *Agent {
-	return &Agent{piv: p, log: log, loadKeyfile: loadKeyfile}
+func NewAgent(p *piv.KeyService, log *zap.Logger,
+	loadKeyfile bool, cancel context.CancelFunc) *Agent {
+	return &Agent{piv: p, log: log, loadKeyfile: loadKeyfile, cancel: cancel}
 }
 
 // List returns the identities known to the agent.
@@ -165,8 +168,10 @@ func (a *Agent) Remove(key gossh.PublicKey) error {
 }
 
 // RemoveAll removes all identities.
+// This is implemented by causing piv-agent to exit.
 func (a *Agent) RemoveAll() error {
-	return ErrNotImplemented
+	a.cancel()
+	return nil
 }
 
 // Lock locks the agent. Sign and Remove will fail, and List will empty an
