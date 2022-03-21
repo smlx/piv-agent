@@ -71,7 +71,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 		log.Debug("starting SSH server")
 		g.Go(func() error {
 			s := server.NewSSH(log)
-			a := ssh.NewAgent(p, log, cmd.LoadKeyfile)
+			a := ssh.NewAgent(p, log, cmd.LoadKeyfile, cancel)
 			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], idle, cmd.IdleTimeout)
 			if err != nil {
 				log.Debug("exiting SSH server", zap.Error(err))
