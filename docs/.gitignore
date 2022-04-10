@@ -1,4 +1,6 @@
-themes
-node_modules
-package-lock.json
-resources
+/.hugo_build.lock
+/node_modules
+/package-lock.json
+/package.json
+/resources
+/themes
