@@ -16,8 +16,8 @@ type SetupCmd struct {
 	Card             string   `kong:"help='Specify a smart card device'"`
 	ResetSecurityKey bool     `kong:"help='Overwrite any existing keys'"`
 	PIN              uint64   `kong:"help='Set the PIN/PUK of the device (6-8 digits). Will be prompted interactively if not provided.'"`
-	SigningKeys      []string `kong:"default='cached,always,never',enum='cached,always,never',help='Generate signing keys with various touch policies (default cached,always,never)'"`
-	DecryptingKeys   []string `kong:"default='cached,always,never',enum='cached,always,never',help='Generate a decrypting key (default cached,always,never)'"`
+	SigningKeys      []string `kong:"default='cached,always,never',enum='cached,always,never',help='Generate signing keys with various touch policies (possible values: cached,always,never)'"`
+	DecryptingKeys   []string `kong:"default='cached,always,never',enum='cached,always,never',help='Generate decrypting keys with various touch policies (possible values: cached,always,never)'"`
 }
 
 func interactivePIN() (uint64, error) {
