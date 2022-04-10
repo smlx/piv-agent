@@ -9,30 +9,41 @@ description: Set up piv-agent to work with your hardware.
 ### Default setup
 
 {{% alert title="Warning" color="warning" %}}
-This procedure resets the state of the PIV applet and wipes any existing keys from _all_ PIV slots.
+This procedure resets the state of the PIV applet to factory defaults and wipes any existing keys from _all_ PIV slots.
 {{% /alert %}}
 
 This procedure is only required once per hardware security device.
 Performing it a second time will reset the keys on the PIV applet of the device.
-It will not make any changes to other functionality the device may have, such as WebAuthn.
+It will not make any changes to applets providing other functionality the device may have, such as WebAuthn.
 
-By default, `piv-agent` uses four slots on your hardware security device to set up three signing keys, and one decrypting key.
-The signing keys each have different [touch policies](https://docs.yubico.com/yesdk/users-manual/application-piv/pin-touch-policies.html): never required, cached (for 15 seconds), and always.
-The touch policy for the decrypting key is "never required".
+By default, `piv-agent` uses six slots on your hardware security device to set up three signing keys, and three decrypting key.
+Each of the signing and decrypting keys have different [touch policies](https://docs.yubico.com/yesdk/users-manual/application-piv/pin-touch-policies.html): never required, cached (for 15 seconds), and always.
 
 The three signing keys are used for both SSH and GPG signing.
-The decrypting key is only used for GPG.
+The decrypting keys are used for GPG decryption.
+Having a range of touch policies available facilitates practical use of the hardware security device.
 
-These default policies are very roughly based on the [Yubikey certificate slot usage description](https://developers.yubico.com/PIV/Introduction/Certificate_slots.html).
-They are designed to facilitate practical use of the hardware security device.
+The default slot usage by `piv-agent` is detailed in the table below, with reference to the [Yubikey certificate slot usage description](https://developers.yubico.com/PIV/Introduction/Certificate_slots.html).
+It is highly recommended to use these setup defaults as this has had the most usability testing.
 
-It is highly recommended to use the default multi-key setup procedure as this has had the most usability testing.
+| Slot ID | Nominal purpose          | `piv-agent` usage | Touch policy |
+| ---     | ---                      | ---               | ---          |
+| `0x9a`  | PIV Authentication       | Signing           | Cached       |
+| `0x9c`  | Digital Signature        | Signing           | Always       |
+| `0x9e`  | Card Authentication      | Signing           | Never        |
+| `0x9d`  | Key Management           | Decrypting        | Cached       |
+| `0x82`  | Key Management (retired) | Decrypting        | Always       |
+| `0x83`  | Key Management (retired) | Decrypting        | Never        |
+
+#### Example setup workflow
 
 ```
 # find the name of the hardware security devices (cards)
 piv-agent list
-# generate new keys
-piv-agent setup --pin=123456 --card='Yubico YubiKey FIDO+CCID 01 00' --reset-security-key
+
+# generate new keys (PIN will be requested via interactive prompt)
+piv-agent setup --card='Yubico YubiKey FIDO+CCID 01 00'
+
 # view newly generated keys (SSH only by default)
 piv-agent list
 ```
@@ -47,14 +58,14 @@ This action can be destructive.
 If you reset a slot which already contains a key, that key will be lost.
 {{% /alert %}}
 
-It is possible to set up a single PIV slot on your hardware device without resetting the device.
-This means that you target a single slot to set up a key if the slot has not been set up yet, or reset a key if the slot already contains one.
+It is possible to set up a single PIV slot on your hardware device without resetting the PIV applet entirely.
+This means that you can target a single slot to set up a key if the slot has not been set up yet, or reset a key if the slot already contains one.
 Other PIV slots will not be affected, and will retain their existing keys.
 
-For example this command will reset just the decrypting slot on your Yubikey:
+For example this command will reset just the decrypting key with touch policy `never` on your Yubikey:
 
 ```
-piv-agent setup-slots --card="Yubico YubiKey FIDO+CCID 01 00" --pin=123456 --decrypting-key --reset-slots
+piv-agent setup-slots --card="Yubico YubiKey FIDO+CCID 01 00" --pin=123456 --decrypting-keys=never --reset-slots
 ```
 
 See the interactive help for more usage details:
@@ -160,7 +171,7 @@ The following instructions allow deeper integration of the hardware with existin
 {{% alert title="Note" %}}
 There is a [bug](https://dev.gnupg.org/T5555) in certain versions of GnuPG which doesn't allow ECDSA keys to be added as signing subkeys.
 This is unfortunate since signing is much more useful than decryption.
-You'll need a verion of GnuPG where that bug is fixed for this procedure to work.
+You'll need a version of GnuPG where that bug is fixed for this procedure to work.
 {{% /alert %}}
 
 Adding a `piv-agent` OpenPGP key as a signing subkey of an existing OpenPGP key is a convenient way to integrate a hardware security device with your existing `gpg` workflow.
