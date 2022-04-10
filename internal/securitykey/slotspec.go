@@ -35,8 +35,12 @@ var defaultSignSlots = map[string]SlotSpec{
 	"never": {piv.SlotCardAuthentication, piv.TouchPolicyNever},
 }
 
+var alwaysDecryptSlot, _ = piv.RetiredKeyManagementSlot(0x82)
+var neverDecryptSlot, _ = piv.RetiredKeyManagementSlot(0x83)
+
 // defaultDecryptSlots represents the slot specifications for decrypting
-// operations.
+// operations. By using additional "retired" slots we can enable multiple touch
+// policies for decrypt.
 var defaultDecryptSlots = map[string]SlotSpec{
 	// Slot 9d: Key Management
 	// This certificate and its associated private key is used for encryption for
@@ -45,5 +49,9 @@ var defaultDecryptSlots = map[string]SlotSpec{
 	// private key operations. Once the PIN has been provided successfully,
 	// multiple private key operations may be performed without additional
 	// cardholder consent.
-	"never": {piv.SlotKeyManagement, piv.TouchPolicyNever},
+	"cached": {piv.SlotKeyManagement, piv.TouchPolicyCached},
+	// "Retired" key management slot with an "always" touch policy.
+	"always": {alwaysDecryptSlot, piv.TouchPolicyAlways},
+	// "Retired" key management slot with a "never" touch policy.
+	"never": {neverDecryptSlot, piv.TouchPolicyNever},
 }
