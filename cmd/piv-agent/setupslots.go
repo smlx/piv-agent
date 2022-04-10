@@ -14,7 +14,7 @@ type SetupSlotsCmd struct {
 	ResetSlots     bool     `kong:"help='Overwrite existing keys in the targeted slots'"`
 	PIN            uint64   `kong:"help='The PIN/PUK of the device (6-8 digits). Will be prompted interactively if not provided.'"`
 	SigningKeys    []string `kong:"required,enum='cached,always,never',help='Set up slots for signing keys with various touch policies (possible values cached,always,never)'"`
-	DecryptingKeys []string `kong:"required,enum='cached,always,never',help='Set up slot for a decrypting key (possible values cached,always,never)'"`
+	DecryptingKeys []string `kong:"required,enum='cached,always,never',help='Set up slots for a decrypting keys with various touch polcies (possible values cached,always,never)'"`
 }
 
 // Run the setup-slot command to configure a slot on a security key.
