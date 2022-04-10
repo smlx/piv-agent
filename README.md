@@ -25,6 +25,8 @@ If you are, please take a look at the code and send PRs or issues. :green_heart:
 * support for multiple hardware security keys
 * support for multiple slots in those keys
 * support for multiple touch policies
+* all cryptographic keys are generated on the hardware security key, rather than on your laptop
+  * secret keys never touch your hard drive
 * socket activation (systemd-compatible)
   * as a result, automatically drop the transaction on the security key and cached passphrases after some period of disuse
 * provides "fall-back" to traditional SSH and OpenPGP keyfiles
