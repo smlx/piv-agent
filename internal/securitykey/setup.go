@@ -18,8 +18,8 @@ import (
 // and reset is false.
 var ErrKeySetUp = errors.New("security key already set up")
 
-// checkSlotSetUp checks if the provided slot is set up, returning true if the slot
-// is set up and false otherwise.
+// checkSlotSetUp checks if the provided slot is set up, returning true if the
+// slot is set up and false otherwise.
 func (k *SecurityKey) checkSlotSetUp(s SlotSpec) (bool, error) {
 	_, err := k.yubikey.Certificate(s.Slot)
 	if err == nil {
@@ -30,10 +30,10 @@ func (k *SecurityKey) checkSlotSetUp(s SlotSpec) (bool, error) {
 	return false, fmt.Errorf("couldn't check slot certificate: %v", err)
 }
 
-// checkSlotsSetUp checks if the provided slots are set up returning true if any of
-// the slots are set up, and false otherwise.
+// checkSlotsSetUp checks if the provided slots are set up returning true if
+// any of the slots are set up, and false otherwise.
 func (k *SecurityKey) checkSlotsSetUp(signingKeys []string,
-	decryptingKey bool) (bool, error) {
+	decryptingKeys []string) (bool, error) {
 	for _, p := range signingKeys {
 		setUp, err := k.checkSlotSetUp(defaultSignSlots[p])
 		if err != nil {
@@ -43,8 +43,8 @@ func (k *SecurityKey) checkSlotsSetUp(signingKeys []string,
 			return true, nil
 		}
 	}
-	if decryptingKey {
-		setUp, err := k.checkSlotSetUp(defaultDecryptSlots["never"])
+	for _, p := range decryptingKeys {
+		setUp, err := k.checkSlotSetUp(defaultDecryptSlots[p])
 		if err != nil {
 			return false, err
 		}
@@ -57,10 +57,10 @@ func (k *SecurityKey) checkSlotsSetUp(signingKeys []string,
 
 // Setup configures the SecurityKey to work with piv-agent.
 func (k *SecurityKey) Setup(pin, version string, reset bool,
-	signingKeys []string, decryptingKey bool) error {
+	signingKeys []string, decryptingKeys []string) error {
 	var err error
 	if !reset {
-		setUp, err := k.checkSlotsSetUp(signingKeys, decryptingKey)
+		setUp, err := k.checkSlotsSetUp(signingKeys, decryptingKeys)
 		if err != nil {
 			return fmt.Errorf("couldn't check slots: %v", err)
 		}
@@ -96,15 +96,16 @@ func (k *SecurityKey) Setup(pin, version string, reset bool,
 	for _, p := range signingKeys {
 		err := k.configureSlot(mgmtKey, defaultSignSlots[p], version)
 		if err != nil {
-			return fmt.Errorf("couldn't configure slot %v: %v", defaultSignSlots[p], err)
+			return fmt.Errorf("couldn't configure slot %v: %v",
+				defaultSignSlots[p], err)
 		}
 	}
-	// setup decrypt key
-	if decryptingKey {
-		err := k.configureSlot(mgmtKey, defaultDecryptSlots["never"], version)
+	// setup decrypt keys
+	for _, p := range decryptingKeys {
+		err := k.configureSlot(mgmtKey, defaultDecryptSlots[p], version)
 		if err != nil {
 			return fmt.Errorf("couldn't configure slot %v: %v",
-				defaultDecryptSlots["cached"], err)
+				defaultDecryptSlots[p], err)
 		}
 	}
 	return nil

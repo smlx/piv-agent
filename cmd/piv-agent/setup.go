@@ -16,8 +16,8 @@ type SetupCmd struct {
 	Card             string   `kong:"help='Specify a smart card device'"`
 	ResetSecurityKey bool     `kong:"help='Overwrite any existing keys'"`
 	PIN              uint64   `kong:"help='Set the PIN/PUK of the device (6-8 digits). Will be prompted interactively if not provided.'"`
-	SigningKeys      []string `kong:"default='cached,always,never',enum='cached,always,never',help='Generate signing keys with various touch policies (cached,always,never)'"`
-	DecryptingKey    bool     `kong:"default='true',help='Generate a decrypting key (default true)'"`
+	SigningKeys      []string `kong:"default='cached,always,never',enum='cached,always,never',help='Generate signing keys with various touch policies (default cached,always,never)'"`
+	DecryptingKeys   []string `kong:"default='cached,always,never',enum='cached,always,never',help='Generate a decrypting key (default cached,always,never)'"`
 }
 
 func interactivePIN() (uint64, error) {
@@ -61,7 +61,7 @@ func (cmd *SetupCmd) Run() error {
 		return fmt.Errorf("couldn't get security key: %v", err)
 	}
 	err = k.Setup(strconv.FormatUint(cmd.PIN, 10), version,
-		cmd.ResetSecurityKey, cmd.SigningKeys, cmd.DecryptingKey)
+		cmd.ResetSecurityKey, cmd.SigningKeys, cmd.DecryptingKeys)
 	if errors.Is(err, securitykey.ErrKeySetUp) {
 		return fmt.Errorf("--reset-security-key not specified: %w", err)
 	}
