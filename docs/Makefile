@@ -1,5 +1,5 @@
 .PHONY: serve
-serve:
+serve: themes/docsy
 	cd .. && \
 		docker run --rm -it -v $$(pwd):/src -u $$(id -u) -p 1313:1313 \
 		--entrypoint sh klakegg/hugo:ext-alpine -c \
