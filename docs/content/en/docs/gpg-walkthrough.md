@@ -290,7 +290,10 @@ And we can add the piv-agent signing key as a subkey of the RSA master key too.
 
 {{% alert title="Note" %}}
 This doesn't currently work without a patch in GnuPG due to [this GnuPG bug](https://dev.gnupg.org/T5555).
-The session below is with the patch from the bug report applied.
+
+Until this is fixed upstream, [here is a Docker image](https://github.com/smlx/gnupg-piv-agent) containing a patched version of `gpg` which will add ECDSA keys as signing subkeys.
+
+The example session below is with a patched version of `gpg`.
 {{% /alert %}}
 
 ```
