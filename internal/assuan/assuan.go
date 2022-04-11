@@ -17,6 +17,10 @@ import (
 	"golang.org/x/crypto/openpgp/s2k"
 )
 
+// version indicates the version of gpg-agent to emulate.
+// If this is lower than the gpg client version gpg will emit a warning.
+const version = "2.2.27"
+
 // The KeyService interface provides functions used by the Assuan FSM.
 type KeyService interface {
 	Name() string
@@ -56,7 +60,7 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 				case getinfo:
 					if bytes.Equal(assuan.data[0], []byte("version")) {
 						// masquerade as a compatible gpg-agent
-						_, err = io.WriteString(rw, "D 2.2.27\nOK\n")
+						_, err = fmt.Fprintf(rw, "D %s\nOK\n", version)
 					} else {
 						err = fmt.Errorf("unknown getinfo command: %q", assuan.data[0])
 					}
