@@ -10,7 +10,7 @@ jobs:
     - name: Install Dependencies
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
     - name: Install Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: "^1.18"
     - name: golangci-lint
