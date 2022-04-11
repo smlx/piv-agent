@@ -18,8 +18,9 @@ import (
 )
 
 // version indicates the version of gpg-agent to emulate.
-// If this is lower than the gpg client version gpg will emit a warning.
-const version = "2.2.27"
+// The gpg CLI client will emit a warning if this is lower than the version of
+// the gpg client itself.
+const version = "2.3.4"
 
 // The KeyService interface provides functions used by the Assuan FSM.
 type KeyService interface {
