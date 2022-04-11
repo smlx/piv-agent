@@ -169,9 +169,10 @@ The following instructions allow deeper integration of the hardware with existin
 ### Add cryptographic key stored in hardware as a GPG signing subkey
 
 {{% alert title="Note" %}}
-There is a [bug](https://dev.gnupg.org/T5555) in certain versions of GnuPG which doesn't allow ECDSA keys to be added as signing subkeys.
+There is a [bug](https://dev.gnupg.org/T5555) in current versions of GnuPG which doesn't allow ECDSA keys to be added as signing subkeys.
 This is unfortunate since signing is much more useful than decryption.
-You'll need a version of GnuPG where that bug is fixed for this procedure to work.
+
+Until this is fixed upstream, [here is a Docker image](https://github.com/smlx/gnupg-piv-agent) containing a patched version of `gpg` which will add ECDSA keys as signing subkeys.
 {{% /alert %}}
 
 Adding a `piv-agent` OpenPGP key as a signing subkey of an existing OpenPGP key is a convenient way to integrate a hardware security device with your existing `gpg` workflow.
