@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
@@ -29,9 +29,11 @@ jobs:
     - name: Setup Node
       uses: actions/setup-node@v3
       with:
-        node-version: '14'
+        node-version: '16'
 
     - run: cd docs && npm install postcss postcss-cli autoprefixer
+
+    - run: cd docs/themes/docsy && npm install
 
     - run: cd docs && hugo --minify
 
