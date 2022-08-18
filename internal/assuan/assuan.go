@@ -153,7 +153,7 @@ func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
 				case sethash:
 					// record the algorithm and hash
 					var n uint64
-					n, err = strconv.ParseUint(string(assuan.data[0]), 10, 32)
+					n, err = strconv.ParseUint(string(assuan.data[0]), 10, 8)
 					if err != nil {
 						return fmt.Errorf("couldn't parse uint %s: %v", assuan.data[0], err)
 					}
