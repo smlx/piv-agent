@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -95,7 +94,7 @@ func (a *Agent) keyFileIDs() ([]*agent.Key, error) {
 		return nil, err
 	}
 	keyPath := filepath.Join(home, ".ssh/id_ed25519.pub")
-	pubBytes, err := ioutil.ReadFile(keyPath)
+	pubBytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		a.log.Debug("couldn't load keyfile", zap.String("path", keyPath),
 			zap.Error(err))
@@ -266,7 +265,7 @@ func (a *Agent) keyfileSigners() ([]gossh.Signer, error) {
 		return nil, err
 	}
 	keyPath := filepath.Join(home, ".ssh/id_ed25519")
-	priv, err := ioutil.ReadFile(keyPath)
+	priv, err := os.ReadFile(keyPath)
 	if err != nil {
 		a.log.Debug("couldn't load keyfile", zap.String("path", keyPath),
 			zap.Error(err))
