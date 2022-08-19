@@ -107,6 +107,16 @@ To get `ssh` to ignore local keyfiles and only talk to `piv-agent`, add this lin
 IdentityFile /dev/null
 ```
 
+### List keys using ssh-add
+
+Confirm that `ssh-add` can talk to `piv-agent` by listing the keys available.
+
+```
+ssh-add -L
+```
+
+You should see the Yubikey ssh keys listed.
+
 ## GPG
 
 ### Export fallback cryptographic keys
