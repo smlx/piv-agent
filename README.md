@@ -59,7 +59,7 @@ Tested with:
 
 * [YubiKey 5C](https://www.yubico.com/au/product/yubikey-5c/), firmware 5.2.4
 
-Will be tested with (once it ships!):
+Will be tested with (once PIV support [is available](https://github.com/solokeys/solo2/discussions/88)):
 
 * [Solo V2](https://www.kickstarter.com/projects/conorpatrick/solo-v2-safety-net-against-phishing/)
 
