@@ -1,3 +1,4 @@
+// Package pinentry implements a PIN/passphrase entry dialog.
 package pinentry
 
 import (
@@ -14,16 +15,26 @@ type SecurityKey interface {
 }
 
 // PINEntry implements useful pinentry service methods.
-type PINEntry struct{}
+type PINEntry struct {
+	binaryName string
+}
+
+// New initialises a new PINEntry.
+func New(binaryName string) *PINEntry {
+	return &PINEntry{
+		binaryName: binaryName,
+	}
+}
 
 // GetPin uses pinentry to get the pin of the given token.
-func GetPin(k SecurityKey) func() (string, error) {
+func (pe *PINEntry) GetPin(k SecurityKey) func() (string, error) {
 	return func() (string, error) {
 		r, err := k.Retries()
 		if err != nil {
 			return "", fmt.Errorf("couldn't get retries for security key: %w", err)
 		}
 		c, err := gpm.NewClient(
+			gpm.WithBinaryName(pe.binaryName),
 			gpm.WithTitle("piv-agent PIN Prompt"),
 			gpm.WithPrompt("Please enter PIN:"),
 			gpm.WithDesc(
@@ -43,8 +54,9 @@ func GetPin(k SecurityKey) func() (string, error) {
 }
 
 // GetPassphrase uses pinentry to get the passphrase of the given key file.
-func (*PINEntry) GetPassphrase(desc, keyID string, tries int) ([]byte, error) {
+func (pe *PINEntry) GetPassphrase(desc, keyID string, tries int) ([]byte, error) {
 	c, err := gpm.NewClient(
+		gpm.WithBinaryName(pe.binaryName),
 		gpm.WithTitle("piv-agent Passphrase Prompt"),
 		gpm.WithPrompt("Please enter passphrase"),
 		gpm.WithDesc(fmt.Sprintf("%s\r(%d attempts remaining)", desc, tries)),

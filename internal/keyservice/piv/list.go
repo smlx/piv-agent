@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/go-piv/piv-go/piv"
+	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"go.uber.org/zap"
 )
@@ -39,7 +40,7 @@ func (p *KeyService) reloadSecurityKeys() error {
 		return fmt.Errorf("couldn't get cards: %v", err)
 	}
 	for _, card := range cards {
-		sk, err := securitykey.New(card)
+		sk, err := securitykey.New(card, pinentry.New("pinentry"))
 		if err != nil {
 			p.log.Warn("couldn't get SecurityKey", zap.String("card", card),
 				zap.Error(err))

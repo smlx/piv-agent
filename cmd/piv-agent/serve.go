@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
+	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/server"
 	"github.com/smlx/piv-agent/internal/sockets"
@@ -20,10 +21,12 @@ type agentTypeFlag map[string]uint
 
 // ServeCmd represents the listen command.
 type ServeCmd struct {
-	LoadKeyfile bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
-	ExitTimeout time.Duration `kong:"default=12h,help='Exit after this period to drop transaction and key file passphrase cache, even if service is in use'"`
-	IdleTimeout time.Duration `kong:"default=32m,help='Exit after this period of disuse'"`
-	AgentTypes  agentTypeFlag `kong:"default='ssh=0;gpg=1',help='Agent types to handle'"`
+	LoadKeyfile        bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
+	ExitTimeout        time.Duration `kong:"default=12h,help='Exit after this period to drop transaction and key file passphrase cache, even if service is in use'"`
+	IdleTimeout        time.Duration `kong:"default=32m,help='Exit after this period of disuse'"`
+	TouchNotifyDelay   time.Duration `kong:"default=6s,help='Display a notification after this period when waiting for a touch'"`
+	PinentryBinaryName string        `kong:"default='pinentry',help='Pinentry binary which will be used, must be in $PATH'"`
+	AgentTypes         agentTypeFlag `kong:"default='ssh=0;gpg=1',help='Agent types to handle'"`
 }
 
 // validAgents is the list of agents supported by piv-agent.
@@ -49,7 +52,8 @@ func (flagAgents *agentTypeFlag) AfterApply() error {
 func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("build date", date))
-	p := piv.New(log)
+	pe := pinentry.New(cmd.PinentryBinaryName)
+	p := piv.New(log, pe)
 	defer p.CloseAll()
 	// use FDs passed via socket activation
 	ls, err := sockets.Get(validAgents)
@@ -65,13 +69,14 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	idle := time.NewTicker(cmd.IdleTimeout)
+	n := notify.New(log, cmd.TouchNotifyDelay)
 	g := errgroup.Group{}
 	// start SSH agent if given in agent-type flag
 	if _, ok := cmd.AgentTypes["ssh"]; ok {
 		log.Debug("starting SSH server")
 		g.Go(func() error {
 			s := server.NewSSH(log)
-			a := ssh.NewAgent(p, log, cmd.LoadKeyfile, cancel)
+			a := ssh.NewAgent(p, pe, log, cmd.LoadKeyfile, n, cancel)
 			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], idle, cmd.IdleTimeout)
 			if err != nil {
 				log.Debug("exiting SSH server", zap.Error(err))
@@ -91,7 +96,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	if _, ok := cmd.AgentTypes["gpg"]; ok {
 		log.Debug("starting GPG server")
 		g.Go(func() error {
-			s := server.NewGPG(p, &pinentry.PINEntry{}, log, fallbackKeys)
+			s := server.NewGPG(p, pe, log, fallbackKeys, n)
 			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], idle, cmd.IdleTimeout)
 			if err != nil {
 				log.Debug("exiting GPG server", zap.Error(err))

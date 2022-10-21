@@ -1,3 +1,4 @@
+// Package server implements a gpg-agent server.
 package server
 
 import (
@@ -9,6 +10,7 @@ import (
 	"github.com/smlx/piv-agent/internal/assuan"
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
+	"github.com/smlx/piv-agent/internal/notify"
 	"go.uber.org/zap"
 )
 
@@ -17,15 +19,17 @@ const connTimeout = 4 * time.Minute
 // GPG represents a gpg-agent server.
 type GPG struct {
 	log           *zap.Logger
+	notify        *notify.Notify
 	pivKeyService *piv.KeyService
 	gpgKeyService *gpg.KeyService // fallback keyfile keys
 }
 
 // NewGPG initialises a new gpg-agent server.
 func NewGPG(piv *piv.KeyService, pinentry gpg.PINEntryService,
-	log *zap.Logger, path string) *GPG {
+	log *zap.Logger, path string, n *notify.Notify) *GPG {
 	return &GPG{
 		log:           log,
+		notify:        n,
 		pivKeyService: piv,
 		gpgKeyService: gpg.New(log, pinentry, path),
 	}
@@ -51,7 +55,7 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 				return fmt.Errorf("couldn't set deadline: %v", err)
 			}
 			// init protocol state machine
-			a := assuan.New(conn, g.log, g.pivKeyService, g.gpgKeyService)
+			a := assuan.New(conn, g.log, g.notify, g.pivKeyService, g.gpgKeyService)
 			// this goroutine will exit by either:
 			// * client severs connection (the usual case)
 			// * conn deadline reached (client stopped responding)

@@ -1,3 +1,4 @@
+// Package ssh implements an ssh-agent.
 package ssh
 
 import (
@@ -27,6 +28,7 @@ type Agent struct {
 	mu          sync.Mutex
 	piv         *piv.KeyService
 	log         *zap.Logger
+	notify      *notify.Notify
 	pinentry    *pinentry.PINEntry
 	loadKeyfile bool
 	cancel      context.CancelFunc
@@ -42,9 +44,10 @@ var ErrUnknownKey = errors.New("requested signature of unknown key")
 var passphrases = map[string][]byte{}
 
 // NewAgent returns a new Agent.
-func NewAgent(p *piv.KeyService, log *zap.Logger,
-	loadKeyfile bool, cancel context.CancelFunc) *Agent {
-	return &Agent{piv: p, log: log, loadKeyfile: loadKeyfile, cancel: cancel}
+func NewAgent(p *piv.KeyService, pe *pinentry.PINEntry, log *zap.Logger,
+	loadKeyfile bool, n *notify.Notify, cancel context.CancelFunc) *Agent {
+	return &Agent{piv: p, pinentry: pe, log: log, notify: n,
+		loadKeyfile: loadKeyfile, cancel: cancel}
 }
 
 // List returns the identities known to the agent.
@@ -140,13 +143,13 @@ func (a *Agent) Sign(key gossh.PublicKey, data []byte) (*gossh.Signature, error)
 	return a.signWithSigners(key, data, ks)
 }
 
-func (a *Agent) signWithSigners(key gossh.PublicKey, data []byte, signers []gossh.Signer) (*gossh.Signature, error) {
+func (a *Agent) signWithSigners(key gossh.PublicKey, data []byte,
+	signers []gossh.Signer) (*gossh.Signature, error) {
 	for _, s := range signers {
 		if !bytes.Equal(s.PublicKey().Marshal(), key.Marshal()) {
 			continue
 		}
-		// (possibly) send a notification
-		cancel := notify.Touch(a.log)
+		cancel := a.notify.Touch()
 		defer cancel()
 		// perform signature
 		a.log.Debug("signing",
