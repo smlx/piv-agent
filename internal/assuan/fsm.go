@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/smlx/fsm"
+	"github.com/smlx/piv-agent/internal/notify"
 )
 
 //go:generate enumer -type=Event -text -transform upper
@@ -55,7 +56,8 @@ const (
 // Assuan is the Assuan protocol FSM.
 type Assuan struct {
 	fsm.Machine
-	mu sync.Mutex
+	mu     sync.Mutex
+	notify *notify.Notify
 	// buffered IO for linewise reading
 	reader *bufio.Reader
 	// data is passed during Occur()

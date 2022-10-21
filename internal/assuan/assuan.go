@@ -1,3 +1,4 @@
+// Package assuan implements an libgcrypt Assuan protocol server.
 package assuan
 
 //go:generate mockgen -source=assuan.go -destination=../mock/mock_assuan.go -package=mock
@@ -13,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/smlx/fsm"
+	"github.com/smlx/piv-agent/internal/notify"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/openpgp/s2k"
 )
@@ -33,10 +35,12 @@ type KeyService interface {
 
 // New initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
-func New(rw io.ReadWriter, log *zap.Logger, ks ...KeyService) *Assuan {
+func New(rw io.ReadWriter, log *zap.Logger, n *notify.Notify,
+	ks ...KeyService) *Assuan {
 	var signature []byte
 	var keygrips, hash [][]byte
 	assuan := Assuan{
+		notify: n,
 		reader: bufio.NewReader(rw),
 		Machine: fsm.Machine{
 			State:       fsm.State(ready),

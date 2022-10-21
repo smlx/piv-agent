@@ -1,3 +1,4 @@
+// Package main implements the piv-agent CLI.
 package main
 
 import (

@@ -11,12 +11,14 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/mock/gomock"
 	"github.com/smlx/piv-agent/internal/assuan"
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"github.com/smlx/piv-agent/internal/mock"
+	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/cryptobyte"
@@ -146,7 +148,8 @@ func TestSign(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			a := assuan.New(&mockConn, log, keyService)
+			n := notify.New(log, 6*time.Second)
+			a := assuan.New(&mockConn, log, n, keyService)
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {
@@ -221,7 +224,8 @@ func TestKeyinfo(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			a := assuan.New(&mockConn, log, keyService)
+			n := notify.New(log, 6*time.Second)
+			a := assuan.New(&mockConn, log, n, keyService)
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {
@@ -340,7 +344,8 @@ func TestDecryptRSAKeyfile(t *testing.T) {
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
-			a := assuan.New(&mockConn, log, gpg.New(log, mockPES, tc.keyPath))
+			n := notify.New(log, 6*time.Second)
+			a := assuan.New(&mockConn, log, n, gpg.New(log, mockPES, tc.keyPath))
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {
@@ -434,7 +439,8 @@ func TestSignRSAKeyfile(t *testing.T) {
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
-			a := assuan.New(&mockConn, log, gpg.New(log, mockPES, tc.keyPath))
+			n := notify.New(log, 6*time.Second)
+			a := assuan.New(&mockConn, log, n, gpg.New(log, mockPES, tc.keyPath))
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {
@@ -516,7 +522,8 @@ func TestReadKey(t *testing.T) {
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
-			a := assuan.New(&mockConn, log, gpg.New(log, mockPES, tc.keyPath))
+			n := notify.New(log, 6*time.Second)
+			a := assuan.New(&mockConn, log, n, gpg.New(log, mockPES, tc.keyPath))
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {
@@ -628,7 +635,8 @@ func TestDecryptECDHKeyfile(t *testing.T) {
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
-			a := assuan.New(&mockConn, log, gpg.New(log, mockPES, tc.keyPath))
+			n := notify.New(log, 6*time.Second)
+			a := assuan.New(&mockConn, log, n, gpg.New(log, mockPES, tc.keyPath))
 			// write all the lines into the statemachine
 			for _, in := range tc.input {
 				if _, err := mockConn.ReadBuf.WriteString(in); err != nil {

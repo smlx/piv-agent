@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/smlx/piv-agent/internal/notify"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
 )
@@ -41,7 +40,7 @@ func (a *Assuan) signRSA() ([]byte, error) {
 // separately s-exp encoded. So we have to decode the ASN1 signature, extract
 // the params, and re-encode them into the s-exp. Ugh.
 func (a *Assuan) signECDSA() ([]byte, error) {
-	cancel := notify.Touch(nil)
+	cancel := a.notify.Touch()
 	defer cancel()
 	signature, err := a.signer.Sign(rand.Reader, a.hash, a.hashAlgo)
 	if err != nil {
