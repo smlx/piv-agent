@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -56,7 +57,7 @@ func (cmd *SetupCmd) Run() error {
 	if cmd.PIN < 100000 || cmd.PIN > 99999999 {
 		return fmt.Errorf("invalid PIN, must be 6-8 digits")
 	}
-	k, err := securitykey.New(cmd.Card)
+	k, err := securitykey.New(cmd.Card, pinentry.New("pinentry"))
 	if err != nil {
 		return fmt.Errorf("couldn't get security key: %v", err)
 	}

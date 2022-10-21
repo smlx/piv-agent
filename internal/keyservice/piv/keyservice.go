@@ -1,3 +1,4 @@
+// Package piv implements the PIV keyservice.
 package piv
 
 import (
@@ -9,6 +10,7 @@ import (
 
 	pivgo "github.com/go-piv/piv-go/piv"
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
+	"github.com/smlx/piv-agent/internal/pinentry"
 	"go.uber.org/zap"
 )
 
@@ -17,13 +19,15 @@ import (
 type KeyService struct {
 	mu           sync.Mutex
 	log          *zap.Logger
+	pinentry     *pinentry.PINEntry
 	securityKeys []SecurityKey
 }
 
 // New constructs a PIV and returns it.
-func New(l *zap.Logger) *KeyService {
+func New(l *zap.Logger, pe *pinentry.PINEntry) *KeyService {
 	return &KeyService{
-		log: l,
+		log:      l,
+		pinentry: pe,
 	}
 }
 

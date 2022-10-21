@@ -1,3 +1,5 @@
+// Package securitykey provides an interface to a physical security key such as
+// a Yubikey.
 package securitykey
 
 import (
@@ -19,6 +21,7 @@ type SecurityKey struct {
 	signingKeys    []SigningKey
 	decryptingKeys []DecryptingKey
 	cryptoKeys     []CryptoKey
+	pinentry       *pinentry.PINEntry
 }
 
 // CryptoKey represents a cryptographic key on a hardware security device.
@@ -28,7 +31,7 @@ type CryptoKey struct {
 }
 
 // New returns a security key identified by card string.
-func New(card string) (*SecurityKey, error) {
+func New(card string, pe *pinentry.PINEntry) (*SecurityKey, error) {
 	yk, err := piv.Open(card)
 	if err != nil {
 		return nil, fmt.Errorf(`couldn't open card "%s": %v`, card, err)
@@ -64,6 +67,7 @@ func New(card string) (*SecurityKey, error) {
 		signingKeys:    sks,
 		decryptingKeys: dks,
 		cryptoKeys:     cryptoKeys,
+		pinentry:       pe,
 	}, nil
 }
 
@@ -98,7 +102,7 @@ func (k *SecurityKey) CryptoKeys() []CryptoKey {
 // PrivateKey returns the private key of the given public signing key.
 func (k *SecurityKey) PrivateKey(c *CryptoKey) (crypto.PrivateKey, error) {
 	return k.yubikey.PrivateKey(c.SlotSpec.Slot, c.Public,
-		piv.KeyAuth{PINPrompt: pinentry.GetPin(k)})
+		piv.KeyAuth{PINPrompt: k.pinentry.GetPin(k)})
 }
 
 // Close closes the underlying yubikey.

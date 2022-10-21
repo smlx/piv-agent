@@ -44,10 +44,10 @@ var ErrUnknownKey = errors.New("requested signature of unknown key")
 var passphrases = map[string][]byte{}
 
 // NewAgent returns a new Agent.
-func NewAgent(p *piv.KeyService, log *zap.Logger, loadKeyfile bool,
-	n *notify.Notify, cancel context.CancelFunc) *Agent {
-	return &Agent{piv: p, log: log, notify: n, loadKeyfile: loadKeyfile,
-		cancel: cancel}
+func NewAgent(p *piv.KeyService, pe *pinentry.PINEntry, log *zap.Logger,
+	loadKeyfile bool, n *notify.Notify, cancel context.CancelFunc) *Agent {
+	return &Agent{piv: p, pinentry: pe, log: log, notify: n,
+		loadKeyfile: loadKeyfile, cancel: cancel}
 }
 
 // List returns the identities known to the agent.
