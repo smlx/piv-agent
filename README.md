@@ -27,7 +27,7 @@ If you are, please take a look at the code and send PRs or issues. :green_heart:
 * support for multiple touch policies
 * all cryptographic keys are generated on the hardware security key, rather than on your laptop
   * secret keys never touch your hard drive
-* socket activation (systemd-compatible)
+* uses systemd (Linux) or launchd (macOS) socket activation
   * as a result, automatically drop the transaction on the security key and cached passphrases after some period of disuse
 * provides "fall-back" to traditional SSH and OpenPGP keyfiles
 
@@ -37,7 +37,7 @@ This agent should require no interaction and in general do the right thing when 
 
 It is highly opinionated:
 
-* Only supports 256-bit EC keys on hardware tokens
+* Only supports 256-bit ECC keys on hardware tokens
 * Only supports ed25519 SSH keys on disk (`~/.ssh/id_ed25519`)
 * Requires socket activation
 
@@ -72,9 +72,13 @@ Currently tested on Linux with `systemd` and macOS with `launchd`.
 
 ### Protocol / Encryption Algorithm support
 
-| Supported | Not Supported | Support Planned (maybe) |
-| ---       | ---           | ---                     |
-| ✅        | ❌            | ⏳                      |
+| Supported | Not Supported | Support Blocked (Curve25519) |
+| ---       | ---           | ---                          |
+| ✅        | ❌            | ⏳                           |
+
+Curve25519 algorithms are blocked on hardware support.
+Currently I'm only aware of Solo V2 which intends to implement this non-standard curve.
+Support is not yet available (see the link above).
 
 #### ssh-agent
 
@@ -86,13 +90,13 @@ Currently tested on Linux with `systemd` and macOS with `launchd`.
 
 #### gpg-agent
 
-|                         | Security Key | Keyfile |
-| ---                     | ---          | ---     |
-| ECDSA Sign (NIST P-256) | ✅           | ✅      |
-| EDDSA Sign (Curve25519) | ⏳           | ⏳      |
-| ECDH Decrypt            | ✅           | ✅      |
-| RSA Sign                | ❌           | ✅      |
-| RSA Decrypt             | ❌           | ✅      |
+|                               | Security Key | Keyfile |
+| ---                           | ---          | ---     |
+| ECDSA Sign (NIST Curve P-256) | ✅           | ✅      |
+| EDDSA Sign (Curve25519)       | ⏳           | ⏳      |
+| ECDH Decrypt                  | ✅           | ✅      |
+| RSA Sign                      | ❌           | ✅      |
+| RSA Decrypt                   | ❌           | ✅      |
 
 ## Install and Use
 
