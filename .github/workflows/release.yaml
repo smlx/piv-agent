@@ -31,7 +31,7 @@ jobs:
         if [ -z $(git tag -l $(ccv)) ]; then
           git tag $(ccv)
           git push --tags
-          echo "::set-output name=new::true"
+          echo "new=true" >> $GITHUB_OUTPUT
         fi
   release:
     needs: tag
