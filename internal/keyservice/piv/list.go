@@ -54,10 +54,7 @@ func (p *KeyService) reloadSecurityKeys() error {
 	return nil
 }
 
-// SecurityKeys returns a slice containing all available security keys.
-func (p *KeyService) SecurityKeys() ([]SecurityKey, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (p *KeyService) getSecurityKeys() ([]SecurityKey, error) {
 	var err error
 	// check if any securityKeys are cached, and if not then cache them
 	if len(p.securityKeys) == 0 {
@@ -68,6 +65,7 @@ func (p *KeyService) SecurityKeys() ([]SecurityKey, error) {
 	// check they are healthy, and reload if not
 	for _, k := range p.securityKeys {
 		if _, err = k.AttestationCertificate(); err != nil {
+			p.log.Debug("PIV KeyService: couldn't get AttestationCertificate()", zap.Error(err))
 			if err = p.reloadSecurityKeys(); err != nil {
 				return nil, fmt.Errorf("couldn't reload security keys: %v", err)
 			}
@@ -75,4 +73,11 @@ func (p *KeyService) SecurityKeys() ([]SecurityKey, error) {
 		}
 	}
 	return p.securityKeys, nil
+}
+
+// SecurityKeys returns a slice containing all available security keys.
+func (p *KeyService) SecurityKeys() ([]SecurityKey, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.getSecurityKeys()
 }
