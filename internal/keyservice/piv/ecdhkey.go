@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sync"
 
 	pivgo "github.com/go-piv/piv-go/piv"
 	"github.com/smlx/piv-agent/internal/assuan"
@@ -17,12 +18,16 @@ var ciphertextECDH = regexp.MustCompile(
 
 // ECDHKey implements ECDH using an underlying ECDSA key.
 type ECDHKey struct {
-	ecdsa *pivgo.ECDSAPrivateKey
+	mu *sync.Mutex
+	*pivgo.ECDSAPrivateKey
 }
 
-// Decrypt performs ECDH as per gpg-agent.
+// Decrypt performs ECDH as per gpg-agent, and implements the crypto.Decrypter
+// interface.
 func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 	_ crypto.DecrypterOpts) ([]byte, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
 	// parse out the ephemeral public key
 	matches := ciphertextECDH.FindAllSubmatch(sexp, -1)
 	ciphertext := matches[0][2]
@@ -40,7 +45,7 @@ func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 		Y:     ephPubY,
 	}
 	// marshal, encode, and return the result
-	shared, err := k.ecdsa.SharedKey(&ephPub)
+	shared, err := k.SharedKey(&ephPub)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't generate shared secret: %v", err)
 	}
@@ -49,8 +54,10 @@ func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 	return []byte(fmt.Sprintf("D (5:value%d:%s)\nOK\n", sharedLen, shared)), nil
 }
 
-// Public implements the other required method of the crypto.Decrypter and
-// crypto.Signer interfaces.
-func (k *ECDHKey) Public() crypto.PublicKey {
-	return k.ecdsa.Public()
+// Sign wraps the underlying private key Sign operation in a mutex.
+func (k *ECDHKey) Sign(rand io.Reader, digest []byte,
+	opts crypto.SignerOpts) ([]byte, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return k.ECDSAPrivateKey.Sign(rand, digest, opts)
 }
