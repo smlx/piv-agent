@@ -12,7 +12,7 @@ require (
 	github.com/smlx/fsm v0.2.0
 	github.com/twpayne/go-pinentry-minimal v0.0.0-20220113210447-2a5dc4396c2a
 	github.com/x13a/go-launch v0.0.0-20210715084817-fd409384939b
-	go.uber.org/zap v1.23.0
+	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
