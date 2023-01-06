@@ -1,6 +1,6 @@
 .PHONY: test
 test: mod-tidy generate
-	go test -v ./...
+	CGO_ENABLED=1 go test -v ./...
 
 .PHONY: generate
 generate: mod-tidy
@@ -12,4 +12,4 @@ mod-tidy:
 
 .PHONY: build
 build: test
-	go build ./cmd/piv-agent
+	CGO_ENABLED=1 go build ./cmd/piv-agent
