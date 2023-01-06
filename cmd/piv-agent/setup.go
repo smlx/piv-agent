@@ -21,7 +21,8 @@ type SetupCmd struct {
 	DecryptingKeys   []string `kong:"default='cached,always,never',enum='cached,always,never',help='Generate decrypting keys with various touch policies (possible values: cached,always,never)'"`
 }
 
-func interactivePIN() (uint64, error) {
+// interactiveNewPIN prompts twice for a new PIN.
+func interactiveNewPIN() (uint64, error) {
 	fmt.Print("Enter a new PIN/PUK (6-8 digits): ")
 	rawPIN, err := terminal.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
@@ -49,7 +50,7 @@ func (cmd *SetupCmd) Run() error {
 	// if PIN has not been specified, ask interactively
 	var err error
 	if cmd.PIN == 0 {
-		cmd.PIN, err = interactivePIN()
+		cmd.PIN, err = interactiveNewPIN()
 		if err != nil {
 			return err
 		}
