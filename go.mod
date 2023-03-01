@@ -14,7 +14,7 @@ require (
 	github.com/x13a/go-launch v0.0.0-20210715084817-fd409384939b
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sync v0.1.0
 )
 
 require (
