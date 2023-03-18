@@ -14,7 +14,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v4
       with:
-        go-version: "^1.18"
+        go-version: stable
     - name: Install Dependencies (ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
