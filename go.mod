@@ -9,7 +9,7 @@ require (
 	github.com/gen2brain/beeep v0.0.0-20200526185328-e9c15c258e28
 	github.com/go-piv/piv-go v1.10.0
 	github.com/golang/mock v1.6.0
-	github.com/smlx/fsm v0.2.0
+	github.com/smlx/fsm v0.2.1
 	github.com/twpayne/go-pinentry-minimal v0.0.0-20220113210447-2a5dc4396c2a
 	github.com/x13a/go-launch v0.0.0-20210715084817-fd409384939b
 	go.uber.org/zap v1.24.0
