@@ -13,10 +13,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/smlx/fsm"
 	"github.com/smlx/piv-agent/internal/notify"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/openpgp/s2k"
 )
 
 // version indicates the version of gpg-agent to emulate.
@@ -162,7 +162,7 @@ func New(rw io.ReadWriter, log *zap.Logger, n *notify.Notify,
 						return fmt.Errorf("couldn't parse uint %s: %v", assuan.data[0], err)
 					}
 					var ok bool
-					if assuan.hashAlgo, ok = s2k.HashIdToHash(byte(n)); !ok {
+					if assuan.hashAlgo, ok = openpgp.HashIdToHash(uint8(n)); !ok {
 						return fmt.Errorf("invalid hash algorithm value: %x", n)
 					}
 					hash, err = hexDecode(assuan.data[1:]...)

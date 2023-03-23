@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	openpgpecdsa "github.com/ProtonMail/go-crypto/openpgp/ecdsa"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
 )
 
 func TestTrezorCompat(t *testing.T) {
@@ -82,15 +83,19 @@ func TestKeyGrip(t *testing.T) {
 			if !ok {
 				tt.Fatal("not an openpgp public key")
 			}
-			eccKey, ok := key.PublicKey.(*ecdsa.PublicKey)
+			eccKey, ok := key.PublicKey.(*openpgpecdsa.PublicKey)
 			if !ok {
 				tt.Fatal("not an ecdsa public key")
 			}
-			if eccKey.Curve != elliptic.P256() {
+			pubKey, err := gpg.ECDSAPublicKey(eccKey)
+			if err != nil {
+				tt.Fatal(err)
+			}
+			if pubKey.Curve != elliptic.P256() {
 				tt.Fatal("wrong curve")
 			}
 
-			keygrip, err := gpg.KeygripECDSA(eccKey)
+			keygrip, err := gpg.KeygripECDSA(pubKey)
 			if err != nil {
 				tt.Fatal(err)
 			}

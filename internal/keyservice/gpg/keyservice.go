@@ -6,11 +6,13 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"fmt"
 
+	openpgpecdsa "github.com/ProtonMail/go-crypto/openpgp/ecdsa"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/openpgp/packet"
 )
 
 // retries is the passphrase attempt limit when decrypting GPG keyfiles
@@ -135,15 +137,62 @@ func (g *KeyService) getRSAKey(keygrip []byte) (*rsa.PrivateKey, error) {
 	return nil, nil
 }
 
+func nameToCurve(name string) (elliptic.Curve, error) {
+	switch name {
+	case elliptic.P224().Params().Name:
+		return elliptic.P224(), nil
+	case elliptic.P256().Params().Name:
+		return elliptic.P256(), nil
+	case elliptic.P384().Params().Name:
+		return elliptic.P384(), nil
+	case elliptic.P521().Params().Name:
+		return elliptic.P521(), nil
+	default:
+		return nil, fmt.Errorf("unknown curve name: %s", name)
+	}
+}
+
+func ecdsaPublicKey(k *openpgpecdsa.PublicKey) (*ecdsa.PublicKey, error) {
+	curve, err := nameToCurve(k.GetCurve().GetCurveName())
+	if err != nil {
+		return nil, err
+	}
+	return &ecdsa.PublicKey{
+		Curve: curve,
+		X:     k.X,
+		Y:     k.Y,
+	}, nil
+}
+
+func ecdsaPrivateKey(k *openpgpecdsa.PrivateKey) (*ecdsa.PrivateKey, error) {
+	curve, err := nameToCurve(k.GetCurve().GetCurveName())
+	if err != nil {
+		return nil, err
+	}
+	return &ecdsa.PrivateKey{
+		D: k.D,
+		PublicKey: ecdsa.PublicKey{
+			Curve: curve,
+			X:     k.X,
+			Y:     k.Y,
+		},
+	}, nil
+}
+
 // getECDSAKey returns a matching private ECDSA key if the keygrip matches. If
 // a key is returned err will be nil. If no key is found, both values will be
 // nil.
 func (g *KeyService) getECDSAKey(keygrip []byte) (*ecdsa.PrivateKey, error) {
 	for _, pk := range g.privKeys {
 		for _, k := range pk.keys {
-			pubKey, ok := k.PublicKey.PublicKey.(*ecdsa.PublicKey)
+			openpgpPubKey, ok := k.PublicKey.PublicKey.(*openpgpecdsa.PublicKey)
 			if !ok {
 				continue
+			}
+			pubKey, err := ecdsaPublicKey(openpgpPubKey)
+			if err != nil {
+				return nil,
+					fmt.Errorf("couldn't convert openpgp to stdlib ecdsa public key: %v", err)
 			}
 			pubKeygrip, err := KeygripECDSA(pubKey)
 			if err != nil {
@@ -158,10 +207,15 @@ func (g *KeyService) getECDSAKey(keygrip []byte) (*ecdsa.PrivateKey, error) {
 			if err != nil {
 				return nil, err
 			}
-			privKey, ok := k.PrivateKey.(*ecdsa.PrivateKey)
+			openpgpPrivKey, ok := k.PrivateKey.(*openpgpecdsa.PrivateKey)
 			if !ok {
 				return nil, fmt.Errorf("not an ECDSA key %s: %v",
 					k.KeyIdString(), err)
+			}
+			privKey, err := ecdsaPrivateKey(openpgpPrivKey)
+			if err != nil {
+				return nil,
+					fmt.Errorf("couldn't convert openpgp to stdlib ecdsa private key: %v", err)
 			}
 			return privKey, nil
 		}

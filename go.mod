@@ -3,6 +3,7 @@ module github.com/smlx/piv-agent
 go 1.19
 
 require (
+	github.com/ProtonMail/go-crypto v0.0.0-20230316153859-cb82d937a5d9
 	github.com/alecthomas/kong v0.7.1
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/davecgh/go-spew v1.1.1
@@ -18,6 +19,7 @@ require (
 )
 
 require (
+	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/go-toast/toast v0.0.0-20190211030409-01e6764cf0a4 // indirect
 	github.com/godbus/dbus/v5 v5.0.3 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 // indirect
@@ -30,3 +32,5 @@ require (
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 )
+
+replace github.com/ProtonMail/go-crypto => github.com/smlx/go-crypto v0.0.0-20230324130354-fc893cd601c2
