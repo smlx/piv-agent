@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rsa"
 	"fmt"
 
@@ -135,48 +134,6 @@ func (g *KeyService) getRSAKey(keygrip []byte) (*rsa.PrivateKey, error) {
 		}
 	}
 	return nil, nil
-}
-
-func nameToCurve(name string) (elliptic.Curve, error) {
-	switch name {
-	case elliptic.P224().Params().Name:
-		return elliptic.P224(), nil
-	case elliptic.P256().Params().Name:
-		return elliptic.P256(), nil
-	case elliptic.P384().Params().Name:
-		return elliptic.P384(), nil
-	case elliptic.P521().Params().Name:
-		return elliptic.P521(), nil
-	default:
-		return nil, fmt.Errorf("unknown curve name: %s", name)
-	}
-}
-
-func ecdsaPublicKey(k *openpgpecdsa.PublicKey) (*ecdsa.PublicKey, error) {
-	curve, err := nameToCurve(k.GetCurve().GetCurveName())
-	if err != nil {
-		return nil, err
-	}
-	return &ecdsa.PublicKey{
-		Curve: curve,
-		X:     k.X,
-		Y:     k.Y,
-	}, nil
-}
-
-func ecdsaPrivateKey(k *openpgpecdsa.PrivateKey) (*ecdsa.PrivateKey, error) {
-	curve, err := nameToCurve(k.GetCurve().GetCurveName())
-	if err != nil {
-		return nil, err
-	}
-	return &ecdsa.PrivateKey{
-		D: k.D,
-		PublicKey: ecdsa.PublicKey{
-			Curve: curve,
-			X:     k.X,
-			Y:     k.Y,
-		},
-	}, nil
 }
 
 // getECDSAKey returns a matching private ECDSA key if the keygrip matches. If

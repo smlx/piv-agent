@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	openpgpecdsa "github.com/ProtonMail/go-crypto/openpgp/ecdsa"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/go-piv/piv-go/piv"
 	"golang.org/x/crypto/ssh"
@@ -45,7 +44,7 @@ func signingKeys(yk *piv.YubiKey) ([]SigningKey, error) {
 			},
 			PubSSH: pubSSH,
 			PubPGP: packet.NewECDSAPublicKey(cert.NotBefore,
-				openpgpecdsa.NewPublicKeyFromCurve(pubKey.Curve)),
+				openpgpECDSAPublicKey(pubKey)),
 		})
 	}
 	return signingKeys, nil
