@@ -5,6 +5,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"fmt"
+
+	openpgpecdsa "github.com/ProtonMail/go-crypto/openpgp/ecdsa"
 )
 
 // Keygrips returns a slice of keygrip byteslices; one for each cryptographic
@@ -15,13 +17,17 @@ func (g *KeyService) Keygrips() ([][]byte, error) {
 	var err error
 	for _, keyfile := range g.privKeys {
 		for _, privKey := range keyfile.keys {
-			switch pubKey := privKey.PublicKey.PublicKey.(type) {
+			switch openpgpPubKey := privKey.PublicKey.PublicKey.(type) {
 			case *rsa.PublicKey:
-				kg, err = keygripRSA(pubKey)
+				kg, err = keygripRSA(openpgpPubKey)
 				if err != nil {
 					return nil, fmt.Errorf("couldn't get keygrip: %w", err)
 				}
-			case *ecdsa.PublicKey:
+			case *openpgpecdsa.PublicKey:
+				pubKey, err := ecdsaPublicKey(openpgpPubKey)
+				if err != nil {
+					return nil, fmt.Errorf("couldn't convert ecdsa public key: %v", err)
+				}
 				kg, err = KeygripECDSA(pubKey)
 				if err != nil {
 					return nil, fmt.Errorf("couldn't get keygrip: %w", err)

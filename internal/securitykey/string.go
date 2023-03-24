@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	openpgpecdsa "github.com/ProtonMail/go-crypto/openpgp/ecdsa"
+	"github.com/ProtonMail/go-crypto/openpgp/errors"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/go-piv/piv-go/piv"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/errors"
-	"golang.org/x/crypto/openpgp/packet"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -65,7 +66,8 @@ func (k *SecurityKey) synthesizeEntity(ck *CryptoKey, now time.Time,
 		// TODO: handle ed25519 keys
 		return nil, fmt.Errorf("not an ECDSA key")
 	}
-	pub := packet.NewECDSAPublicKey(now, ecdsaPubKey)
+	pub := packet.NewECDSAPublicKey(now,
+		openpgpecdsa.NewPublicKeyFromCurve(ecdsaPubKey.Curve))
 	priv := packet.NewSignerPrivateKey(now, signer)
 	selfSignature := packet.Signature{
 		CreationTime: now,

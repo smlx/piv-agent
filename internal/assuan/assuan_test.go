@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto"
-	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -13,6 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/ecdsa"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/mock/gomock"
 	"github.com/smlx/piv-agent/internal/assuan"
@@ -23,14 +26,11 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
 )
 
 // MockCryptoSigner is a mock type which implements crypto.Signer
 type MockCryptoSigner struct {
-	PubKey    crypto.PublicKey
+	PubKey    *ecdsa.PublicKey
 	Signature []byte
 }
 
@@ -536,17 +536,14 @@ func TestReadKey(t *testing.T) {
 			}
 			// check the responses
 			for _, expected := range tc.expect {
-				//spew.Dump(mockConn.WriteBuf.String())
 				line, err := mockConn.WriteBuf.ReadString(byte('\n'))
+				if line != expected {
+					tt.Log("got", spew.Sdump(line))
+					tt.Log("expected", spew.Sdump(expected))
+					tt.Fail()
+				}
 				if err != nil && err != io.EOF {
 					tt.Fatal(err)
-				}
-				if line != expected {
-					fmt.Println("got")
-					spew.Dump(line)
-					fmt.Println("expected")
-					spew.Dump(expected)
-					tt.Fatalf("error")
 				}
 			}
 		})
