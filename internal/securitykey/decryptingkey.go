@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	openpgpecdsa "github.com/ProtonMail/go-crypto/openpgp/ecdsa"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/go-piv/piv-go/piv"
 )
@@ -39,7 +38,7 @@ func decryptingKeys(yk *piv.YubiKey) ([]DecryptingKey, error) {
 				SlotSpec: s,
 			},
 			PubPGP: packet.NewECDSAPublicKey(cert.NotBefore,
-				openpgpecdsa.NewPublicKeyFromCurve(pubKey.Curve)),
+				openpgpECDSAPublicKey(pubKey)),
 		})
 	}
 	return decryptingKeys, nil
