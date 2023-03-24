@@ -8,7 +8,7 @@ import (
 
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 // SetupSlotsCmd represents the setup command.
@@ -23,7 +23,7 @@ type SetupSlotsCmd struct {
 // interactivePIN prompts once for an existing PIN.
 func interactivePIN() (uint64, error) {
 	fmt.Print("Enter the PIN/PUK (6-8 digits): ")
-	rawPIN, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+	rawPIN, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 	if err != nil {
 		return 0, fmt.Errorf("couldn't read PIN/PUK: %w", err)
