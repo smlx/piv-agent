@@ -14,7 +14,7 @@ require (
 	github.com/twpayne/go-pinentry-minimal v0.0.0-20220113210447-2a5dc4396c2a
 	github.com/x13a/go-launch v0.0.0-20210715084817-fd409384939b
 	go.uber.org/zap v1.25.0
-	golang.org/x/crypto v0.12.0
+	golang.org/x/crypto v0.13.0
 	golang.org/x/sync v0.3.0
 	golang.org/x/term v0.12.0
 )
