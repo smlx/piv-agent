@@ -16,7 +16,7 @@ require (
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.15.0
 	golang.org/x/sync v0.5.0
-	golang.org/x/term v0.14.0
+	golang.org/x/term v0.15.0
 )
 
 require (
@@ -28,7 +28,7 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 )
 
 replace github.com/ProtonMail/go-crypto => github.com/smlx/go-crypto v0.0.0-20230324130354-fc893cd601c2
