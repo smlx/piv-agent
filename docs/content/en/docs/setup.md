@@ -37,7 +37,7 @@ It is highly recommended to use these setup defaults as this has had the most us
 
 #### Example setup workflow
 
-```
+```bash
 # find the name of the hardware security devices (cards)
 piv-agent list
 
@@ -64,13 +64,13 @@ Other PIV slots will not be affected, and will retain their existing keys.
 
 For example this command will reset just the decrypting key with touch policy `never` on your Yubikey:
 
-```
+```bash
 piv-agent setup-slots --card="Yubico YubiKey FIDO+CCID 01 00" --pin=123456 --decrypting-keys=never --reset-slots
 ```
 
 See the interactive help for more usage details:
 
-```
+```bash
 piv-agent setup-slots --help
 ```
 
@@ -80,7 +80,7 @@ piv-agent setup-slots --help
 
 List your hardware SSH keys:
 
-```
+```bash
 piv-agent list
 ```
 
@@ -90,9 +90,19 @@ Add the public SSH key with the touch policy you want from the list, to any SSH 
 
 Export the `SSH_AUTH_SOCK` variable in your shell.
 
-```
+```bash
 export SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/piv-agent/ssh.socket
 ```
+
+### List keys using ssh-add
+
+Confirm that `ssh-add` can talk to `piv-agent` by listing the keys available.
+
+```bash
+ssh-add -L
+```
+
+You should see the Yubikey ssh keys listed.
 
 ### Prefer keys on the hardware security device
 
@@ -101,21 +111,21 @@ If you don't already have one, it's a good idea to generate an `ed25519` keyfile
 
 By default, `ssh` will offer [keyfiles it finds on disk](https://manpages.debian.org/testing/openssh-client/ssh_config.5.en.html#IdentityFile) _before_ those from the agent.
 This is a problem because `piv-agent` is designed to offer keys from the hardware token first, and only fall back to local keyfiles if token keys are refused.
-To get `ssh` to ignore local keyfiles and only talk to `piv-agent`, add this line to your `ssh_config`, for all hosts:
 
-```
-IdentityFile /dev/null
-```
+To get `ssh` to offer hardware keys first instead, copy the output of the hardware keys you want to offer from the `ssh-add -L` command to a local file:
 
-### List keys using ssh-add
-
-Confirm that `ssh-add` can talk to `piv-agent` by listing the keys available.
-
-```
+```bash
+# list keys
 ssh-add -L
+# add output to local file
+ssh-add -L | grep cached > ~/.ssh/id_yk_cached.pub
 ```
 
-You should see the Yubikey ssh keys listed.
+And add a line referencing the file to your `ssh_config`.
+
+```
+IdentityFile ~/.ssh/id_yk_cached.pub
+```
 
 ## GPG
 
@@ -133,7 +143,7 @@ If your private key is encrypted using a password (it should be!), the encryptio
 The key is still stored encrypted in the exported keyfile - it's just converted into a standard OpenPGP format that `piv-agent` can read.
 {{% /alert %}}
 
-```
+```bash
 # example
 # set umask for user-only permissions
 umask 77
@@ -164,7 +174,7 @@ The `piv-agent list` command can synthesize a public key for the private key sto
 Listing a GPG key via `piv-agent list --key-formats=gpg` will require a touch to perform signing on the keys associated with those slots (due to the User ID packet).
 You should provide a name and email which will be embedded in the synthesized public key (see `piv-agent --help list`).
 
-```
+```bash
 # example
 piv-agent list --key-formats=ssh,gpg --pgp-name='Art Vandelay' --pgp-email='art@example.com'
 ```
