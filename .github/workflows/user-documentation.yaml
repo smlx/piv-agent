@@ -1,6 +1,7 @@
 name: User Documentation
 
 on:
+  pull_request:
   push:
     branches:
     - main  # Set a branch to deploy
@@ -15,27 +16,18 @@ jobs:
       with:
         fetch-depth: 0         # Fetch all history for .GitInfo and .Lastmod
 
-    - uses: actions/checkout@v4
-      with:
-        repository: google/docsy
-        path: docs/themes/docsy
-        submodules: true
-
     - name: Setup Hugo
       uses: peaceiris/actions-hugo@v2
       with:
+        hugo-version: '0.123.8'
         extended: true
 
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
-        node-version: '16'
+        node-version: 20
 
-    - run: cd docs && npm install postcss postcss-cli autoprefixer
-
-    - run: cd docs/themes/docsy && npm install
-
-    - run: cd docs && hugo --minify
+    - run: cd docs && npm install postcss-cli autoprefixer && hugo --minify
 
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
