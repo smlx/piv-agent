@@ -59,7 +59,7 @@ jobs:
     - name: Set up environment
       run: echo "GOVERSION=$(go version)" >> $GITHUB_ENV
     - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v5
+      uses: goreleaser/goreleaser-action@v6
       with:
         version: latest
         args: release --rm-dist --config .goreleaser.${{ matrix.os }}.yml
