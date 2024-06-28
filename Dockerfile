@@ -7,4 +7,4 @@ RUN apt-get update \
     && curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
 WORKDIR /src
 COPY . .
-RUN goreleaser build --snapshot --rm-dist --config .goreleaser.ubuntu-latest.yml
+RUN goreleaser build --snapshot --rm-dist --config .goreleaser.ubuntu-latest.yaml

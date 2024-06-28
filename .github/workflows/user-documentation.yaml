@@ -1,36 +1,30 @@
 name: User Documentation
-
 on:
   pull_request:
   push:
     branches:
     - main  # Set a branch to deploy
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       with:
         fetch-depth: 0         # Fetch all history for .GitInfo and .Lastmod
-
     - name: Setup Hugo
-      uses: peaceiris/actions-hugo@v3
+      uses: peaceiris/actions-hugo@75d2e84710de30f6ff7268e08f310b60ef14033f # v3.0.0
       with:
         hugo-version: '0.123.8'
         extended: true
-
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
         node-version: 20
-
     - run: cd docs && npm install postcss-cli autoprefixer && hugo --minify
-
     - name: Deploy
-      uses: peaceiris/actions-gh-pages@v4
+      uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4.0.0
       if: ${{ github.ref == 'refs/heads/main' }}
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}

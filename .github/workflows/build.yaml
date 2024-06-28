@@ -1,7 +1,13 @@
-name: Build
-on: pull_request
+name: build
+on:
+  pull_request:
+    branches:
+    - main
+permissions: {}
 jobs:
-  build:
+  build-snapshot:
+    permissions:
+      contents: read
     strategy:
       matrix:
         os:
@@ -9,19 +15,35 @@ jobs:
         - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Install Go
-      uses: actions/setup-go@v5
+    - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
       with:
         go-version: stable
     - name: Install Dependencies (ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
-    - name: Set up environment
-      run: echo "GOVERSION=$(go version)" >> $GITHUB_ENV
-    - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v5
+    - uses: goreleaser/goreleaser-action@286f3b13b1b49da4ac219696163fb8c1c93e1200 # v6.0.0
+      id: goreleaser
       with:
         version: latest
-        args: build --snapshot --rm-dist --config .goreleaser.${{ matrix.os }}.yml
+        args: build --clean --verbose --snapshot --config .goreleaser.${{ matrix.os }}.yaml
+  check-tag:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+      with:
+        fetch-depth: 0
+    - id: ccv
+      uses: smlx/ccv@d3de774e9b607b079940a7a86952f44643743336 # v0.9.0
+      with:
+        write-tag: false
+    - run: |
+        echo "new-tag=$NEW_TAG"
+        echo "new-tag-version=$NEW_TAG_VERSION"
+      env:
+        NEW_TAG: ${{steps.ccv.outputs.new-tag}}
+        NEW_TAG_VERSION: ${{steps.ccv.outputs.new-tag-version}}
