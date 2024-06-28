@@ -1,0 +1,35 @@
+version: 2
+archives:
+- files:
+  - deploy/launchd
+  - LICENSE
+  - README.md
+
+builds:
+- id: piv-agent
+  binary: piv-agent
+  main: ./cmd/piv-agent
+  ldflags:
+  - >
+    -s -w
+    -X "main.commit={{.Commit}}"
+    -X "main.date={{.Date}}"
+    -X "main.projectName={{.ProjectName}}"
+    -X "main.version=v{{.Version}}"
+  env:
+  - CGO_ENABLED=1
+  goos:
+  - darwin
+  goarch:
+  - amd64
+
+changelog:
+  use: github-native
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_darwin_checksums.txt"
+
+release:
+  extra_files:
+  - glob: "{{ .Env.GITHUB_SBOM_PATH }}"
+    name_template: "{{ .ProjectName }}.v{{ .Version }}.sbom.darwin.spdx.json"

@@ -1,1 +1,4 @@
-/piv-agent
+/dist
+/cover.out
+/cover.out.raw
+/sbom.spdx.json

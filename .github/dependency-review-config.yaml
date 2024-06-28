@@ -1,0 +1,20 @@
+# https://github.com/cncf/foundation/blob/main/allowed-third-party-license-policy.md
+allow-licenses:
+- 'Apache-2.0'
+- 'BSD-2-Clause'
+- 'BSD-2-Clause-FreeBSD'
+- 'BSD-3-Clause'
+- 'ISC'
+- 'MIT'
+- 'PostgreSQL'
+- 'Python-2.0'
+- 'X11'
+- 'Zlib'
+
+allow-dependencies-licenses:
+# this action is GPL-3 but it is only used in CI
+# https://github.com/actions/dependency-review-action/issues/530#issuecomment-1638291806
+- pkg:githubactions/vladopajic/go-test-coverage@bcd064e5ceef1ccec5441519eb054263b6a44787
+# this package is MPL-2.0 and has a CNCF exception
+# https://github.com/cncf/foundation/blob/9b8c9173c2101c1b4aedad3caf2c0128715133f6/license-exceptions/cncf-exceptions-2022-04-12.json#L43C17-L43C47
+- pkg:golang/github.com/go-sql-driver/mysql

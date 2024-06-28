@@ -1,17 +1,24 @@
 # https://docs.github.com/en/code-security/dependabot/working-with-dependabot/automating-dependabot-with-github-actions#enable-auto-merge-on-a-pull-request
-name: Dependabot auto-merge
-on: pull_request
-
-permissions:
-  contents: write
-  pull-requests: write
-
+name: dependabot auto-merge
+on:
+  pull_request:
+    branches:
+    - main
+permissions: {}
 jobs:
-  dependabot:
+  dependabot-automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
-    if: ${{ github.actor == 'dependabot[bot]' }}
+    if: github.actor == 'dependabot[bot]'
     steps:
-    - name: Enable auto-merge for Dependabot PRs
+    - name: Fetch dependabot metadata
+      id: metadata
+      uses: dependabot/fetch-metadata@5e5f99653a5b510e8555840e80cbf1514ad4af38 # v2.1.0
+      with:
+        github-token: "${{ secrets.GITHUB_TOKEN }}"
+    - name: Enable auto-merge for Dependabot PRs # these still need approval before merge
       run: gh pr merge --auto --merge "$PR_URL"
       env:
         PR_URL: ${{github.event.pull_request.html_url}}
