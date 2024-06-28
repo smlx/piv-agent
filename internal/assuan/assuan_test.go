@@ -358,7 +358,7 @@ func TestDecryptRSAKeyfile(t *testing.T) {
 			}
 			// check the responses
 			for _, expected := range tc.expect {
-				//spew.Dump(mockConn.WriteBuf.String())
+				// spew.Dump(mockConn.WriteBuf.String())
 				line, err := mockConn.WriteBuf.ReadString(byte('\n'))
 				if err != nil && err != io.EOF {
 					tt.Fatal(err)
@@ -453,7 +453,7 @@ func TestSignRSAKeyfile(t *testing.T) {
 			}
 			// check the responses
 			for _, expected := range tc.expect {
-				//spew.Dump(mockConn.WriteBuf.String())
+				// spew.Dump(mockConn.WriteBuf.String())
 				line, err := mockConn.WriteBuf.ReadString(byte('\n'))
 				if err != nil && err != io.EOF {
 					tt.Fatal(err)

@@ -255,7 +255,7 @@ func New(rw io.ReadWriter, log *zap.Logger, n *notify.Notify,
 						return fmt.Errorf("invalid ciphertext format")
 					}
 					var plaintext, ciphertext []byte
-					ciphertext = bytes.Join(chunks[:], []byte("\n"))
+					ciphertext = bytes.Join(chunks, []byte("\n"))
 					plaintext, err = assuan.decrypter.Decrypt(nil, ciphertext, nil)
 					if err != nil {
 						return fmt.Errorf("couldn't decrypt: %v", err)
