@@ -13,7 +13,7 @@ jobs:
     outputs:
       new-tag: ${{ steps.ccv.outputs.new-tag }}
     steps:
-    - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       with:
         fetch-depth: 0
     - name: Bump tag if necessary
@@ -36,7 +36,7 @@ jobs:
         - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       with:
         fetch-depth: 0
     - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
@@ -62,6 +62,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_SBOM_PATH: ./sbom.spdx.json
     # attest archives
-    - uses: actions/attest-build-provenance@49df96e17e918a15956db358890b08e61c704919 # v1.2.0
+    - uses: actions/attest-build-provenance@bdd51370e0416ac948727f861e03c2f05d32d78e # v1.3.2
       with:
         subject-path: "dist/*.tar.gz"
