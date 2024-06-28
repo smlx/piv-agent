@@ -1,7 +1,7 @@
 # PIV Agent
 
 [![Release](https://github.com/smlx/piv-agent/actions/workflows/release.yaml/badge.svg)](https://github.com/smlx/piv-agent/actions/workflows/release.yaml)
-[![Coverage](https://coveralls.io/repos/github/smlx/piv-agent/badge.svg?branch=main)](https://coveralls.io/github/smlx/piv-agent?branch=main)
+[![coverage](https://raw.githubusercontent.com/smlx/piv-agent/badges/.badges/main/coverage.svg)](https://github.com/smlx/piv-agent/actions/workflows/coverage.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/smlx/piv-agent)](https://goreportcard.com/report/github.com/smlx/piv-agent)
 [![User Documentation](https://github.com/smlx/piv-agent/actions/workflows/user-documentation.yaml/badge.svg)](https://smlx.github.io/piv-agent/)
 

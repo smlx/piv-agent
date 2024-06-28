@@ -24,6 +24,7 @@ jobs:
       # create release
       contents: write
       # required by attest-build-provenance
+      id-token: write
       attestations: write
     needs: release-tag
     if: needs.release-tag.outputs.new-tag == 'true'
