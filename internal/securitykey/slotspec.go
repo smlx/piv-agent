@@ -1,11 +1,11 @@
 package securitykey
 
-import "github.com/go-piv/piv-go/piv"
+import pivgo "github.com/go-piv/piv-go/v2/piv"
 
 // SlotSpec represents a combination of slot and touch policy on the token.
 type SlotSpec struct {
-	Slot        piv.Slot
-	TouchPolicy piv.TouchPolicy
+	Slot        pivgo.Slot
+	TouchPolicy pivgo.TouchPolicy
 }
 
 // defaultSignSlots represents the default slot specifications for signing
@@ -18,7 +18,7 @@ var defaultSignSlots = map[string]SlotSpec{
 	// login. The end user PIN is required to perform any private key operations.
 	// Once the PIN has been provided successfully, multiple private key
 	// operations may be performed without additional cardholder consent.
-	"cached": {piv.SlotAuthentication, piv.TouchPolicyCached},
+	"cached": {pivgo.SlotAuthentication, pivgo.TouchPolicyCached},
 	// Slot 9c: Digital Signature
 	// This certificate and its associated private key is used for digital
 	// signatures for the purpose of document signing, or signing files and
@@ -26,17 +26,17 @@ var defaultSignSlots = map[string]SlotSpec{
 	// operations. The PIN must be submitted every time immediately before a sign
 	// operation, to ensure cardholder participation for every digital signature
 	// generated.
-	"always": {piv.SlotSignature, piv.TouchPolicyAlways},
+	"always": {pivgo.SlotSignature, pivgo.TouchPolicyAlways},
 	// Slot 9e: Card Authentication
 	// This certificate and its associated private key is used to support
 	// additional physical access applications, such as providing physical access
 	// to buildings via PIV-enabled door locks. The end user PIN is NOT required
 	// to perform private key operations for this slot.
-	"never": {piv.SlotCardAuthentication, piv.TouchPolicyNever},
+	"never": {pivgo.SlotCardAuthentication, pivgo.TouchPolicyNever},
 }
 
-var alwaysDecryptSlot, _ = piv.RetiredKeyManagementSlot(0x82)
-var neverDecryptSlot, _ = piv.RetiredKeyManagementSlot(0x83)
+var alwaysDecryptSlot, _ = pivgo.RetiredKeyManagementSlot(0x82)
+var neverDecryptSlot, _ = pivgo.RetiredKeyManagementSlot(0x83)
 
 // defaultDecryptSlots represents the slot specifications for decrypting
 // operations. By using additional "retired" slots we can enable multiple touch
@@ -49,9 +49,9 @@ var defaultDecryptSlots = map[string]SlotSpec{
 	// private key operations. Once the PIN has been provided successfully,
 	// multiple private key operations may be performed without additional
 	// cardholder consent.
-	"cached": {piv.SlotKeyManagement, piv.TouchPolicyCached},
+	"cached": {pivgo.SlotKeyManagement, pivgo.TouchPolicyCached},
 	// "Retired" key management slot with an "always" touch policy.
-	"always": {alwaysDecryptSlot, piv.TouchPolicyAlways},
+	"always": {alwaysDecryptSlot, pivgo.TouchPolicyAlways},
 	// "Retired" key management slot with a "never" touch policy.
-	"never": {neverDecryptSlot, piv.TouchPolicyNever},
+	"never": {neverDecryptSlot, pivgo.TouchPolicyNever},
 }

@@ -7,7 +7,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/go-piv/piv-go/piv"
+	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"go.uber.org/zap"
@@ -35,7 +35,7 @@ func (p *KeyService) reloadSecurityKeys() error {
 	}
 	p.securityKeys = nil
 	// open cards and load keys from scratch
-	cards, err := piv.Cards()
+	cards, err := pivgo.Cards()
 	if err != nil {
 		return fmt.Errorf("couldn't get cards: %v", err)
 	}

@@ -13,14 +13,14 @@ import (
 	openpgpecdsa "github.com/ProtonMail/go-crypto/openpgp/ecdsa"
 	"github.com/ProtonMail/go-crypto/openpgp/errors"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
-	"github.com/go-piv/piv-go/piv"
+	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"golang.org/x/crypto/ssh"
 )
 
-var touchStringMap = map[piv.TouchPolicy]string{
-	piv.TouchPolicyNever:  "never",
-	piv.TouchPolicyAlways: "always",
-	piv.TouchPolicyCached: "cached",
+var touchStringMap = map[pivgo.TouchPolicy]string{
+	pivgo.TouchPolicyNever:  "never",
+	pivgo.TouchPolicyAlways: "always",
+	pivgo.TouchPolicyCached: "cached",
 }
 
 // Entity wraps a synthesized openpgp.Entity and associates it with a
@@ -127,7 +127,7 @@ func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity,
 }
 
 func (k *SecurityKey) armorEntity(e *openpgp.Entity,
-	t piv.TouchPolicy) (string, error) {
+	t pivgo.TouchPolicy) (string, error) {
 	buf := bytes.Buffer{}
 	w, err := armor.Encode(&buf, openpgp.PublicKeyType,
 		map[string]string{

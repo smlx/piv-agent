@@ -2,14 +2,13 @@ package piv
 
 import (
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
+	"crypto/ecdh"
 	"fmt"
 	"io"
 	"regexp"
 	"sync"
 
-	pivgo "github.com/go-piv/piv-go/piv"
+	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"github.com/smlx/piv-agent/internal/assuan"
 )
 
@@ -34,18 +33,12 @@ func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 	// undo the buggy encoding sent by gpg
 	ciphertext = assuan.PercentDecodeSExp(ciphertext)
 	// unmarshal the ephemeral key
-	ephPubX, ephPubY := elliptic.Unmarshal(elliptic.P256(), ciphertext)
-	if ephPubX == nil {
-		return nil, fmt.Errorf("couldn't unmarshal ephemeral key")
+	ephPub, err := ecdh.P256().NewPublicKey(ciphertext)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't unmarshal ephemeral key: %v", err)
 	}
-	// create the public key
-	ephPub := ecdsa.PublicKey{
-		Curve: elliptic.P256(),
-		X:     ephPubX,
-		Y:     ephPubY,
-	}
-	// marshal, encode, and return the result
-	shared, err := k.SharedKey(&ephPub)
+	// perform scalar multiplication, encode, and return the result
+	shared, err := k.ECDH(ephPub)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't generate shared secret: %v", err)
 	}
