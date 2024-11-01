@@ -1,6 +1,6 @@
 module github.com/smlx/piv-agent
 
-go 1.19
+go 1.23.2
 
 require (
 	filippo.io/nistec v0.0.3
