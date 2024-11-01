@@ -7,17 +7,17 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/go-piv/piv-go/piv"
+	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 )
 
 // A SecurityKey is a physical hardware token which implements PIV, such as a
 // Yubikey. It provides a convenient abstraction around the low-level
-// piv.YubiKey object.
+// pivgo.YubiKey object.
 type SecurityKey struct {
 	card           string
 	serial         uint32
-	yubikey        *piv.YubiKey
+	yubikey        *pivgo.YubiKey
 	signingKeys    []SigningKey
 	decryptingKeys []DecryptingKey
 	cryptoKeys     []CryptoKey
@@ -32,7 +32,7 @@ type CryptoKey struct {
 
 // New returns a security key identified by card string.
 func New(card string, pe *pinentry.PINEntry) (*SecurityKey, error) {
-	yk, err := piv.Open(card)
+	yk, err := pivgo.Open(card)
 	if err != nil {
 		return nil, fmt.Errorf(`couldn't open card "%s": %v`, card, err)
 	}
@@ -102,7 +102,7 @@ func (k *SecurityKey) CryptoKeys() []CryptoKey {
 // PrivateKey returns the private key of the given public signing key.
 func (k *SecurityKey) PrivateKey(c *CryptoKey) (crypto.PrivateKey, error) {
 	return k.yubikey.PrivateKey(c.SlotSpec.Slot, c.Public,
-		piv.KeyAuth{PINPrompt: k.pinentry.GetPin(k)})
+		pivgo.KeyAuth{PINPrompt: k.pinentry.GetPin(k)})
 }
 
 // Close closes the underlying yubikey.

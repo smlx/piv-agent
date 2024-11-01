@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sync"
 
-	pivgo "github.com/go-piv/piv-go/piv"
+	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"go.uber.org/zap"

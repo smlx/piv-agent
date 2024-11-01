@@ -3,16 +3,17 @@ module github.com/smlx/piv-agent
 go 1.19
 
 require (
+	filippo.io/nistec v0.0.3
 	github.com/ProtonMail/go-crypto v0.0.0-20230316153859-cb82d937a5d9
 	github.com/alecthomas/kong v0.9.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/davecgh/go-spew v1.1.1
 	github.com/gen2brain/beeep v0.0.0-20200526185328-e9c15c258e28
-	github.com/go-piv/piv-go v1.11.0
-	github.com/golang/mock v1.6.0
+	github.com/go-piv/piv-go/v2 v2.2.0
 	github.com/smlx/fsm v0.2.1
 	github.com/twpayne/go-pinentry-minimal v0.0.0-20220113210447-2a5dc4396c2a
 	github.com/x13a/go-launch v0.0.0-20210715084817-fd409384939b
+	go.uber.org/mock v0.4.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.25.0
 	golang.org/x/sync v0.7.0

@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"github.com/smlx/piv-agent/internal/mock"
+	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
 

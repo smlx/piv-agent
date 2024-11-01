@@ -3,11 +3,11 @@ package gpg
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"fmt"
 	"io"
 	"regexp"
 
+	"filippo.io/nistec"
 	"github.com/smlx/piv-agent/internal/assuan"
 )
 
@@ -27,15 +27,18 @@ func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 	ciphertext := matches[0][2]
 	// undo the buggy encoding sent by gpg
 	ciphertext = assuan.PercentDecodeSExp(ciphertext)
-	// unmarshal the ephemeral key
-	ephPubX, ephPubY := elliptic.Unmarshal(elliptic.P256(), ciphertext)
-	if ephPubX == nil {
-		return nil, fmt.Errorf("couldn't unmarshal ephemeral key")
+	// perform scalar multiplication
+	sharedPoint := nistec.NewP256Point()
+	_, err := sharedPoint.SetBytes(ciphertext)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't set point bytes: %v", err)
 	}
-	// perform the scalar mult
-	sharedX, sharedY := k.ecdsa.ScalarMult(ephPubX, ephPubY, k.ecdsa.D.Bytes())
+	_, err = sharedPoint.ScalarMult(sharedPoint, k.ecdsa.D.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("couldn't perform scalar mult: %v", err)
+	}
 	// marshal, encode, and return the result
-	shared := elliptic.Marshal(elliptic.P256(), sharedX, sharedY)
+	shared := sharedPoint.Bytes()
 	sharedLen := len(shared)
 	shared = assuan.PercentEncodeSExp(shared)
 	return []byte(fmt.Sprintf("D (5:value%d:%s)\nOK\n", sharedLen, shared)), nil

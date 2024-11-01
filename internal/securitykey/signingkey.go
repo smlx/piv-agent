@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
-	"github.com/go-piv/piv-go/piv"
+	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -18,12 +18,12 @@ type SigningKey struct {
 }
 
 // signingKeys returns the signing keys available on the given yubikey.
-func signingKeys(yk *piv.YubiKey) ([]SigningKey, error) {
+func signingKeys(yk *pivgo.YubiKey) ([]SigningKey, error) {
 	var signingKeys []SigningKey
 	for _, s := range defaultSignSlots {
 		cert, err := yk.Certificate(s.Slot)
 		if err != nil {
-			if errors.Is(err, piv.ErrNotFound) {
+			if errors.Is(err, pivgo.ErrNotFound) {
 				continue
 			}
 			return nil, fmt.Errorf("couldn't get certificate for slot %x: %v",

@@ -26,7 +26,11 @@ func readKeyData(pub crypto.PublicKey) (string, error) {
 	case *ecdsa.PublicKey:
 		switch k.Curve {
 		case elliptic.P256():
-			q := elliptic.Marshal(k.Curve, k.X, k.Y)
+			ecdhPubKey, err := k.ECDH()
+			if err != nil {
+				return "", fmt.Errorf("couldn't convert pub key to ecdh.PublicKey: %v", err)
+			}
+			q := ecdhPubKey.Bytes()
 			qLen := len(q)
 			q = PercentEncodeSExp(q)
 			return fmt.Sprintf(

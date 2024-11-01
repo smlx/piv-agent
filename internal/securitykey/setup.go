@@ -11,7 +11,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/go-piv/piv-go/piv"
+	pivgo "github.com/go-piv/piv-go/v2/piv"
 )
 
 // ErrKeySetUp is returned from Setup when the security key is already set up
@@ -24,7 +24,7 @@ func (k *SecurityKey) checkSlotSetUp(s SlotSpec) (bool, error) {
 	_, err := k.yubikey.Certificate(s.Slot)
 	if err == nil {
 		return true, nil
-	} else if errors.Is(err, piv.ErrNotFound) {
+	} else if errors.Is(err, pivgo.ErrNotFound) {
 		return false, nil
 	}
 	return false, fmt.Errorf("couldn't check slot certificate: %v", err)
@@ -73,23 +73,23 @@ func (k *SecurityKey) Setup(pin, version string, reset bool,
 		return fmt.Errorf("couldn't reset security key: %v", err)
 	}
 	// generate management key and store on the security key
-	var mgmtKey [24]byte
-	if _, err := rand.Read(mgmtKey[:]); err != nil {
+	var mgmtKey = make([]byte, 24)
+	if _, err := rand.Read(mgmtKey); err != nil {
 		return fmt.Errorf("couldn't get random bytes: %v", err)
 	}
-	err = k.yubikey.SetManagementKey(piv.DefaultManagementKey, mgmtKey)
+	err = k.yubikey.SetManagementKey(pivgo.DefaultManagementKey, mgmtKey)
 	if err != nil {
 		return fmt.Errorf("couldn't set management key: %v", err)
 	}
-	err = k.yubikey.SetMetadata(mgmtKey, &piv.Metadata{ManagementKey: &mgmtKey})
+	err = k.yubikey.SetMetadata(mgmtKey, &pivgo.Metadata{ManagementKey: &mgmtKey})
 	if err != nil {
 		return fmt.Errorf("couldn't store management key: %v", err)
 	}
 	// set pin/puk
-	if err = k.yubikey.SetPIN(piv.DefaultPIN, pin); err != nil {
+	if err = k.yubikey.SetPIN(pivgo.DefaultPIN, pin); err != nil {
 		return fmt.Errorf("couldn't set PIN: %v", err)
 	}
-	if err = k.yubikey.SetPUK(piv.DefaultPUK, pin); err != nil {
+	if err = k.yubikey.SetPUK(pivgo.DefaultPUK, pin); err != nil {
 		return fmt.Errorf("couldn't set PUK: %v", err)
 	}
 	// setup signing keys
@@ -111,11 +111,11 @@ func (k *SecurityKey) Setup(pin, version string, reset bool,
 	return nil
 }
 
-func (k *SecurityKey) configureSlot(mgmtKey [24]byte, spec SlotSpec,
+func (k *SecurityKey) configureSlot(mgmtKey []byte, spec SlotSpec,
 	version string) error {
-	pub, err := k.yubikey.GenerateKey(mgmtKey, spec.Slot, piv.Key{
-		Algorithm:   piv.AlgorithmEC256,
-		PINPolicy:   piv.PINPolicyOnce,
+	pub, err := k.yubikey.GenerateKey(mgmtKey, spec.Slot, pivgo.Key{
+		Algorithm:   pivgo.AlgorithmEC256,
+		PINPolicy:   pivgo.PINPolicyOnce,
 		TouchPolicy: spec.TouchPolicy,
 	})
 	if err != nil {

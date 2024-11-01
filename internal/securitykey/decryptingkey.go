@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
-	"github.com/go-piv/piv-go/piv"
+	pivgo "github.com/go-piv/piv-go/v2/piv"
 )
 
 // DecryptingKey is a cryptographic decrypting key on a hardware security
@@ -17,12 +17,12 @@ type DecryptingKey struct {
 }
 
 // decryptingKeys returns the decrypting keys available on the given yubikey.
-func decryptingKeys(yk *piv.YubiKey) ([]DecryptingKey, error) {
+func decryptingKeys(yk *pivgo.YubiKey) ([]DecryptingKey, error) {
 	var decryptingKeys []DecryptingKey
 	for _, s := range defaultDecryptSlots {
 		cert, err := yk.Certificate(s.Slot)
 		if err != nil {
-			if errors.Is(err, piv.ErrNotFound) {
+			if errors.Is(err, pivgo.ErrNotFound) {
 				continue
 			}
 			return nil, fmt.Errorf("couldn't get certificate for slot %x: %v",
