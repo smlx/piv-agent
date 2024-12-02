@@ -54,7 +54,7 @@ jobs:
       run: mv "$GITHUB_SBOM_PATH" ./sbom.spdx.json
       env:
         GITHUB_SBOM_PATH: ${{ steps.sbom.outputs.fileName }}
-    - uses: goreleaser/goreleaser-action@286f3b13b1b49da4ac219696163fb8c1c93e1200 # v6.0.0
+    - uses: goreleaser/goreleaser-action@9ed2f89a662bf1735a48bc8557fd212fa902bebf # v6.1.0
       id: goreleaser
       with:
         version: latest
@@ -63,6 +63,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_SBOM_PATH: ./sbom.spdx.json
     # attest archives
-    - uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
+    - uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1.4.4
       with:
         subject-path: "dist/*.tar.gz"
