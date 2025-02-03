@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	filippo.io/nistec v0.0.3
 	github.com/ProtonMail/go-crypto v0.0.0-20230316153859-cb82d937a5d9
-	github.com/alecthomas/kong v1.6.1
+	github.com/alecthomas/kong v1.7.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/davecgh/go-spew v1.1.1
 	github.com/gen2brain/beeep v0.0.0-20200526185328-e9c15c258e28
