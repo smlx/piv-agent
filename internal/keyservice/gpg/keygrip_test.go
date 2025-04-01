@@ -29,9 +29,9 @@ func TestTrezorCompat(t *testing.T) {
 			// construct private key
 			priv := ecdsa.PrivateKey{}
 			curve := elliptic.P256()
-			priv.PublicKey.Curve = curve
+			priv.Curve = curve
 			priv.D = tc.input
-			priv.PublicKey.X, priv.PublicKey.Y = curve.ScalarBaseMult(tc.input.Bytes())
+			priv.X, priv.Y = curve.ScalarBaseMult(tc.input.Bytes())
 
 			keygrip, err := gpg.KeygripECDSA(&priv.PublicKey)
 			if err != nil {

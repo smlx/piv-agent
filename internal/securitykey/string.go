@@ -108,7 +108,7 @@ func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity,
 	for _, sk := range k.SigningKeys() {
 		e, err := k.synthesizeEntity(&sk.CryptoKey, now, name, email,
 			fmt.Sprintf("piv-agent signing key; touch-policy %s",
-				touchStringMap[sk.CryptoKey.SlotSpec.TouchPolicy]))
+				touchStringMap[sk.SlotSpec.TouchPolicy]))
 		if err != nil {
 			return nil, nil, fmt.Errorf("couldn't synthesize entity: %v", err)
 		}
@@ -117,7 +117,7 @@ func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity,
 	for _, dk := range k.DecryptingKeys() {
 		e, err := k.synthesizeEntity(&dk.CryptoKey, now, name, email,
 			fmt.Sprintf("piv-agent decrypting key; touch-policy %s",
-				touchStringMap[dk.CryptoKey.SlotSpec.TouchPolicy]))
+				touchStringMap[dk.SlotSpec.TouchPolicy]))
 		if err != nil {
 			return nil, nil, fmt.Errorf("couldn't synthesize entity: %v", err)
 		}
