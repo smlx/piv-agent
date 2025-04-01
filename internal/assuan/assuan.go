@@ -241,10 +241,7 @@ func New(rw io.ReadWriter, log *zap.Logger, n *notify.Notify,
 					var chunk []byte
 					var chunks [][]byte
 					scanner := bufio.NewScanner(assuan.reader)
-					for {
-						if !scanner.Scan() {
-							break
-						}
+					for scanner.Scan() {
 						chunk = scanner.Bytes()
 						if bytes.Equal([]byte("END"), chunk) {
 							break // end of ciphertext
