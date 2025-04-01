@@ -63,7 +63,7 @@ func TestKeyGrip(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			defer in.Close()
+			defer in.Close() // nolint: errcheck
 
 			block, err := armor.Decode(in)
 			if err != nil {

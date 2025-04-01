@@ -255,7 +255,7 @@ func ecdsaPubKeyLoad(path string) (*ecdsa.PublicKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open file: %v", err)
 	}
-	defer in.Close()
+	defer in.Close() // nolint: errcheck
 	block, err := armor.Decode(in)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't load ascii key %v", err)
