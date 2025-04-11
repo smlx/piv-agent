@@ -47,7 +47,7 @@ func (pe *PINEntry) GetPin(k SecurityKey) func() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("couldn't get pinentry client: %w", err)
 		}
-		defer c.Close() // nolint: errcheck
+		defer c.Close()
 		pin, _, err := c.GetPIN()
 		return pin, err
 	}
@@ -68,7 +68,7 @@ func (pe *PINEntry) GetPassphrase(desc, keyID string, tries int) ([]byte, error)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get pinentry client: %w", err)
 	}
-	defer c.Close() // nolint: errcheck
+	defer c.Close()
 	pin, _, err := c.GetPIN()
 	return []byte(pin), err
 }
