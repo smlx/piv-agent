@@ -61,7 +61,7 @@ func (*KeyService) Name() string {
 func (g *KeyService) doDecrypt(k *packet.PrivateKey, uid string) error {
 	var pass []byte
 	var err error
-	for i := 0; i < retries; i++ {
+	for i := range retries {
 		pass, err = g.pinentry.GetPassphrase(
 			fmt.Sprintf("UserID: %s\rFingerprint: %X %X %X %X", uid,
 				k.Fingerprint[:5], k.Fingerprint[5:10], k.Fingerprint[10:15],
