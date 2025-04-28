@@ -303,7 +303,7 @@ func (assuan *Assuan) havekey(rw io.ReadWriter, ks []KeyService) error {
 			_, _ = io.WriteString(rw, "ERR 1 couldn't list keygrips\n")
 			return err
 		}
-		// apply buggy libgcrypt encoding
+		// apply libgcrypt encoding
 		_, err = io.WriteString(rw, fmt.Sprintf("D %s\nOK\n",
 			PercentEncodeSExp(grips)))
 		return err
@@ -371,8 +371,8 @@ func haveKey(ks []KeyService, keygrips [][]byte) (bool, []byte, error) {
 	return false, nil, nil
 }
 
-// allKeygrips returns all keygrips available for any keyservice, concatenated
-// into a single byte slice.
+// allKeygrips returns all keygrips available for any of the given keyservices,
+// concatenated into a single byte slice.
 func allKeygrips(ks []KeyService) ([]byte, error) {
 	var grips []byte
 	for _, k := range ks {
