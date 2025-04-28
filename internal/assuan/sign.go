@@ -29,8 +29,9 @@ func (a *Assuan) signRSA() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't sign: %v", err)
 	}
-	return []byte(fmt.Sprintf(`D (7:sig-val(3:rsa(1:s%d:%s)))`, len(signature),
-		PercentEncodeSExp(signature))), nil
+	var buf []byte
+	return fmt.Appendf(buf, `D (7:sig-val(3:rsa(1:s%d:%s)))`, len(signature),
+		PercentEncodeSExp(signature)), nil
 }
 
 // signECDSA returns a signature for the given hash.
@@ -60,6 +61,7 @@ func (a *Assuan) signECDSA() ([]byte, error) {
 		return nil, fmt.Errorf("couldn't read s as asn1.Integer")
 	}
 	// encode the params (r, s) into s-exp
-	return []byte(fmt.Sprintf(`D (7:sig-val(5:ecdsa(1:r32#%X#)(1:s32#%X#)))`,
-		r.Bytes(), s.Bytes())), nil
+	var buf []byte
+	return fmt.Appendf(buf, `D (7:sig-val(5:ecdsa(1:r32#%X#)(1:s32#%X#)))`,
+		r.Bytes(), s.Bytes()), nil
 }

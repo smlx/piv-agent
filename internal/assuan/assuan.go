@@ -22,7 +22,7 @@ import (
 // version indicates the version of gpg-agent to emulate.
 // The gpg CLI client will emit a warning if this is lower than the version of
 // the gpg client itself.
-const version = "2.3.4"
+const version = "2.4.7"
 
 // The KeyService interface provides functions used by the Assuan FSM.
 type KeyService interface {
@@ -212,7 +212,8 @@ func New(rw io.ReadWriter, log *zap.Logger, n *notify.Notify,
 					}
 					if err != nil {
 						_, _ = io.WriteString(rw, "ERR 1 couldn't get key for keygrip\n")
-						return fmt.Errorf("couldn't get key for keygrip: %v", err)
+						log.Warn("couldn't get key for keygrip", zap.Error(err))
+						return nil // this is not a fatal error
 					}
 					_, err = io.WriteString(rw, "OK\n")
 				case setkeydesc:
@@ -253,6 +254,9 @@ func New(rw io.ReadWriter, log *zap.Logger, n *notify.Notify,
 					}
 					var plaintext, ciphertext []byte
 					ciphertext = bytes.Join(chunks, []byte("\n"))
+					// start notify timer
+					cancel := assuan.notify.Touch()
+					defer cancel()
 					plaintext, err = assuan.decrypter.Decrypt(nil, ciphertext, nil)
 					if err != nil {
 						return fmt.Errorf("couldn't decrypt: %v", err)
@@ -303,7 +307,7 @@ func (assuan *Assuan) havekey(rw io.ReadWriter, ks []KeyService) error {
 			_, _ = io.WriteString(rw, "ERR 1 couldn't list keygrips\n")
 			return err
 		}
-		// apply buggy libgcrypt encoding
+		// apply libgcrypt encoding
 		_, err = io.WriteString(rw, fmt.Sprintf("D %s\nOK\n",
 			PercentEncodeSExp(grips)))
 		return err
@@ -371,8 +375,8 @@ func haveKey(ks []KeyService, keygrips [][]byte) (bool, []byte, error) {
 	return false, nil, nil
 }
 
-// allKeygrips returns all keygrips available for any keyservice, concatenated
-// into a single byte slice.
+// allKeygrips returns all keygrips available for any of the given keyservices,
+// concatenated into a single byte slice.
 func allKeygrips(ks []KeyService) ([]byte, error) {
 	var grips []byte
 	for _, k := range ks {
