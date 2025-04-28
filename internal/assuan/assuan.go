@@ -212,7 +212,8 @@ func New(rw io.ReadWriter, log *zap.Logger, n *notify.Notify,
 					}
 					if err != nil {
 						_, _ = io.WriteString(rw, "ERR 1 couldn't get key for keygrip\n")
-						return fmt.Errorf("couldn't get key for keygrip: %v", err)
+						log.Warn("couldn't get key for keygrip", zap.Error(err))
+						return nil // this is not a fatal error
 					}
 					_, err = io.WriteString(rw, "OK\n")
 				case setkeydesc:
