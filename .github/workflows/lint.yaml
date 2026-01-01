@@ -10,13 +10,13 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
     - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
         go-version: stable
     - name: Install Dependencies
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
-    - uses: golangci/golangci-lint-action@e7fa5ac41e1cf5b7d48e45e42232ce7ada589601 # v9.1.0
+    - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
       with:
         args: --timeout=180s --enable gocritic
   lint-commits:
@@ -25,7 +25,7 @@ jobs:
       pull-requests: read
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         fetch-depth: 0
     - uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6.2.1
@@ -36,7 +36,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
     - uses: docker://rhysd/actionlint:1.7.0@sha256:601d6faeefa07683a4a79f756f430a1850b34d575d734b1d1324692202bf312e # v1.7.0
       with:
         args: -color
