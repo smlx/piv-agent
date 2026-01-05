@@ -10,16 +10,16 @@ require (
 	github.com/alecthomas/kong v1.13.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/davecgh/go-spew v1.1.1
-	github.com/gen2brain/beeep v0.11.1
+	github.com/gen2brain/beeep v0.11.2
 	github.com/go-piv/piv-go/v2 v2.4.0
 	github.com/smlx/fsm v0.2.1
 	github.com/twpayne/go-pinentry-minimal v0.0.0-20220113210447-2a5dc4396c2a
 	github.com/x13a/go-launch v0.0.0-20210715084817-fd409384939b
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
-	golang.org/x/crypto v0.45.0
-	golang.org/x/sync v0.18.0
-	golang.org/x/term v0.37.0
+	golang.org/x/crypto v0.46.0
+	golang.org/x/sync v0.19.0
+	golang.org/x/term v0.38.0
 )
 
 require (
@@ -34,7 +34,7 @@ require (
 	github.com/sergeymakinen/go-ico v1.0.0-beta.0 // indirect
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
 )
 
 replace github.com/ProtonMail/go-crypto => github.com/smlx/go-crypto v0.0.0-20230324130354-fc893cd601c2
