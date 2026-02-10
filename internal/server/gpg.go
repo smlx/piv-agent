@@ -48,7 +48,7 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 				return fmt.Errorf("listen socket closed")
 			}
 			g.log.Debug("accepted gpg-agent connection")
-			// reset the exit timer
+			// reset the idle exit timer
 			exit.Reset(timeout)
 			// if the client takes too long, give up
 			if err := conn.SetDeadline(time.Now().Add(connTimeout)); err != nil {
@@ -65,6 +65,7 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 				if err := a.Run(ctx); err != nil {
 					g.log.Error("gpg-agent error", zap.Error(err))
 				}
+				g.log.Debug("finish serving gpg-agent connection")
 			}()
 		case <-ctx.Done():
 			return nil

@@ -1,6 +1,6 @@
 package gpg
 
-//go:generate mockgen -source=keyservice.go -destination=../../mock/mock_keyservice.go -package=mock
+//go:generate go tool mockgen -source=keyservice.go -destination=../../mock/mock_keyservice.go -package=mock
 
 import (
 	"bytes"

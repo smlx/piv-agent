@@ -9,7 +9,7 @@ import (
 	"github.com/smlx/piv-agent/internal/notify"
 )
 
-//go:generate enumer -type=Event -text -transform upper
+//go:generate go tool enumer -type=Event -text -transform upper
 
 // Event represents an Assuan event.
 type Event fsm.Event
@@ -34,7 +34,7 @@ const (
 	passwd
 )
 
-//go:generate enumer -type=State -text -transform upper
+//go:generate go tool enumer -type=State -text -transform upper
 
 // State represents an Assuan state.
 type State fsm.State

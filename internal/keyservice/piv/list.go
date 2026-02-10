@@ -1,6 +1,6 @@
 package piv
 
-//go:generate mockgen -source=list.go -destination=../../mock/mock_pivservice.go -package=mock
+//go:generate go tool mockgen -source=list.go -destination=../../mock/mock_pivservice.go -package=mock
 
 import (
 	"crypto"

@@ -22,6 +22,8 @@ allow-licenses:
 - 'Zlib'
 # Google's patent licence for Go
 - 'LicenseRef-scancode-google-patent-license-golang'
+# https://creativecommons.org/publicdomain/zero/1.0/legalcode.en
+- 'CC0-1.0'
 
 allow-dependencies-licenses:
 # this action is GPL-3 but it is only used in CI
