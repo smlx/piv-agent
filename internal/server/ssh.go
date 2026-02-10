@@ -37,16 +37,23 @@ func (s *SSH) Serve(ctx context.Context, a *ssh.Agent, l net.Listener,
 			if !ok {
 				return fmt.Errorf("listen socket closed")
 			}
-			// reset the exit timer
+			s.log.Debug("accepted ssh-agent connection")
+			// reset the idle exit timer
 			exit.Reset(timeout)
-			s.log.Debug("start serving SSH connection")
-			if err := agent.ServeAgent(a, conn); err != nil {
-				if errors.Is(err, io.EOF) {
-					s.log.Debug("finish serving SSH connection")
-					continue
-				}
-				return fmt.Errorf("ssh Serve error: %w", err)
+			// if the client takes too long, give up
+			if err := conn.SetDeadline(time.Now().Add(connTimeout)); err != nil {
+				return fmt.Errorf("couldn't set deadline: %v", err)
 			}
+			// this goroutine will exit by either:
+			// * client severs connection (the usual case)
+			// * conn deadline reached (client stopped responding)
+			//   err will be non-nil in this case.
+			go func() {
+				if err := agent.ServeAgent(a, conn); err != nil && !errors.Is(err, io.EOF) {
+					s.log.Error("ssh-agent error", zap.Error(err))
+				}
+				s.log.Debug("finish serving ssh-agent connection")
+			}()
 		case <-ctx.Done():
 			return nil
 		}
