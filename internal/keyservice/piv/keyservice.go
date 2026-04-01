@@ -5,12 +5,15 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"fmt"
 	"sync"
 
 	pivgo "github.com/go-piv/piv-go/v2/piv"
+	"github.com/smlx/piv-agent/internal/age"
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"github.com/smlx/piv-agent/internal/pinentry"
+	"github.com/smlx/piv-agent/internal/securitykey"
 	"go.uber.org/zap"
 )
 
@@ -20,7 +23,7 @@ type KeyService struct {
 	mu           sync.Mutex
 	log          *zap.Logger
 	pinentry     *pinentry.PINEntry
-	securityKeys []SecurityKey
+	securityKeys []*securitykey.SecurityKey
 }
 
 // New constructs a PIV and returns it.
@@ -47,10 +50,13 @@ func (p *KeyService) Keygrips() ([][]byte, error) {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, sk := range securityKeys {
-		for _, cryptoKey := range sk.CryptoKeys() {
+		cks, err := sk.CryptoKeys()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get crypto keys: %v", err)
+		}
+		for _, cryptoKey := range cks {
 			ecdsaPubKey, ok := cryptoKey.Public.(*ecdsa.PublicKey)
 			if !ok {
-				// TODO: handle other key types
 				continue
 			}
 			kg, err := gpg.KeygripECDSA(ecdsaPubKey)
@@ -73,7 +79,11 @@ func (p *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 		return false, nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, sk := range securityKeys {
-		for _, cryptoKey := range sk.CryptoKeys() {
+		cks, err := sk.CryptoKeys()
+		if err != nil {
+			return false, nil, fmt.Errorf("couldn't get crypto keys: %v", err)
+		}
+		for _, cryptoKey := range cks {
 			ecdsaPubKey, ok := cryptoKey.Public.(*ecdsa.PublicKey)
 			if !ok {
 				// TODO: handle other key types
@@ -93,16 +103,37 @@ func (p *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 	return false, nil, nil
 }
 
+// KeyTag calculates the 4-byte truncated SHA-256 hash of the uncompressed
+// P-256 point, per the age spec.
+func KeyTag(pub crypto.PublicKey) ([4]byte, error) {
+	ecdsaPub, ok := pub.(*ecdsa.PublicKey)
+	if !ok {
+		return [4]byte{}, fmt.Errorf("public key is not ECDSA")
+	}
+	ecdhPub, err := ecdsaPub.ECDH()
+	if err != nil {
+		return [4]byte{}, fmt.Errorf("couldn't convert to ECDH: %v", err)
+	}
+	b := ecdhPub.Bytes()
+	hash := sha256.Sum256(b)
+	var tag [4]byte
+	copy(tag[:], hash[:4])
+	return tag, nil
+}
+
 func (p *KeyService) getPrivateKey(keygrip []byte) (crypto.PrivateKey, error) {
 	securityKeys, err := p.getSecurityKeys()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, sk := range securityKeys {
-		for _, cryptoKey := range sk.CryptoKeys() {
+		cks, err := sk.CryptoKeys()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get crypto keys: %v", err)
+		}
+		for _, cryptoKey := range cks {
 			ecdsaPubKey, ok := cryptoKey.Public.(*ecdsa.PublicKey)
 			if !ok {
-				// TODO: handle other key types
 				continue
 			}
 			thisKeygrip, err := gpg.KeygripECDSA(ecdsaPubKey)
@@ -153,6 +184,51 @@ func (p *KeyService) GetDecrypter(keygrip []byte) (crypto.Decrypter, error) {
 		return nil, fmt.Errorf("private key is not a decrypter")
 	}
 	return decryptingPrivKey, nil
+}
+
+// GetECDHKey returns an ECDHKey associated with the given hardware device, slot, and key tag.
+func (p *KeyService) GetECDHKey(serial uint32, slotID uint32, keyTag [4]byte) (age.ECDHKey, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	securityKeys, err := p.getSecurityKeys()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get security keys: %v", err)
+	}
+	for _, sk := range securityKeys {
+		if sk.Serial() != serial {
+			continue
+		}
+		cks, err := sk.CryptoKeys()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get crypto keys: %v", err)
+		}
+		for _, cryptoKey := range cks {
+			if cryptoKey.SlotSpec.Slot.Key != slotID {
+				continue
+			}
+			ecdsaPubKey, ok := cryptoKey.Public.(*ecdsa.PublicKey)
+			if !ok {
+				continue
+			}
+			thisTag, err := KeyTag(ecdsaPubKey)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get key tag: %v", err)
+			}
+			if thisTag != keyTag {
+				return nil, fmt.Errorf("key tag mismatch")
+			}
+			privKey, err := sk.PrivateKey(&cryptoKey)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get private key from slot")
+			}
+			pivGoPrivKey, ok := privKey.(*pivgo.ECDSAPrivateKey)
+			if !ok {
+				return nil, fmt.Errorf("unexpected private key type: %T", privKey)
+			}
+			return &ECDHKey{mu: &p.mu, ECDSAPrivateKey: pivGoPrivKey}, nil
+		}
+	}
+	return nil, fmt.Errorf("couldn't match hardware token or slot")
 }
 
 // CloseAll closes all security keys without checking for errors.

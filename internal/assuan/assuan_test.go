@@ -28,6 +28,11 @@ import (
 	"golang.org/x/crypto/cryptobyte/asn1"
 )
 
+//go:generate go tool mockgen -source=assuan_test.go -destination=mock_securitykey_test.go -package=assuan_test
+type SecurityKey interface {
+	SigningKeys() []securitykey.SigningKey
+}
+
 // MockCryptoSigner is a mock type which implements crypto.Signer
 type MockCryptoSigner struct {
 	PubKey    *ecdsa.PublicKey
@@ -209,7 +214,7 @@ func TestKeyinfo(t *testing.T) {
 			}
 			ctrl := gomock.NewController(tt)
 			defer ctrl.Finish()
-			var mockSecurityKey = mock.NewMockSecurityKey(ctrl)
+			var mockSecurityKey = NewMockSecurityKey(ctrl)
 			mockSecurityKey.EXPECT().SigningKeys().AnyTimes().Return(
 				[]securitykey.SigningKey{
 					{CryptoKey: securitykey.CryptoKey{Public: pubKey}},

@@ -1,11 +1,8 @@
 package piv
 
-//go:generate go tool mockgen -source=list.go -destination=../../mock/mock_pivservice.go -package=mock
-
 import (
-	"crypto"
-	"crypto/x509"
 	"fmt"
+	"slices"
 
 	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
@@ -13,32 +10,13 @@ import (
 	"go.uber.org/zap"
 )
 
-// SecurityKey is a simple interface for security keys allowing abstraction
-// over the securitykey implementation, and allowing generation of mocks for
-// testing.
-type SecurityKey interface {
-	AttestationCertificate() (*x509.Certificate, error)
-	Card() string
-	Close() error
-	Comment(*securitykey.SlotSpec) string
-	PrivateKey(*securitykey.CryptoKey) (crypto.PrivateKey, error)
-	SigningKeys() []securitykey.SigningKey
-	CryptoKeys() []securitykey.CryptoKey
-	StringsGPG(string, string) ([]string, error)
-	StringsSSH() []string
-}
-
-func (p *KeyService) reloadSecurityKeys() error {
+func (p *KeyService) reloadSecurityKeys(cards []string) error {
 	// try to clean up and reset state
 	for _, k := range p.securityKeys {
 		_ = k.Close()
 	}
 	p.securityKeys = nil
-	// open cards and load keys from scratch
-	cards, err := pivgo.Cards()
-	if err != nil {
-		return fmt.Errorf("couldn't get cards: %v", err)
-	}
+	// load keys from scratch
 	for _, card := range cards {
 		sk, err := securitykey.New(card, pinentry.New("pinentry"))
 		if err != nil {
@@ -54,29 +32,42 @@ func (p *KeyService) reloadSecurityKeys() error {
 	return nil
 }
 
-func (p *KeyService) getSecurityKeys() ([]SecurityKey, error) {
+func (p *KeyService) getSecurityKeys() ([]*securitykey.SecurityKey, error) {
 	var err error
-	// check if any securityKeys are cached, and if not then cache them
-	if len(p.securityKeys) == 0 {
-		if err = p.reloadSecurityKeys(); err != nil {
-			return nil, fmt.Errorf("couldn't reload security keys: %v", err)
+	// check if the card cache is valid, and reload if not
+	cards, err := pivgo.Cards()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get cards: %v", err)
+	}
+	// check the cache size
+	reload := len(cards) != len(p.securityKeys)
+	if !reload {
+		for _, sk := range p.securityKeys {
+			// check the cache contents
+			if !slices.ContainsFunc(cards, func(card string) bool {
+				return card == sk.Card()
+			}) {
+				reload = true
+				break
+			}
+			// check the keys are healthy
+			if _, err = sk.AttestationCertificate(); err != nil {
+				p.log.Debug("PIV KeyService: couldn't get AttestationCertificate()", zap.Error(err))
+				reload = true
+				break
+			}
 		}
 	}
-	// check they are healthy, and reload if not
-	for _, k := range p.securityKeys {
-		if _, err = k.AttestationCertificate(); err != nil {
-			p.log.Debug("PIV KeyService: couldn't get AttestationCertificate()", zap.Error(err))
-			if err = p.reloadSecurityKeys(); err != nil {
-				return nil, fmt.Errorf("couldn't reload security keys: %v", err)
-			}
-			break
+	if reload || len(p.securityKeys) == 0 {
+		if err = p.reloadSecurityKeys(cards); err != nil {
+			return nil, fmt.Errorf("couldn't reload security keys: %v", err)
 		}
 	}
 	return p.securityKeys, nil
 }
 
 // SecurityKeys returns a slice containing all available security keys.
-func (p *KeyService) SecurityKeys() ([]SecurityKey, error) {
+func (p *KeyService) SecurityKeys() ([]*securitykey.SecurityKey, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.getSecurityKeys()

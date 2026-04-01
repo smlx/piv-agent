@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,20 +18,22 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// agentTypeFlag is the --agent-type flag
 type agentTypeFlag map[string]uint
+
+// validAgents is the list of agents supported by piv-agent.
+var validAgents = []string{"ssh", "gpg", "age"}
 
 // ServeCmd represents the listen command.
 type ServeCmd struct {
-	LoadKeyfile        bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
-	ExitTimeout        time.Duration `kong:"default=12h,help='Exit after this period to drop transaction and key file passphrase cache, even if service is in use'"`
-	IdleTimeout        time.Duration `kong:"default=128m,help='Exit after this period of disuse'"`
-	TouchNotifyDelay   time.Duration `kong:"default=6s,help='Display a notification after this period when waiting for a touch'"`
-	PinentryBinaryName string        `kong:"default='pinentry',help='Pinentry binary which will be used, must be in $PATH'"`
-	AgentTypes         agentTypeFlag `kong:"default='ssh=0;gpg=1',help='Agent types to handle'"`
+	LoadKeyfile          bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
+	ExitTimeout          time.Duration `kong:"default=12h,help='Exit after this period to drop transaction and key file passphrase cache, even if service is in use'"`
+	IdleTimeout          time.Duration `kong:"default=128m,help='Exit after this period of disuse'"`
+	TouchNotifyDelay     time.Duration `kong:"default=6s,help='Display a notification after this period when waiting for a touch'"`
+	PinentryBinaryName   string        `kong:"default='pinentry',help='Pinentry binary which will be used, must be in $PATH'"`
+	AgentTypes           agentTypeFlag `kong:"default='ssh=0;gpg=1;age=2',help='Agent types to handle'"`
+	CredentialsDirectory string        `kong:"required,env='CREDENTIALS_DIRECTORY',help='Path to the systemd credentials directory'"`
 }
-
-// validAgents is the list of agents supported by piv-agent.
-var validAgents = []string{"ssh", "gpg"}
 
 // AfterApply validates the given agent types.
 func (flagAgents *agentTypeFlag) AfterApply() error {
@@ -48,7 +51,19 @@ func (flagAgents *agentTypeFlag) AfterApply() error {
 	return nil
 }
 
-// Run the listen command to start listening for ssh-agent requests.
+// fetchSeed reads the ML-KEM seed from the credentials directory.
+func (cmd *ServeCmd) fetchSeed(fileID [8]byte) ([]byte, error) {
+	filename := hex.EncodeToString(fileID[:])
+	seedPath := filepath.Join(cmd.CredentialsDirectory, "seeds_"+filename)
+
+	seed, err := os.ReadFile(seedPath)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't read seed file %s: %v", seedPath, err)
+	}
+	return seed, nil
+}
+
+// Run the listen command to start listening for requests.
 func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	log.Info("startup", zap.String("version", version),
 		zap.String("build date", date))
@@ -102,6 +117,21 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 				log.Debug("exiting GPG server", zap.Error(err))
 			} else {
 				log.Debug("exiting GPG server successfully")
+			}
+			cancel()
+			return err
+		})
+	}
+	// start age agent if given in agent-type flag
+	if _, ok := cmd.AgentTypes["age"]; ok {
+		log.Debug("starting age server")
+		g.Go(func() error {
+			s := server.NewAge(log, p, cmd.fetchSeed)
+			err := s.Serve(ctx, ls[cmd.AgentTypes["age"]], idle, cmd.IdleTimeout)
+			if err != nil {
+				log.Debug("exiting age server", zap.Error(err))
+			} else {
+				log.Debug("exiting age server successfully")
 			}
 			cancel()
 			return err

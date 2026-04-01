@@ -78,7 +78,11 @@ func (a *Agent) securityKeyIDs() ([]*agent.Key, error) {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, k := range securityKeys {
-		for _, s := range k.SigningKeys() {
+		sks, err := k.SigningKeys()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get signing keys: %v", err)
+		}
+		for _, s := range sks {
 			keys = append(keys, &agent.Key{
 				Format:  s.PubSSH.Type(),
 				Blob:    s.PubSSH.Marshal(),
@@ -213,7 +217,11 @@ func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, k := range securityKeys {
-		for _, s := range k.SigningKeys() {
+		sks, err := k.SigningKeys()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get signing keys: %v", err)
+		}
+		for _, s := range sks {
 			privKey, err := k.PrivateKey(&s.CryptoKey)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get private key for slot %x: %v",
@@ -238,7 +246,7 @@ func (a *Agent) doDecrypt(keyPath string,
 	var passphrase []byte
 	var signer gossh.Signer
 	var err error
-	for i := 0; i < retries; i++ {
+	for i := range retries {
 		passphrase = passphrases[string(pub.Marshal())]
 		if passphrase == nil {
 			fingerprint := gossh.FingerprintSHA256(pub)
