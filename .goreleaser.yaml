@@ -22,14 +22,28 @@ builds:
   - linux
   goarch:
   - amd64
+- id: age-plugin-piv-agent
+  binary: age-plugin-piv-agent
+  main: ./cmd/age-plugin-piv-agent
+  ldflags:
+  - >
+    -s -w
+    -X "main.commit={{.Commit}}"
+    -X "main.date={{.Date}}"
+    -X "main.projectName={{.ProjectName}}"
+    -X "main.version=v{{.Version}}"
+  env:
+  - CGO_ENABLED=1
+  goos:
+  - linux
+  goarch:
+  - amd64
 
 changelog:
   use: github-native
 
 checksum:
-  name_template: "{{ .ProjectName }}_{{ .Version }}_linux_checksums.txt"
+  name_template: checksums.txt
 
-release:
-  extra_files:
-  - glob: "{{ .Env.GITHUB_SBOM_PATH }}"
-    name_template: "{{ .ProjectName }}.v{{ .Version }}.sbom.linux.spdx.json"
+sboms:
+- artifacts: archive
