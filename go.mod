@@ -1,25 +1,23 @@
 module github.com/smlx/piv-agent
 
-go 1.24.0
-
-toolchain go1.24.1
+go 1.25.0
 
 require (
 	filippo.io/nistec v0.0.4
 	github.com/ProtonMail/go-crypto v0.0.0-20230316153859-cb82d937a5d9
-	github.com/alecthomas/kong v1.13.0
+	github.com/alecthomas/kong v1.14.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/davecgh/go-spew v1.1.1
 	github.com/gen2brain/beeep v0.11.2
-	github.com/go-piv/piv-go/v2 v2.4.0
+	github.com/go-piv/piv-go/v2 v2.5.0
 	github.com/smlx/fsm v0.2.1
 	github.com/twpayne/go-pinentry-minimal v0.0.0-20220113210447-2a5dc4396c2a
 	github.com/x13a/go-launch v0.0.0-20210715084817-fd409384939b
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
-	golang.org/x/crypto v0.47.0
-	golang.org/x/sync v0.19.0
-	golang.org/x/term v0.39.0
+	golang.org/x/crypto v0.49.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/term v0.41.0
 )
 
 require (
@@ -37,7 +35,7 @@ require (
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
 )
 
