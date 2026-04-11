@@ -6,13 +6,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	date        string
-	goVersion   string
-	shortCommit string
-	version     string
-)
-
 // CLI represents the command-line interface.
 type CLI struct {
 	Debug      bool          `kong:"help='Enable debug logging'"`
@@ -26,9 +19,7 @@ type CLI struct {
 func main() {
 	// parse CLI config
 	cli := CLI{}
-	kctx := kong.Parse(&cli,
-		kong.UsageOnError(),
-	)
+	kctx := kong.Parse(&cli, kong.UsageOnError())
 	// init logger
 	var log *zap.Logger
 	var err error
