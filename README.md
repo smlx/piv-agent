@@ -19,6 +19,10 @@ If you are, please take a look at the code and send PRs or issues. :green_heart:
 
 ---
 
+### Platform support
+
+`piv-agent` has a hard dependency on Linux and systemd. At this time no other OS stack is supported.
+
 ### Features
 
 * implements (a subset of) both `ssh-agent` and `gpg-agent` functionality
@@ -27,7 +31,7 @@ If you are, please take a look at the code and send PRs or issues. :green_heart:
 * support for multiple touch policies
 * all cryptographic keys are generated on the hardware security key, rather than on your laptop
   * secret keys never touch your hard drive
-* uses systemd (Linux) or launchd (macOS) socket activation
+* uses systemd socket activation
   * as a result, automatically drop the transaction on the security key and cached passphrases after some period of disuse
 * provides "fall-back" to traditional SSH and OpenPGP keyfiles
 
@@ -65,10 +69,6 @@ Will be tested with (once PIV support [is available](https://github.com/solokeys
 
 Any device implementing the SCard API (PC/SC), and supported by [`piv-go`](https://github.com/go-piv/piv-go/) / [`pcsclite`](https://pcsclite.apdu.fr/) may work.
 If you have tested another device with `piv-agent` successfully, please send a PR adding it to this list.
-
-### Platform support
-
-Currently tested on Linux with `systemd` and macOS with `launchd`.
 
 ### Protocol / Encryption Algorithm support
 

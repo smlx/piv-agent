@@ -14,7 +14,6 @@ require (
 	github.com/go-piv/piv-go/v2 v2.4.0
 	github.com/smlx/fsm v0.2.1
 	github.com/twpayne/go-pinentry-minimal v0.0.0-20220113210447-2a5dc4396c2a
-	github.com/x13a/go-launch v0.0.0-20210715084817-fd409384939b
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0

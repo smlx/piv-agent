@@ -5,8 +5,6 @@ weight: 40
 
 ## How do I switch between gpg-agent and piv-agent
 
-### Linux (systemd)
-
 Stop both `gpg-agent` and `piv-agent`:
 
 {{% alert title="Note" %}}
@@ -29,16 +27,3 @@ Or start `gpg-agent` socket:
 systemctl --user start gpg-agent.socket
 ```
 
-### macOS (launchd)
-
-Stop `piv-agent`:
-
-```
-launchctl disable gui/$UID/com.github.smlx.piv-agent
-```
-
-Start `piv-agent` sockets:
-
-```
-launchctl enable gui/$UID/com.github.smlx.piv-agent
-```
