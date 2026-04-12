@@ -2,8 +2,6 @@ module github.com/smlx/piv-agent
 
 go 1.24.0
 
-toolchain go1.24.1
-
 require (
 	filippo.io/nistec v0.0.4
 	github.com/ProtonMail/go-crypto v0.0.0-20230316153859-cb82d937a5d9
