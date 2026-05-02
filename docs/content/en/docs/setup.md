@@ -19,8 +19,8 @@ It will not make any changes to applets providing other functionality the device
 By default, `piv-agent` uses six slots on your hardware security device to set up three signing keys, and three decrypting key.
 Each of the signing and decrypting keys have different [touch policies](https://docs.yubico.com/yesdk/users-manual/application-piv/pin-touch-policies.html): never required, cached (for 15 seconds), and always.
 
-The three signing keys are used for both SSH and GPG signing.
-The decrypting keys are used for GPG decryption.
+The three signing keys are used for SSH signing.
+The decrypting keys are used for age decryption.
 Having a range of touch policies available facilitates practical use of the hardware security device.
 
 The default slot usage by `piv-agent` is detailed in the table below, with reference to the [Yubikey certificate slot usage description](https://developers.yubico.com/PIV/Introduction/Certificate_slots.html).
@@ -38,14 +38,14 @@ It is highly recommended to use these setup defaults as this has had the most us
 #### Example setup workflow
 
 ```bash
-# find the name of the hardware security devices (cards)
-piv-agent list
+# find the serial numbers of the hardware security devices
+piv-agent status
 
 # generate new keys (PIN will be requested via interactive prompt)
-piv-agent setup --card='Yubico YubiKey FIDO+CCID 01 00'
+piv-agent setup --serial=12345678
 
 # view newly generated keys (SSH only by default)
-piv-agent list
+piv-agent status
 ```
 
 ### Single slot setup
@@ -65,13 +65,13 @@ Other PIV slots will not be affected, and will retain their existing keys.
 For example this command will reset just the decrypting key with touch policy `never` on your Yubikey:
 
 ```bash
-piv-agent setup-slots --card="Yubico YubiKey FIDO+CCID 01 00" --pin=123456 --decrypting-keys=never --reset-slots
+piv-agent setup --serial=12345678 --pin=123456 --decrypting-keys=never
 ```
 
 See the interactive help for more usage details:
 
 ```bash
-piv-agent setup-slots --help
+piv-agent setup --help
 ```
 
 ## SSH
@@ -81,7 +81,7 @@ piv-agent setup-slots --help
 List your hardware SSH keys:
 
 ```bash
-piv-agent list
+piv-agent status
 ```
 
 Add the public SSH key with the touch policy you want from the list, to any SSH service.
@@ -170,13 +170,12 @@ Other platforms may have slightly different instructions - PRs welcome.
 Before any private GPG keys on the hardware dvice can be used, `gpg` requires their public keys to be imported.
 This structure of a GPG public key contains a [User ID packet](https://datatracker.ietf.org/doc/html/rfc4880#section-5.11), which must be signed by the associated _private key_.
 
-The `piv-agent list` command can synthesize a public key for the private key stored on the security hardware device.
-Listing a GPG key via `piv-agent list --key-formats=gpg` will require a touch to perform signing on the keys associated with those slots (due to the User ID packet).
-You should provide a name and email which will be embedded in the synthesized public key (see `piv-agent --help list`).
+The `piv-agent status` command can be used to view the status of the keys on the device.
+Listing the status via `piv-agent status` will show the keys associated with those slots.
 
 ```bash
 # example
-piv-agent list --key-formats=ssh,gpg --pgp-name='Art Vandelay' --pgp-email='art@example.com'
+piv-agent status
 ```
 
 Paste the public key(s) you would like to use into a `key.asc` file, and run `gpg --import key.asc`.
@@ -202,3 +201,89 @@ Adding a subkey requires cross-signing between the master key and sub key, so yo
 `gpg` will choose the _newest_ available subkey to perform an action. So it will automatically prefer a newly added `piv-agent` subkey over any existing keyfile subkeys, but fall back to keyfiles if e.g. the Yubikey is not plugged in.
 
 See the [GPG Walkthrough](../../docs/gpg-walkthrough) for an example of this procedure.
+
+## Age
+
+### Setup
+
+To set up `age` with your hardware security device, use the `generate-seeds` command to create your seeds and output your corresponding hardware identity:
+
+```bash
+age-plugin-piv-agent generate-seeds
+```
+
+Save the output identity to a file (for example, `~/.config/age/identities.txt`) so you can use it to encrypt or decrypt files with `age`.
+
+{{% alert title="Warning" color="warning" %}}
+Running the `generate-seeds` command a second time will generate new random seeds and new identities. The old seeds will remain in the credential store so existing files can still be decrypted, but you will receive different identity strings.
+{{% /alert %}}
+
+### Offline Recovery Identity (Break-Glass)
+
+Generating an offline recovery identity (`mlkem768x25519` native post-quantum key) alongside your hardware-bound identity is highly recommended. This provides a "break-glass" mechanism for two important scenarios:
+
+* **Disaster Recovery (Lost Hardware):** If your machine is destroyed or your hardware token is lost, the local TPM-sealed seed is permanently inaccessible. Having the offline seed allows you to decrypt your data on any machine using a standard `age` client.
+* **High-Volume Batch Decryption:** If your hardware token is configured with an `always` touch policy, batch decrypting many files (e.g., during a password manager migration) would require hundreds of physical touches. You can temporarily use the software offline key to perform batch decryption instantly using CPU power alone.
+
+To generate this recovery key, use the standard `age-keygen` tool:
+
+```bash
+# Generate a native post-quantum identity (X-Wing)
+age-keygen -pq -o /tmp/recovery-identity.txt
+```
+
+You should print the resulting `AGE-SECRET-KEY-PQ-...` string as a QR code and store it entirely offline in cold storage. On Debian Linux, you can easily generate a QR code using `qrencode`:
+
+```bash
+# Install qrencode if necessary
+sudo apt-get install qrencode
+
+# Generate the QR code image
+qrencode -o /tmp/recovery-qr.png -s 6 < <(grep -v ^# /tmp/recovery-identity.txt)
+
+# Or display it directly in the terminal
+qrencode -t ANSI256 < <(grep -v ^# /tmp/recovery-identity.txt)
+```
+
+When encrypting files, specify **both** your hardware-backed public key and your offline recovery public key as recipients to ensure you can always recover your data.
+
+### Passage migration walkthrough
+
+Once you have complete the setup and offline recovery sections above, this section documents how you can migrate from [pass](https://www.passwordstore.org/) to [passage](https://github.com/FiloSottile/passage) using `piv-agent`.
+
+Set up the storage:
+
+```bash
+mkdir -p .passage/store
+chmod -R 0750 .passage
+```
+
+Configure the passage identities.
+These will be used by passage for decryption.
+
+{{% alert title="Note" color="note" %}}
+Passage doesn't currently support multiple identities. There's a PR for this [here](https://github.com/FiloSottile/passage/pull/71).
+{{% /alert %}}
+
+```bash
+piv-agent status --age-identities --decrypting-keys=always >> $HOME/.passage/identities
+```
+
+Configure the passage recipients.
+These will be used by passage for encryption.
+
+```bash
+piv-agent status --age-recipients --decrypting-keys=always >> $HOME/.passage/store/.age-recipients
+```
+
+Now you can migrate from pass to passage.
+
+`pass2passage.sh` will extract all your `pass` keys and insert them into your `passage` store.
+
+```bash
+./contrib/pass2passage.sh
+```
+
+Now you can use `passage` instead of `pass`.
+
+If you are a `fzf` user, try the fuzzy-find script described in the `passage` README!

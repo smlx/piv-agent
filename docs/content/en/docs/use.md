@@ -21,7 +21,7 @@ This should be enough to allow you to use `piv-agent`.
 ### List keys
 
 ```
-piv-agent list
+piv-agent status
 ```
 
 If this command returns an empty list, it may be because the running agent is holding a transaction to the hardware security device.
@@ -30,7 +30,7 @@ The solution is to stop the agent and run the list command again.
 ```
 systemctl --user stop piv-agent
 # should work now..
-piv-agent list
+piv-agent status
 ```
 
 ## Advanced

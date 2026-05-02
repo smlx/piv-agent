@@ -49,25 +49,18 @@ gpg --export-secret-key 0xEC26B2E4240DD2A9 > ~/.gnupg/piv-agent.secring/EC26B2E4
 Now lets set up the Yubikey with new cryptographic keys.
 
 ```
-# get the name of the card
-$ piv-agent list
-Security keys (cards):
-Yubico YubiKey FIDO+CCID 01 00
+# get the serial number of the card
+$ piv-agent status
 ...
-# use the card name to setup the Yubikey
-$ piv-agent setup --card="Yubico YubiKey FIDO+CCID 01 00" --pin=123456 --reset-security-key
+# use the serial number to setup the Yubikey
+$ piv-agent setup --serial=12345678 --pin=123456 --reset-security-key
 ```
 
 List the keys that were just generated.
 This command will require entering the pin specified above, and touching the device twice.
 
-{{% alert title="Note" %}}
-You might want to customize the UserID embedded in the public keys using `--pgp-name` and `--pgp-email`.
-See `piv-agent list --help`.
-{{% /alert %}}
-
 ```
-$ piv-agent list --key-formats=gpg
+$ piv-agent status
 Security keys (cards):
 Yubico YubiKey FIDO+CCID 01 00
 
