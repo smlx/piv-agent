@@ -33,7 +33,11 @@ func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 	if err != nil {
 		return nil, fmt.Errorf("couldn't set point bytes: %v", err)
 	}
-	_, err = sharedPoint.ScalarMult(sharedPoint, k.ecdsa.D.Bytes())
+	ecdhPriv, err := k.ecdsa.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't convert to ECDH private key: %v", err)
+	}
+	_, err = sharedPoint.ScalarMult(sharedPoint, ecdhPriv.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't perform scalar mult: %v", err)
 	}
