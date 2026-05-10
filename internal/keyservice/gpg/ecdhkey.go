@@ -41,7 +41,7 @@ func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 	shared := sharedPoint.Bytes()
 	sharedLen := len(shared)
 	shared = assuan.PercentEncodeSExp(shared)
-	return []byte(fmt.Sprintf("D (5:value%d:%s)\nOK\n", sharedLen, shared)), nil
+	return fmt.Appendf(nil, "D (5:value%d:%s)\nOK\n", sharedLen, shared), nil
 }
 
 // Public implements the other required method of the crypto.Decrypter and
