@@ -58,7 +58,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	// use FDs passed via socket activation
 	ls, err := sockets.Get(validAgents)
 	if err != nil {
-		return fmt.Errorf("cannot retrieve listeners: %w", err)
+		return fmt.Errorf("cannot retrieve listeners: %v", err)
 	}
 	// validate given agent types
 	if len(ls) != len(cmd.AgentTypes) {

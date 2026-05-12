@@ -108,6 +108,11 @@ func (k *SecurityKey) Setup(pin, version string, reset bool,
 				defaultDecryptSlots[p], err)
 		}
 	}
+
+	if err := k.InvalidateCache(); err != nil {
+		return fmt.Errorf("couldn't flush cache after setup: %v", err)
+	}
+
 	return nil
 }
 
@@ -134,7 +139,7 @@ func (k *SecurityKey) configureSlot(mgmtKey []byte, spec SlotSpec,
 	}
 	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
-		return fmt.Errorf("couldn't generate serial: %w", err)
+		return fmt.Errorf("couldn't generate serial: %v", err)
 	}
 	template := &x509.Certificate{
 		Subject: pkix.Name{
@@ -148,14 +153,14 @@ func (k *SecurityKey) configureSlot(mgmtKey []byte, spec SlotSpec,
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, pub,
 		priv)
 	if err != nil {
-		return fmt.Errorf("couldn't create certificate: %w", err)
+		return fmt.Errorf("couldn't create certificate: %v", err)
 	}
 	cert, err := x509.ParseCertificate(certBytes)
 	if err != nil {
-		return fmt.Errorf("couldn't parse certificate: %w", err)
+		return fmt.Errorf("couldn't parse certificate: %v", err)
 	}
 	if err = k.yubikey.SetCertificate(mgmtKey, spec.Slot, cert); err != nil {
-		return fmt.Errorf("couldn't set certificate: %w", err)
+		return fmt.Errorf("couldn't set certificate: %v", err)
 	}
 	return nil
 }

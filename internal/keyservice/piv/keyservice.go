@@ -44,7 +44,7 @@ func (p *KeyService) Keygrips() ([][]byte, error) {
 	var grips [][]byte
 	securityKeys, err := p.getSecurityKeys()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get security keys: %w", err)
+		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, sk := range securityKeys {
 		for _, cryptoKey := range sk.CryptoKeys() {
@@ -55,7 +55,7 @@ func (p *KeyService) Keygrips() ([][]byte, error) {
 			}
 			kg, err := gpg.KeygripECDSA(ecdsaPubKey)
 			if err != nil {
-				return nil, fmt.Errorf("couldn't get keygrip: %w", err)
+				return nil, fmt.Errorf("couldn't get keygrip: %v", err)
 			}
 			grips = append(grips, kg)
 		}
@@ -70,7 +70,7 @@ func (p *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 	defer p.mu.Unlock()
 	securityKeys, err := p.getSecurityKeys()
 	if err != nil {
-		return false, nil, fmt.Errorf("couldn't get security keys: %w", err)
+		return false, nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, sk := range securityKeys {
 		for _, cryptoKey := range sk.CryptoKeys() {
@@ -81,7 +81,7 @@ func (p *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 			}
 			thisKeygrip, err := gpg.KeygripECDSA(ecdsaPubKey)
 			if err != nil {
-				return false, nil, fmt.Errorf("couldn't get keygrip: %w", err)
+				return false, nil, fmt.Errorf("couldn't get keygrip: %v", err)
 			}
 			for _, kg := range keygrips {
 				if bytes.Equal(thisKeygrip, kg) {
@@ -96,7 +96,7 @@ func (p *KeyService) HaveKey(keygrips [][]byte) (bool, []byte, error) {
 func (p *KeyService) getPrivateKey(keygrip []byte) (crypto.PrivateKey, error) {
 	securityKeys, err := p.getSecurityKeys()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get security keys: %w", err)
+		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, sk := range securityKeys {
 		for _, cryptoKey := range sk.CryptoKeys() {
@@ -107,7 +107,7 @@ func (p *KeyService) getPrivateKey(keygrip []byte) (crypto.PrivateKey, error) {
 			}
 			thisKeygrip, err := gpg.KeygripECDSA(ecdsaPubKey)
 			if err != nil {
-				return nil, fmt.Errorf("couldn't get keygrip: %w", err)
+				return nil, fmt.Errorf("couldn't get keygrip: %v", err)
 			}
 			if bytes.Equal(thisKeygrip, keygrip) {
 				privKey, err := sk.PrivateKey(&cryptoKey)

@@ -11,7 +11,7 @@ import (
 func (a *Assuan) Run(ctx context.Context) error {
 	// register connection
 	if err := a.Occur(connect); err != nil {
-		return fmt.Errorf("error handling connect: %w", err)
+		return fmt.Errorf("error handling connect: %v", err)
 	}
 	var e Event
 	for {
@@ -25,16 +25,16 @@ func (a *Assuan) Run(ctx context.Context) error {
 			if err == io.EOF {
 				return nil // connection closed
 			}
-			return fmt.Errorf("socket read error: %w", err)
+			return fmt.Errorf("socket read error: %v", err)
 		}
 		// parse the event
 		msg := bytes.Split(bytes.TrimRight(line, "\n"), []byte(" "))
 		if err := e.UnmarshalText(msg[0]); err != nil {
-			return fmt.Errorf(`couldn't unmarshal line %q: %w`, line, err)
+			return fmt.Errorf("couldn't unmarshal line %q: %v", line, err)
 		}
 		// send the event and additional arguments to the state machine
 		if err := a.Occur(e, msg[1:]...); err != nil {
-			return fmt.Errorf("couldn't handle event %v in state %v: %w",
+			return fmt.Errorf("couldn't handle event %v in state %v: %v",
 				e, State(a.State), err)
 		}
 	}

@@ -44,8 +44,7 @@ func New(card string, pe *pinentry.PINEntry) (*SecurityKey, error) {
 
 	sks, err := signingKeys(yk)
 	if err != nil {
-		return nil, fmt.Errorf(`couldn't get signing keys for card "%s": %v`,
-			card, err)
+		return fmt.Errorf("couldn't get signing keys: %v", err)
 	}
 	var cryptoKeys []CryptoKey
 	for _, k := range sks {
@@ -54,8 +53,7 @@ func New(card string, pe *pinentry.PINEntry) (*SecurityKey, error) {
 
 	dks, err := decryptingKeys(yk)
 	if err != nil {
-		return nil, fmt.Errorf(`couldn't get decrypting keys for card "%s": %v`,
-			card, err)
+		return fmt.Errorf("couldn't get decrypting keys: %v", err)
 	}
 	for _, k := range dks {
 		cryptoKeys = append(cryptoKeys, k.CryptoKey)
