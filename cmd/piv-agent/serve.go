@@ -23,7 +23,7 @@ type agentTypeFlag map[string]uint
 type ServeCmd struct {
 	LoadKeyfile        bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
 	ExitTimeout        time.Duration `kong:"default=12h,help='Exit after this period to drop transaction and key file passphrase cache, even if service is in use'"`
-	IdleTimeout        time.Duration `kong:"default=32m,help='Exit after this period of disuse'"`
+	IdleTimeout        time.Duration `kong:"default=128m,help='Exit after this period of disuse'"`
 	TouchNotifyDelay   time.Duration `kong:"default=6s,help='Display a notification after this period when waiting for a touch'"`
 	PinentryBinaryName string        `kong:"default='pinentry',help='Pinentry binary which will be used, must be in $PATH'"`
 	AgentTypes         agentTypeFlag `kong:"default='ssh=0;gpg=1',help='Agent types to handle'"`
