@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/notify"
@@ -123,7 +124,10 @@ func (a *Agent) keyFileIDs() ([]*agent.Key, error) {
 
 // Sign has the agent sign the data using a protocol 2 key as defined
 // in [PROTOCOL.agent] section 2.6.2.
-func (a *Agent) Sign(key gossh.PublicKey, data []byte) (*gossh.Signature, error) {
+func (a *Agent) Sign(
+	key gossh.PublicKey,
+	data []byte,
+) (*gossh.Signature, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	// try token keys first

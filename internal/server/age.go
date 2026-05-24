@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/smlx/piv-agent/internal/age"
+	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
 
 	"filippo.io/age/plugin"
@@ -20,14 +21,16 @@ type Age struct {
 	log       *slog.Logger
 	piv       *piv.KeyService
 	fetchSeed age.SeedFetcher
+	notify    *notify.Notify
 }
 
 // NewAge initialises a new age-plugin server.
-func NewAge(log *slog.Logger, piv *piv.KeyService, fetchSeed age.SeedFetcher) *Age {
+func NewAge(log *slog.Logger, piv *piv.KeyService, fetchSeed age.SeedFetcher, notify *notify.Notify) *Age {
 	return &Age{
 		log:       log,
 		piv:       piv,
 		fetchSeed: fetchSeed,
+		notify:    notify,
 	}
 }
 
@@ -68,7 +71,7 @@ func (a *Age) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 					return
 				}
 				p.HandleRecipient(age.HandleRecipient())
-				p.HandleIdentity(age.HandleIdentity(a.piv, a.fetchSeed))
+				p.HandleIdentity(age.HandleIdentity(a.piv, a.fetchSeed, a.notify))
 				p.SetIO(reader, conn, conn)
 				// run the relevant state machine
 				var exitCode int
