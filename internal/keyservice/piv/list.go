@@ -2,12 +2,12 @@ package piv
 
 import (
 	"fmt"
+	"log/slog"
 	"slices"
 
 	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
-	"go.uber.org/zap"
 )
 
 func (p *KeyService) reloadSecurityKeys(cards []string) error {
@@ -20,8 +20,8 @@ func (p *KeyService) reloadSecurityKeys(cards []string) error {
 	for _, card := range cards {
 		sk, err := securitykey.New(card, pinentry.New("pinentry"))
 		if err != nil {
-			p.log.Warn("couldn't get SecurityKey", zap.String("card", card),
-				zap.Error(err))
+			p.log.Warn("couldn't get SecurityKey", slog.String("card", card),
+				slog.Any("error", err))
 			continue
 		}
 		p.securityKeys = append(p.securityKeys, sk)
@@ -52,7 +52,8 @@ func (p *KeyService) getSecurityKeys() ([]*securitykey.SecurityKey, error) {
 			}
 			// check the keys are healthy
 			if _, err = sk.AttestationCertificate(); err != nil {
-				p.log.Debug("PIV KeyService: couldn't get AttestationCertificate()", zap.Error(err))
+				p.log.Debug("PIV KeyService: couldn't get AttestationCertificate()",
+					slog.Any("error", err))
 				reload = true
 				break
 			}

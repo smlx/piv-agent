@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"slices"
@@ -11,7 +12,6 @@ import (
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
-	"go.uber.org/zap"
 	"golang.org/x/term"
 )
 
@@ -230,7 +230,7 @@ func (cmd *SetupCmd) AfterApply() error {
 }
 
 // Run the setup command to configure a security key.
-func (cmd *SetupCmd) Run(l *zap.Logger) error {
+func (cmd *SetupCmd) Run(l *slog.Logger) error {
 	p := piv.New(l, pinentry.New("pinentry"))
 	securityKeys, err := p.SecurityKeys()
 	if err != nil {

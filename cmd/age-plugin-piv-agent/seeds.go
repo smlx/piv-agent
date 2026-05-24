@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,13 +19,14 @@ import (
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
-	"go.uber.org/zap"
 )
 
 type GenerateSeedsCmd struct{}
 
 func (c *GenerateSeedsCmd) Run(cli *CLI) error {
-	l, _ := zap.NewDevelopment()
+	l := slog.New(slog.NewTextHandler(
+		os.Stderr,
+		&slog.HandlerOptions{Level: slog.LevelDebug}))
 	p := piv.New(l, pinentry.New("pinentry"))
 	securityKeys, err := p.SecurityKeys()
 	if err != nil {
@@ -68,7 +70,7 @@ func (c *GenerateSeedsCmd) getOutputDir() (string, error) {
 }
 
 func (c *GenerateSeedsCmd) loadExistingSeeds(
-	l *zap.Logger,
+	l *slog.Logger,
 	outDir string,
 ) (map[[8]byte][64]byte, error) {
 	entries, err := os.ReadDir(outDir)
@@ -79,13 +81,13 @@ func (c *GenerateSeedsCmd) loadExistingSeeds(
 	for _, entry := range entries {
 		if entry.IsDir() {
 			l.Warn("directory in seed dir. ignoring.",
-				zap.String("dirname", entry.Name()))
+				slog.String("dirname", entry.Name()))
 			continue
 		}
 		fileIDDecoded, err := hex.DecodeString(entry.Name())
 		if err != nil || len(fileIDDecoded) != 8 {
 			l.Warn("file with invalid name in seed dir. ignoring.",
-				zap.String("filename", entry.Name()))
+				slog.String("filename", entry.Name()))
 			continue
 		}
 		fileID := [8]byte(fileIDDecoded)
@@ -100,7 +102,7 @@ func (c *GenerateSeedsCmd) loadExistingSeeds(
 		seedDecoded, err := cmd.Output()
 		if err != nil || len(seedDecoded) != 64 {
 			l.Warn("file with invalid contents in seed dir. ignoring.",
-				zap.String("filename", entry.Name()))
+				slog.String("filename", entry.Name()))
 			continue
 		}
 		seed := [64]byte(seedDecoded)
