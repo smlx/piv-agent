@@ -19,7 +19,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/smlx/piv-agent/internal/assuan"
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
-	"github.com/smlx/piv-agent/internal/mock"
 	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"go.uber.org/mock/gomock"
@@ -28,9 +27,12 @@ import (
 	"golang.org/x/crypto/cryptobyte/asn1"
 )
 
-//go:generate go tool mockgen -source=assuan_test.go -destination=mock_securitykey_test.go -package=assuan_test
 type SecurityKey interface {
 	SigningKeys() []securitykey.SigningKey
+}
+
+type PINEntryService interface {
+	GetPassphrase(string, string, int) ([]byte, error)
 }
 
 // MockCryptoSigner is a mock type which implements crypto.Signer
@@ -142,7 +144,7 @@ func TestSign(t *testing.T) {
 			if err != nil {
 				tt.Fatal(err)
 			}
-			keyService := mock.NewMockKeyService(ctrl)
+			keyService := NewMockKeyService(ctrl)
 			keyService.EXPECT().HaveKey(gomock.Any()).AnyTimes().Return(true, nil, nil)
 			keyService.EXPECT().GetSigner(gomock.Any()).Return(&MockCryptoSigner{
 				PubKey:    pubKey,
@@ -219,7 +221,7 @@ func TestKeyinfo(t *testing.T) {
 				[]securitykey.SigningKey{
 					{CryptoKey: securitykey.CryptoKey{Public: pubKey}},
 				})
-			keyService := mock.NewMockKeyService(ctrl)
+			keyService := NewMockKeyService(ctrl)
 			keyService.EXPECT().HaveKey(gomock.Any()).AnyTimes().Return(
 				true, keygrip, nil)
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
@@ -341,7 +343,7 @@ func TestDecryptRSAKeyfile(t *testing.T) {
 			ctrl := gomock.NewController(tt)
 			defer ctrl.Finish()
 			// no securityKeys available
-			mockPES := mock.NewMockPINEntryService(ctrl)
+			mockPES := NewMockPINEntryService(ctrl)
 			log, err := zap.NewDevelopment()
 			if err != nil {
 				tt.Fatal(err)
@@ -436,7 +438,7 @@ func TestSignRSAKeyfile(t *testing.T) {
 			ctrl := gomock.NewController(tt)
 			defer ctrl.Finish()
 			// no securityKeys available
-			mockPES := mock.NewMockPINEntryService(ctrl)
+			mockPES := NewMockPINEntryService(ctrl)
 			log, err := zap.NewDevelopment()
 			if err != nil {
 				tt.Fatal(err)
@@ -519,7 +521,7 @@ func TestReadKey(t *testing.T) {
 			ctrl := gomock.NewController(tt)
 			defer ctrl.Finish()
 			// no securityKeys available
-			mockPES := mock.NewMockPINEntryService(ctrl)
+			mockPES := NewMockPINEntryService(ctrl)
 			log, err := zap.NewDevelopment()
 			if err != nil {
 				tt.Fatal(err)
@@ -629,7 +631,7 @@ func TestDecryptECDHKeyfile(t *testing.T) {
 			ctrl := gomock.NewController(tt)
 			defer ctrl.Finish()
 			// no securityKeys available
-			mockPES := mock.NewMockPINEntryService(ctrl)
+			mockPES := NewMockPINEntryService(ctrl)
 			log, err := zap.NewDevelopment()
 			if err != nil {
 				tt.Fatal(err)
