@@ -8,9 +8,8 @@ description: Set up piv-agent to work with your hardware.
 
 ### Default setup
 
-{{% alert title="Warning" color="warning" %}}
-This procedure resets the state of the PIV applet to factory defaults and wipes any existing keys from _all_ PIV slots.
-{{% /alert %}}
+> [!WARNING]
+> This procedure resets the state of the PIV applet to factory defaults and wipes any existing keys from _all_ PIV slots.
 
 This procedure is only required once per hardware security device.
 Performing it a second time will reset the keys on the PIV applet of the device.
@@ -50,13 +49,12 @@ piv-agent status
 
 ### Single slot setup
 
-{{% alert title="Warning" color="warning" %}}
-`piv-agent` has been designed to work best with the default setup.
-Only set up single slots if you know what you are doing.
-
-This action can be destructive.
-If you reset a slot which already contains a key, that key will be lost.
-{{% /alert %}}
+> [!WARNING]
+> `piv-agent` has been designed to work best with the default setup.
+> Only set up single slots if you know what you are doing.
+>
+> This action can be destructive.
+> If you reset a slot which already contains a key, that key will be lost.
 
 It is possible to set up a single PIV slot on your hardware device without resetting the PIV applet entirely.
 This means that you can target a single slot to set up a key if the slot has not been set up yet, or reset a key if the slot already contains one.
@@ -133,15 +131,13 @@ IdentityFile ~/.ssh/id_yk_cached.pub
 
 Private GPG keys to be used by `piv-agent` must be exported to the directory `~/.gnupg/piv-agent.secring/`.
 
-{{% alert title="Note" %}}
-This step requires `gpg-agent` to be running, not `piv-agent`.
-See the [FAQ](../../docs/faq) for how to switch between the two services.
-{{% /alert %}}
+> [!NOTE]
+> This step requires `gpg-agent` to be running, not `piv-agent`.
+> See the [FAQ](../../docs/faq) for how to switch between the two services.
 
-{{% alert title="Note" %}}
-If your private key is encrypted using a password (it should be!), the encryption is retained during export.
-The key is still stored encrypted in the exported keyfile - it's just converted into a standard OpenPGP format that `piv-agent` can read.
-{{% /alert %}}
+> [!NOTE]
+> If your private key is encrypted using a password (it should be!), the encryption is retained during export.
+> The key is still stored encrypted in the exported keyfile - it's just converted into a standard OpenPGP format that `piv-agent` can read.
 
 ```bash
 # example
@@ -187,12 +183,11 @@ The following instructions allow deeper integration of the hardware with existin
 
 ### Add cryptographic key stored in hardware as a GPG signing subkey
 
-{{% alert title="Note" %}}
-There is a [bug](https://dev.gnupg.org/T5555) in current versions of GnuPG which doesn't allow ECDSA keys to be added as signing subkeys.
-This is unfortunate since signing is much more useful than decryption.
-
-Until this is fixed upstream, [here is a Docker image](https://github.com/smlx/gnupg-piv-agent) containing a patched version of `gpg` which will add ECDSA keys as signing subkeys.
-{{% /alert %}}
+> [!NOTE]
+> There is a [bug](https://dev.gnupg.org/T5555) in current versions of GnuPG which doesn't allow ECDSA keys to be added as signing subkeys.
+> This is unfortunate since signing is much more useful than decryption.
+>
+> Until this is fixed upstream, [here is a Docker image](https://github.com/smlx/gnupg-piv-agent) containing a patched version of `gpg` which will add ECDSA keys as signing subkeys.
 
 Adding a `piv-agent` OpenPGP key as a signing subkey of an existing OpenPGP key is a convenient way to integrate a hardware security device with your existing `gpg` workflow.
 This allows you to do things like sign `git` commits using your Yubikey, while keeping the same OpenPGP key ID.
@@ -214,9 +209,8 @@ age-plugin-piv-agent generate-seeds
 
 Save the output identity to a file (for example, `~/.config/age/identities.txt`) so you can use it to encrypt or decrypt files with `age`.
 
-{{% alert title="Warning" color="warning" %}}
-Running the `generate-seeds` command a second time will generate new random seeds and new identities. The old seeds will remain in the credential store so existing files can still be decrypted, but you will receive different identity strings.
-{{% /alert %}}
+> [!WARNING]
+> Running the `generate-seeds` command a second time will generate new random seeds and new identities. The old seeds will remain in the credential store so existing files can still be decrypted, but you will receive different identity strings.
 
 ### Offline Recovery Identity (Break-Glass)
 
@@ -261,9 +255,8 @@ chmod -R 0750 .passage
 Configure the passage identities.
 These will be used by passage for decryption.
 
-{{% alert title="Note" color="note" %}}
-Passage doesn't currently support multiple identities. There's a PR for this [here](https://github.com/FiloSottile/passage/pull/71).
-{{% /alert %}}
+> [!NOTE]
+> Passage doesn't currently support multiple identities. There's a PR for this [here](https://github.com/FiloSottile/passage/pull/71).
 
 ```bash
 piv-agent status --age-identities --decrypting-keys=always >> $HOME/.passage/identities

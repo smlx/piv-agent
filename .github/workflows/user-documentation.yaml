@@ -18,11 +18,7 @@ jobs:
       with:
         hugo-version: '0.161.1'
         extended: true
-    - name: Setup Node
-      uses: actions/setup-node@v6
-      with:
-        node-version: 22
-    - run: cd docs && npm install postcss-cli autoprefixer && hugo --minify
+    - run: cd docs && hugo --minify
     - name: Deploy
       uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
       if: ${{ github.ref == 'refs/heads/main' }}

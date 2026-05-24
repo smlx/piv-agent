@@ -10,4 +10,4 @@ minify:
 	cd .. && \
 		docker run --rm -v $$(pwd):/src -v $$HOME/.cache/hugo_cache:/home/node/.cache/hugo_cache -u $$(id -u)\
 		--entrypoint sh hugomods/hugo:latest -c \
-		"cd docs && npm install postcss-cli autoprefixer && hugo --minify"
+		"cd docs && hugo --minify"

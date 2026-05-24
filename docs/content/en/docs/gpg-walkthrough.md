@@ -9,10 +9,9 @@ description: Full example of how you might set up and use piv-agent with gpg.
 GnuPG being a complex piece of software, setup with `piv-agent` is a bit fiddly.
 This example is intended to illustrate how `piv-agent` can integrate with existing GnuPG keys and workflows.
 
-{{% alert title="Note" %}}
-This example requires switching between `gpg-agent` and `piv-agent`.
-See the [FAQ](../../docs/faq) for how to do that.
-{{% /alert %}}
+> [!NOTE]
+> This example requires switching between `gpg-agent` and `piv-agent`.
+> See the [FAQ](../../docs/faq) for how to do that.
 
 ## Setup
 
@@ -281,13 +280,12 @@ gpg> save
 
 And we can add the piv-agent signing key as a subkey of the RSA master key too.
 
-{{% alert title="Note" %}}
-This doesn't currently work without a patch in GnuPG due to [this GnuPG bug](https://dev.gnupg.org/T5555).
-
-Until this is fixed upstream, [here is a Docker image](https://github.com/smlx/gnupg-piv-agent) containing a patched version of `gpg` which will add ECDSA keys as signing subkeys.
-
-The example session below is with a patched version of `gpg`.
-{{% /alert %}}
+> [!NOTE]
+> This doesn't currently work without a patch in GnuPG due to [this GnuPG bug](https://dev.gnupg.org/T5555).
+>
+> Until this is fixed upstream, [here is a Docker image](https://github.com/smlx/gnupg-piv-agent) containing a patched version of `gpg` which will add ECDSA keys as signing subkeys.
+>
+> The example session below is with a patched version of `gpg`.
 
 ```
 $ gpg --expert --edit-key 0xEC26B2E4240DD2A9
