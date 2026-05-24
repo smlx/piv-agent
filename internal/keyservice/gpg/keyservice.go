@@ -1,7 +1,5 @@
 package gpg
 
-//go:generate go tool mockgen -source=keyservice.go -destination=../../mock/mock_keyservice.go -package=mock
-
 import (
 	"bytes"
 	"crypto"

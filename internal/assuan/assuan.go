@@ -1,8 +1,6 @@
 // Package assuan implements an libgcrypt Assuan protocol server.
 package assuan
 
-//go:generate go tool mockgen -source=assuan.go -destination=../mock/mock_assuan.go -package=mock
-
 import (
 	"bufio"
 	"bytes"

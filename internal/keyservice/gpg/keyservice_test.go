@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
-	"github.com/smlx/piv-agent/internal/mock"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
@@ -42,7 +41,7 @@ func TestGetSigner(t *testing.T) {
 		t.Run(name, func(tt *testing.T) {
 			ctrl := gomock.NewController(tt)
 			defer ctrl.Finish()
-			var mockPES = mock.NewMockPINEntryService(ctrl)
+			var mockPES = NewMockPINEntryService(ctrl)
 			if tc.protected {
 				mockPES.EXPECT().GetPassphrase(gomock.Any(), gomock.Any(), 3).
 					Return([]byte("trustno1"), nil)
