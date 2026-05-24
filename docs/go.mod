@@ -1,5 +1,5 @@
-module github.com/google/docsy-example
+module github.com/smlx/piv-agent/docs
 
-go 1.12
+go 1.25
 
-require github.com/google/docsy v0.14.3 // indirect
+require github.com/alex-shpak/hugo-book v0.14.0 // indirect
