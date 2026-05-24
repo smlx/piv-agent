@@ -15,6 +15,8 @@ import (
 	"filippo.io/hpke"
 	hpkecrypto "filippo.io/hpke/crypto"
 	"golang.org/x/crypto/hkdf"
+
+	"github.com/smlx/piv-agent/internal/notify"
 )
 
 const (
@@ -108,6 +110,7 @@ type ageIdentity struct {
 	ident    Identity
 	mlkemKey *mlkem.DecapsulationKey768
 	piv      ECDHService
+	notify   *notify.Notify
 }
 
 // Unwrap attempts to decrypt the file key from the provided age stanzas.
@@ -196,6 +199,9 @@ func (i *ageIdentity) Unwrap(ss []*age.Stanza) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("couldn't create hybrid private key: %v", err)
 		}
+		// Trigger touch notification before hardware decryption
+		cancel := i.notify.Touch()
+		defer cancel()
 		// Construct the HPKE recipient context using the encapsulated key and
 		// private key.
 		r, err := hpke.NewRecipient(
@@ -227,6 +233,7 @@ func HandleRecipient() func(data []byte) (age.Recipient, error) {
 func HandleIdentity(
 	piv ECDHService,
 	fetchSeed SeedFetcher,
+	n *notify.Notify,
 ) func(data []byte) (age.Identity, error) {
 	return func(data []byte) (age.Identity, error) {
 		var ident Identity
@@ -250,6 +257,7 @@ func HandleIdentity(
 			ident:    ident,
 			mlkemKey: mlkemKey,
 			piv:      piv,
+			notify:   n,
 		}, nil
 	}
 }

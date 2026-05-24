@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/pinentry"
+	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/server"
 	"github.com/smlx/piv-agent/internal/sockets"
 	"github.com/smlx/piv-agent/internal/ssh"
@@ -29,7 +29,6 @@ type ServeCmd struct {
 	LoadKeyfile          bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
 	ExitTimeout          time.Duration `kong:"default=12h,help='Exit after this period to drop transaction and key file passphrase cache, even if service is in use'"`
 	IdleTimeout          time.Duration `kong:"default=128m,help='Exit after this period of disuse'"`
-	TouchNotifyDelay     time.Duration `kong:"default=6s,help='Display a notification after this period when waiting for a touch'"`
 	PinentryBinaryName   string        `kong:"default='pinentry',help='Pinentry binary which will be used, must be in $PATH'"`
 	AgentTypes           agentTypeFlag `kong:"default='ssh=0;gpg=1;age=2',help='Agent types to handle'"`
 	CredentialsDirectory string        `kong:"required,env='CREDENTIALS_DIRECTORY',help='Path to the systemd credentials directory'"`
@@ -85,7 +84,7 @@ func (cmd *ServeCmd) Run(log *slog.Logger) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	idle := time.NewTicker(cmd.IdleTimeout)
-	n := notify.New(log, cmd.TouchNotifyDelay)
+	n := notify.New(log)
 	g := errgroup.Group{}
 	// start SSH agent if given in agent-type flag
 	if _, ok := cmd.AgentTypes["ssh"]; ok {
@@ -127,7 +126,7 @@ func (cmd *ServeCmd) Run(log *slog.Logger) error {
 	if _, ok := cmd.AgentTypes["age"]; ok {
 		log.Debug("starting age server")
 		g.Go(func() error {
-			s := server.NewAge(log, p, cmd.fetchSeed)
+			s := server.NewAge(log, p, cmd.fetchSeed, n)
 			err := s.Serve(ctx, ls[cmd.AgentTypes["age"]], idle, cmd.IdleTimeout)
 			if err != nil {
 				log.Debug("exiting age server", slog.Any("error", err))
@@ -140,20 +139,20 @@ func (cmd *ServeCmd) Run(log *slog.Logger) error {
 	}
 	exit := time.NewTicker(cmd.ExitTimeout)
 loop:
-	for {
-		select {
-		case <-ctx.Done():
-			log.Debug("exit done")
-			break loop
-		case <-idle.C:
-			log.Debug("idle timeout")
-			cancel()
-			break loop
-		case <-exit.C:
-			log.Debug("exit timeout")
-			cancel()
-			break loop
+		for {
+			select {
+			case <-ctx.Done():
+				log.Debug("exit done")
+				break loop
+			case <-idle.C:
+				log.Debug("idle timeout")
+				cancel()
+				break loop
+			case <-exit.C:
+				log.Debug("exit timeout")
+				cancel()
+				break loop
+			}
 		}
-	}
 	return g.Wait()
 }

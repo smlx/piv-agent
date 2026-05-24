@@ -55,7 +55,7 @@ description = "PIV Agent replaces ssh-agent and gpg-agent, and allows you to use
       unsafe = true
   [markup.highlight]
     # See a complete list of available styles at https://xyproto.github.io/splash/docs/all.html
-    style = "tango"
+    style = "base16-snazzy"
     # Uncomment if you want your chosen highlight style used for code blocks without a specified language
     # guessSyntax = "true"
 

@@ -46,3 +46,34 @@ This is a usability/security tradeoff that ensures that at least the encrypted p
 It also has the advantage of ensuring that you don't forget your keyfile passphrase, as you'll need to enter it periodically.
 
 However you might also forget your device PIN, so maybe don't cache that either if you're concerned about that possibility.
+
+### Wait for device before Git signing
+
+If you use a hardware security key for Git commit signing, you can configure Git to wait for the device to be plugged in before falling back to a software key.
+This is especially useful if `piv-agent` is managing both hardware and software SSH keys.
+
+You can create a script `~/.config/git/defaultKey.sh` that uses the `piv-agent wait-for-device` command to notify the user to plug in a device and wait for the device before returning.
+The user can immediately fall back to the keyfile by dismissing the notification.
+
+```bash
+#!/bin/sh
+# Wait up to 60 seconds for a hardware device to be plugged in.
+piv-agent wait-for-device
+
+# Print the hardware key if available, otherwise fall back to keyfile.
+# Filter the hardware keys by serial number and touch policy.
+key=$(ssh-add -L | awk '/#(123456|123457), touch policy: never/ { print "key::" $0 }')
+if [ "$key" ]; then
+	echo "$key"
+	exit
+fi
+ssh-add -L | awk '/id_ed25519/ { print "key::" $0 }'
+```
+
+Configure Git to use this script:
+
+```bash
+chmod +x ~/.config/git/defaultKey.sh
+git config --global gpg.ssh.defaultKeyCommand "~/.config/git/defaultKey.sh"
+```
+
