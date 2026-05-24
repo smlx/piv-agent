@@ -7,6 +7,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	pivgo "github.com/go-piv/piv-go/v2/piv"
@@ -14,20 +15,19 @@ import (
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
-	"go.uber.org/zap"
 )
 
 // KeyService represents a collection of tokens and slots accessed by the
 // Personal Identity Verifaction card interface.
 type KeyService struct {
 	mu           sync.Mutex
-	log          *zap.Logger
+	log          *slog.Logger
 	pinentry     *pinentry.PINEntry
 	securityKeys []*securitykey.SecurityKey
 }
 
 // New constructs a PIV and returns it.
-func New(l *zap.Logger, pe *pinentry.PINEntry) *KeyService {
+func New(l *slog.Logger, pe *pinentry.PINEntry) *KeyService {
 	return &KeyService{
 		log:      l,
 		pinentry: pe,
@@ -236,10 +236,10 @@ func (p *KeyService) GetECDHKey(serial uint32, slotID uint32, keyTag [4]byte) (a
 func (p *KeyService) CloseAll() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.log.Debug("closing security keys", zap.Int("count", len(p.securityKeys)))
+	p.log.Debug("closing security keys", slog.Int("count", len(p.securityKeys)))
 	for _, k := range p.securityKeys {
 		if err := k.Close(); err != nil {
-			p.log.Debug("couldn't close key", zap.Error(err))
+			p.log.Debug("couldn't close key", slog.Any("error", err))
 		}
 	}
 }

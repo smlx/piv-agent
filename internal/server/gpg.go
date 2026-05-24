@@ -4,6 +4,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"time"
 
@@ -11,14 +12,13 @@ import (
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/notify"
-	"go.uber.org/zap"
 )
 
 const connTimeout = 4 * time.Minute
 
 // GPG represents a gpg-agent server.
 type GPG struct {
-	log           *zap.Logger
+	log           *slog.Logger
 	notify        *notify.Notify
 	pivKeyService *piv.KeyService
 	gpgKeyService *gpg.KeyService // fallback keyfile keys
@@ -26,7 +26,7 @@ type GPG struct {
 
 // NewGPG initialises a new gpg-agent server.
 func NewGPG(piv *piv.KeyService, pinentry gpg.PINEntryService,
-	log *zap.Logger, path string, n *notify.Notify) *GPG {
+	log *slog.Logger, path string, n *notify.Notify) *GPG {
 	return &GPG{
 		log:           log,
 		notify:        n,
@@ -63,7 +63,7 @@ func (g *GPG) Serve(ctx context.Context, l net.Listener, exit *time.Ticker,
 			go func() {
 				// run the protocol state machine to completion
 				if err := a.Run(ctx); err != nil {
-					g.log.Error("gpg-agent error", zap.Error(err))
+					g.log.Error("gpg-agent error", slog.Any("error", err))
 				}
 				g.log.Debug("finish serving gpg-agent connection")
 			}()

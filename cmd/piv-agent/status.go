@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -10,7 +11,6 @@ import (
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
-	"go.uber.org/zap"
 )
 
 // StatusCmd represents the status command.
@@ -25,7 +25,12 @@ type StatusCmd struct {
 // If slotFilter is non-empty, it limits the status output to that specific
 // slot. If ageRecipients is true, it only prints the age recipient strings.
 // If ageIdentities is true, it only prints the age identities.
-func printKeyStatus(k *securitykey.SecurityKey, slotFilter []uint32, ageRecipients, ageIdentities bool) {
+func printKeyStatus(
+	k *securitykey.SecurityKey,
+	slotFilter []uint32,
+	ageRecipients,
+	ageIdentities bool,
+) {
 	if ageRecipients {
 		ageKeys, err := k.StringsAge(slotFilter)
 		if err == nil {
@@ -52,7 +57,8 @@ func printKeyStatus(k *securitykey.SecurityKey, slotFilter []uint32, ageRecipien
 	if err != nil {
 		ff = "Unknown"
 	}
-	fmt.Printf("%s (Serial %d, %s, Firmware v%s)\n", k.Card(), k.Serial(), ff, k.Version())
+	fmt.Printf("%s (Serial %d, %s, Firmware v%s)\n",
+		k.Card(), k.Serial(), ff, k.Version())
 	reports := k.Statuses(slotFilter)
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	defer w.Flush()
@@ -118,7 +124,7 @@ func printKeyStatus(k *securitykey.SecurityKey, slotFilter []uint32, ageRecipien
 }
 
 // Run the status command.
-func (cmd *StatusCmd) Run(l *zap.Logger) error {
+func (cmd *StatusCmd) Run(l *slog.Logger) error {
 	p := piv.New(l, pinentry.New("pinentry"))
 	securityKeys, err := p.SecurityKeys()
 	if err != nil {

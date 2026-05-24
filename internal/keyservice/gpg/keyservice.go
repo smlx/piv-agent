@@ -6,10 +6,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"fmt"
+	"log/slog"
 
 	openpgpecdsa "github.com/ProtonMail/go-crypto/openpgp/ecdsa"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
-	"go.uber.org/zap"
 )
 
 // retries is the passphrase attempt limit when decrypting GPG keyfiles
@@ -31,16 +31,17 @@ type KeyService struct {
 	// cache passphrases used for keyfile decryption
 	passphrases [][]byte
 	privKeys    []privateKeyfile
-	log         *zap.Logger
+	log         *slog.Logger
 	pinentry    PINEntryService
 }
 
 // New returns a keyservice initialised with keys found at path.
 // Path can be a file or directory.
-func New(l *zap.Logger, pe PINEntryService, path string) *KeyService {
+func New(l *slog.Logger, pe PINEntryService, path string) *KeyService {
 	p, err := keyfilePrivateKeys(path)
 	if err != nil {
-		l.Info("couldn't load keyfiles", zap.String("path", path), zap.Error(err))
+		l.Info("couldn't load keyfiles",
+			slog.String("path", path), slog.Any("error", err))
 	}
 	return &KeyService{
 		privKeys: p,
@@ -86,7 +87,7 @@ func (g *KeyService) decryptPrivateKey(k *packet.PrivateKey, uid string) error {
 		for _, pass := range g.passphrases {
 			if err = k.Decrypt(pass); err == nil {
 				g.log.Debug("decrypted using cached passphrase",
-					zap.String("fingerprint", k.KeyIdString()))
+					slog.String("fingerprint", k.KeyIdString()))
 				break
 			}
 		}
@@ -96,7 +97,7 @@ func (g *KeyService) decryptPrivateKey(k *packet.PrivateKey, uid string) error {
 			return err
 		}
 		g.log.Debug("decrypted using passphrase",
-			zap.String("fingerprint", k.KeyIdString()))
+			slog.String("fingerprint", k.KeyIdString()))
 	}
 	return nil
 }

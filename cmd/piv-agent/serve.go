@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/smlx/piv-agent/internal/server"
 	"github.com/smlx/piv-agent/internal/sockets"
 	"github.com/smlx/piv-agent/internal/ssh"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -64,9 +64,10 @@ func (cmd *ServeCmd) fetchSeed(fileID [8]byte) ([]byte, error) {
 }
 
 // Run the listen command to start listening for requests.
-func (cmd *ServeCmd) Run(log *zap.Logger) error {
-	log.Info("startup", zap.String("version", version),
-		zap.String("build date", date))
+func (cmd *ServeCmd) Run(log *slog.Logger) error {
+	log.Info("startup",
+		slog.String("version", version),
+		slog.String("build date", date))
 	pe := pinentry.New(cmd.PinentryBinaryName)
 	p := piv.New(log, pe)
 	defer p.CloseAll()
@@ -94,7 +95,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 			a := ssh.NewAgent(p, pe, log, cmd.LoadKeyfile, n, cancel)
 			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], idle, cmd.IdleTimeout)
 			if err != nil {
-				log.Debug("exiting SSH server", zap.Error(err))
+				log.Debug("exiting SSH server", slog.Any("error", err))
 			} else {
 				log.Debug("exiting SSH server successfully")
 			}
@@ -105,7 +106,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	// start GPG agent if given in agent-type flag
 	home, err := os.UserHomeDir()
 	if err != nil {
-		log.Warn("couldn't determine $HOME", zap.Error(err))
+		log.Warn("couldn't determine $HOME", slog.Any("error", err))
 	}
 	fallbackKeys := filepath.Join(home, ".gnupg", "piv-agent.secring")
 	if _, ok := cmd.AgentTypes["gpg"]; ok {
@@ -114,7 +115,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 			s := server.NewGPG(p, pe, log, fallbackKeys, n)
 			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], idle, cmd.IdleTimeout)
 			if err != nil {
-				log.Debug("exiting GPG server", zap.Error(err))
+				log.Debug("exiting GPG server", slog.Any("error", err))
 			} else {
 				log.Debug("exiting GPG server successfully")
 			}
@@ -129,7 +130,7 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 			s := server.NewAge(log, p, cmd.fetchSeed)
 			err := s.Serve(ctx, ls[cmd.AgentTypes["age"]], idle, cmd.IdleTimeout)
 			if err != nil {
-				log.Debug("exiting age server", zap.Error(err))
+				log.Debug("exiting age server", slog.Any("error", err))
 			} else {
 				log.Debug("exiting age server successfully")
 			}

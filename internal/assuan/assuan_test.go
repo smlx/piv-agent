@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/big"
 	"os"
 	"testing"
@@ -22,7 +23,6 @@ import (
 	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
 )
@@ -151,10 +151,9 @@ func TestSign(t *testing.T) {
 				Signature: signature,
 			}, nil)
 			mockConn := MockConn{}
-			log, err := zap.NewDevelopment()
-			if err != nil {
-				tt.Fatal(err)
-			}
+			log := slog.New(slog.NewTextHandler(
+				os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
 			n := notify.New(log, 6*time.Second)
 			a := assuan.New(&mockConn, log, n, keyService)
 			// write all the lines into the statemachine
@@ -227,10 +226,9 @@ func TestKeyinfo(t *testing.T) {
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
-			log, err := zap.NewDevelopment()
-			if err != nil {
-				tt.Fatal(err)
-			}
+			log := slog.New(slog.NewTextHandler(
+				os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
 			n := notify.New(log, 6*time.Second)
 			a := assuan.New(&mockConn, log, n, keyService)
 			// write all the lines into the statemachine
@@ -344,10 +342,9 @@ func TestDecryptRSAKeyfile(t *testing.T) {
 			defer ctrl.Finish()
 			// no securityKeys available
 			mockPES := NewMockPINEntryService(ctrl)
-			log, err := zap.NewDevelopment()
-			if err != nil {
-				tt.Fatal(err)
-			}
+			log := slog.New(slog.NewTextHandler(
+				os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
@@ -439,10 +436,9 @@ func TestSignRSAKeyfile(t *testing.T) {
 			defer ctrl.Finish()
 			// no securityKeys available
 			mockPES := NewMockPINEntryService(ctrl)
-			log, err := zap.NewDevelopment()
-			if err != nil {
-				tt.Fatal(err)
-			}
+			log := slog.New(slog.NewTextHandler(
+				os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
@@ -522,10 +518,9 @@ func TestReadKey(t *testing.T) {
 			defer ctrl.Finish()
 			// no securityKeys available
 			mockPES := NewMockPINEntryService(ctrl)
-			log, err := zap.NewDevelopment()
-			if err != nil {
-				tt.Fatal(err)
-			}
+			log := slog.New(slog.NewTextHandler(
+				os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}
@@ -632,10 +627,9 @@ func TestDecryptECDHKeyfile(t *testing.T) {
 			defer ctrl.Finish()
 			// no securityKeys available
 			mockPES := NewMockPINEntryService(ctrl)
-			log, err := zap.NewDevelopment()
-			if err != nil {
-				tt.Fatal(err)
-			}
+			log := slog.New(slog.NewTextHandler(
+				os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
 			// mockConn is a pair of buffers that the assuan statemachine reads/write
 			// to/from.
 			mockConn := MockConn{}

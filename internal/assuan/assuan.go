@@ -8,13 +8,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"strconv"
 	"strings"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/smlx/fsm"
 	"github.com/smlx/piv-agent/internal/notify"
-	"go.uber.org/zap"
 )
 
 // version indicates the version of gpg-agent to emulate.
@@ -33,7 +33,7 @@ type KeyService interface {
 
 // New initialises a new gpg-agent server assuan FSM.
 // It returns a *fsm.Machine configured in the ready state.
-func New(rw io.ReadWriter, log *zap.Logger, n *notify.Notify,
+func New(rw io.ReadWriter, log *slog.Logger, n *notify.Notify,
 	ks ...KeyService) *Assuan {
 	var signature []byte
 	var keygrips, hash [][]byte
@@ -210,7 +210,7 @@ func New(rw io.ReadWriter, log *zap.Logger, n *notify.Notify,
 					}
 					if err != nil {
 						_, _ = io.WriteString(rw, "ERR 1 couldn't get key for keygrip\n")
-						log.Warn("couldn't get key for keygrip", zap.Error(err))
+						log.Warn("couldn't get key for keygrip", slog.Any("error", err))
 						return nil // this is not a fatal error
 					}
 					_, err = io.WriteString(rw, "OK\n")

@@ -2,11 +2,12 @@ package gpg_test
 
 import (
 	"encoding/hex"
+	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/smlx/piv-agent/internal/keyservice/gpg"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 )
 
 func hexMustDecode(s string) []byte {
@@ -33,10 +34,9 @@ func TestGetSigner(t *testing.T) {
 			protected: true,
 		},
 	}
-	log, err := zap.NewDevelopment()
-	if err != nil {
-		t.Fatal(err)
-	}
+	log := slog.New(slog.NewTextHandler(
+		os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
 	for name, tc := range testCases {
 		t.Run(name, func(tt *testing.T) {
 			ctrl := gomock.NewController(tt)

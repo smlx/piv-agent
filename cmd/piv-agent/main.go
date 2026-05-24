@@ -2,8 +2,10 @@
 package main
 
 import (
+	"log/slog"
+	"os"
+
 	"github.com/alecthomas/kong"
-	"go.uber.org/zap"
 )
 
 // CLI represents the command-line interface.
@@ -20,17 +22,14 @@ func main() {
 	cli := CLI{}
 	kctx := kong.Parse(&cli, kong.UsageOnError())
 	// init logger
-	var log *zap.Logger
-	var err error
+	var log *slog.Logger
 	if cli.Debug {
-		log, err = zap.NewDevelopment(zap.AddStacktrace(zap.ErrorLevel))
+		log = slog.New(slog.NewTextHandler(
+			os.Stderr,
+			&slog.HandlerOptions{Level: slog.LevelDebug}))
 	} else {
-		log, err = zap.NewProduction()
+		log = slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	}
-	if err != nil {
-		panic(err)
-	}
-	defer log.Sync() //nolint:errcheck
 
 	// execute CLI
 	kctx.FatalIfErrorf(kctx.Run(log))

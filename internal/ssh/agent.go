@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -14,7 +15,6 @@ import (
 	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/notify"
 	pinentry "github.com/smlx/piv-agent/internal/pinentry"
-	"go.uber.org/zap"
 	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -27,7 +27,7 @@ const retries = 3
 type Agent struct {
 	mu          sync.Mutex
 	piv         *piv.KeyService
-	log         *zap.Logger
+	log         *slog.Logger
 	notify      *notify.Notify
 	pinentry    *pinentry.PINEntry
 	loadKeyfile bool
@@ -44,7 +44,7 @@ var ErrUnknownKey = errors.New("requested signature of unknown key")
 var passphrases = map[string][]byte{}
 
 // NewAgent returns a new Agent.
-func NewAgent(p *piv.KeyService, pe *pinentry.PINEntry, log *zap.Logger,
+func NewAgent(p *piv.KeyService, pe *pinentry.PINEntry, log *slog.Logger,
 	loadKeyfile bool, n *notify.Notify, cancel context.CancelFunc) *Agent {
 	return &Agent{piv: p, pinentry: pe, log: log, notify: n,
 		loadKeyfile: loadKeyfile, cancel: cancel}
@@ -103,14 +103,14 @@ func (a *Agent) keyFileIDs() ([]*agent.Key, error) {
 	keyPath := filepath.Join(home, ".ssh/id_ed25519.pub")
 	pubBytes, err := os.ReadFile(keyPath)
 	if err != nil {
-		a.log.Debug("couldn't load keyfile", zap.String("path", keyPath),
-			zap.Error(err))
+		a.log.Debug("couldn't load keyfile", slog.String("path", keyPath),
+			slog.Any("error", err))
 		return keys, nil
 	}
 	pubKey, _, _, _, err := gossh.ParseAuthorizedKey(pubBytes)
 	if err != nil {
-		a.log.Debug("couldn't parse keyfile", zap.String("path", keyPath),
-			zap.Error(err))
+		a.log.Debug("couldn't parse keyfile", slog.String("path", keyPath),
+			slog.Any("error", err))
 		return keys, nil
 	}
 	keys = append(keys, &agent.Key{
@@ -157,7 +157,7 @@ func (a *Agent) signWithSigners(key gossh.PublicKey, data []byte,
 		defer cancel()
 		// perform signature
 		a.log.Debug("signing",
-			zap.Binary("public key bytes", s.PublicKey().Marshal()))
+			slog.Any("public key bytes", s.PublicKey().Marshal()))
 		return s.Sign(rand.Reader, data)
 	}
 	return nil, fmt.Errorf("%w: %v", ErrUnknownKey, key)
@@ -232,7 +232,7 @@ func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 				return nil, fmt.Errorf("couldn't get signer for key: %v", err)
 			}
 			a.log.Debug("loaded signing key from security key",
-				zap.Binary("public key bytes", s.PublicKey().Marshal()))
+				slog.Any("public key bytes", s.PublicKey().Marshal()))
 			signers = append(signers, s)
 		}
 	}
@@ -260,7 +260,7 @@ func (a *Agent) doDecrypt(keyPath string,
 		signer, err = gossh.ParsePrivateKeyWithPassphrase(priv, passphrase)
 		if err == nil {
 			a.log.Debug("loaded key from disk",
-				zap.Binary("public key bytes", signer.PublicKey().Marshal()))
+				slog.Any("public key bytes", signer.PublicKey().Marshal()))
 			passphrases[string(signer.PublicKey().Marshal())] = passphrase
 			return signer, nil
 		}
@@ -278,8 +278,8 @@ func (a *Agent) keyfileSigners() ([]gossh.Signer, error) {
 	keyPath := filepath.Join(home, ".ssh/id_ed25519")
 	priv, err := os.ReadFile(keyPath)
 	if err != nil {
-		a.log.Debug("couldn't load keyfile", zap.String("path", keyPath),
-			zap.Error(err))
+		a.log.Debug("couldn't load keyfile", slog.String("path", keyPath),
+			slog.Any("error", err))
 		return signers, nil
 	}
 	signer, err := gossh.ParsePrivateKey(priv)

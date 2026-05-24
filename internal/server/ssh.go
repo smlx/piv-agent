@@ -5,21 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"time"
 
 	"github.com/smlx/piv-agent/internal/ssh"
-	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh/agent"
 )
 
 // SSH represents an ssh-agent server.
 type SSH struct {
-	log *zap.Logger
+	log *slog.Logger
 }
 
 // NewSSH initialises a new ssh-agent server.
-func NewSSH(l *zap.Logger) *SSH {
+func NewSSH(l *slog.Logger) *SSH {
 	return &SSH{
 		log: l,
 	}
@@ -50,7 +50,7 @@ func (s *SSH) Serve(ctx context.Context, a *ssh.Agent, l net.Listener,
 			//   err will be non-nil in this case.
 			go func() {
 				if err := agent.ServeAgent(a, conn); err != nil && !errors.Is(err, io.EOF) {
-					s.log.Error("ssh-agent error", zap.Error(err))
+					s.log.Error("ssh-agent error", slog.Any("error", err))
 				}
 				s.log.Debug("finish serving ssh-agent connection")
 			}()
