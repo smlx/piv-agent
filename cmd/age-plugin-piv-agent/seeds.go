@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"github.com/smlx/piv-agent/internal/age"
-	"github.com/smlx/piv-agent/internal/keyservice/piv"
+	"github.com/smlx/piv-agent/internal/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
 )

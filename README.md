@@ -20,10 +20,11 @@ This is for several reasons, including:
 To that end, I am planning the following release schedule for `piv-agent`:
 
 1. ✅ `v1.x` will be released. It will support `age` via a plugin, in addition to SSH and GPG.
+1. ✅ `v2.x` will be released shortly after `v1.x`, with GPG support totally removed. Active development will only occur on `v2.x`.
 1. ⏳ `v1.x` will be maintained for a short period (6 months). This is so that anyone else using `piv-agent` has a chance to migrate away from GPG, or find another solution.
-1. ⏳ `v2.x` will be released shortly after `v1.x`, with GPG support totally removed. Active development will only occur on `v2.x`.
+1. ⏳ When `v1.x` maintenance ends, `v2.x` can be considered stable(ish).
 
-Please test if you can, but be aware there may be breakage. In particular, the age plugin support is experimental: until this warning is removed, the identity format is unstable.
+Please test `v2.x` if you can, but be aware there may be breakage. In particular, the age plugin support is experimental: until this warning is removed, the identity format is unstable.
 
 Discussion of this plan and updates happens [here](https://github.com/smlx/piv-agent/discussions/273).
 
@@ -50,16 +51,18 @@ At this time no other OS stack is supported.
 
 ### Features
 
-* implements (a subset of) both `ssh-agent` and `gpg-agent` functionality
-* implements an [age plugin](https://github.com/C2SP/C2SP/blob/main/age-plugin.md): age-plugin-piv-agent
+* implements `ssh-agent` functionality
+* classic cryptographic keys are generated on the hardware security key, rather than on your laptop
+  * secret keys never touch your hard drive
+* implements an [age plugin](https://github.com/C2SP/C2SP/blob/main/age-plugin.md): `age-plugin-piv-agent`
+* ML-KEM key seeds that are used in the `age` plugin are sealed by your TPM using [systemd credentials](https://systemd.io/CREDENTIALS/)
+  * secret key seeds never touch your hard drive unencrypted
 * support for multiple hardware security keys
 * support for multiple slots in those keys
 * support for multiple touch policies
-* all cryptographic keys are generated on the hardware security key, rather than on your laptop
-  * secret keys never touch your hard drive
 * uses systemd socket activation
   * as a result, automatically drop the transaction on the security key and cached passphrases after some period of disuse
-* provides "fall-back" to traditional SSH and OpenPGP keyfiles
+* provides "fall-back" to traditional SSH key files
 
 ### Design philosophy
 
@@ -67,15 +70,10 @@ This agent should require no interaction and in general do the right thing when 
 
 It is highly opinionated:
 
-* Only supports 256-bit ECC keys (P-256) on hardware tokens
+* Only supports 256-bit ECC keys (P-256) on hardware tokens for SSH
 * Only supports ed25519 SSH keys on disk (`~/.ssh/id_ed25519`)
-* Only supports the [mlkem768p256tag](https://github.com/C2SP/C2SP/blob/main/age.md#mlkem768p256tag-recipient-stanza) identity/recipient type
+* Only supports the [mlkem768p256tag](https://github.com/C2SP/C2SP/blob/main/age.md#mlkem768p256tag-recipient-stanza) identity/recipient type for age
 * Requires socket activation
-
-It makes some concession to practicality with OpenPGP:
-
-* Supports RSA signing and decryption for OpenPGP keyfiles.
-  RSA OpenPGP keys are widespread and Debian in particular [only documents RSA keys](https://wiki.debian.org/Keysigning).
 
 It tries to strike a balance between security and usability:
 
@@ -105,15 +103,6 @@ If you have tested another device or firmware version with `piv-agent` successfu
 | ecdsa-sha2-nistp256 | ✅           | ❌      |
 | ssh-ed25519         | ❌           | ✅      |
 
-
-#### gpg-agent
-
-|                               | Security Key | Keyfile |
-| ---                           | ---          | ---     |
-| ECDSA Sign (NIST Curve P-256) | ✅           | ✅      |
-| ECDH Decrypt                  | ✅           | ✅      |
-| RSA Sign                      | ❌           | ✅      |
-| RSA Decrypt                   | ❌           | ✅      |
 
 #### age
 

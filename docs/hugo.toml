@@ -34,7 +34,7 @@ label ="English"
 weight = 1
 [languages.en.params]
 title = "PIV Agent"
-description = "PIV Agent replaces ssh-agent and gpg-agent, and allows you to use your PIV security token with SSH or GPG"
+description = "PIV Agent replaces ssh-agent, and allows you to use your PIV security token with SSH or age"
 
 [markup]
   [markup.goldmark]

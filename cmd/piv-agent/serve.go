@@ -11,7 +11,7 @@ import (
 
 	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/pinentry"
-	"github.com/smlx/piv-agent/internal/keyservice/piv"
+	"github.com/smlx/piv-agent/internal/piv"
 	"github.com/smlx/piv-agent/internal/server"
 	"github.com/smlx/piv-agent/internal/sockets"
 	"github.com/smlx/piv-agent/internal/ssh"
@@ -22,7 +22,7 @@ import (
 type agentTypeFlag map[string]uint
 
 // validAgents is the list of agents supported by piv-agent.
-var validAgents = []string{"ssh", "gpg", "age"}
+var validAgents = []string{"ssh", "age"}
 
 // ServeCmd represents the listen command.
 type ServeCmd struct {
@@ -30,7 +30,7 @@ type ServeCmd struct {
 	ExitTimeout          time.Duration `kong:"default=12h,help='Exit after this period to drop transaction and key file passphrase cache, even if service is in use'"`
 	IdleTimeout          time.Duration `kong:"default=128m,help='Exit after this period of disuse'"`
 	PinentryBinaryName   string        `kong:"default='pinentry',help='Pinentry binary which will be used, must be in $PATH'"`
-	AgentTypes           agentTypeFlag `kong:"default='ssh=0;gpg=1;age=2',help='Agent types to handle'"`
+	AgentTypes           agentTypeFlag `kong:"default='ssh=0;age=1',help='Agent types to handle'"`
 	CredentialsDirectory string        `kong:"required,env='CREDENTIALS_DIRECTORY',help='Path to the systemd credentials directory'"`
 }
 
@@ -102,26 +102,6 @@ func (cmd *ServeCmd) Run(log *slog.Logger) error {
 			return err
 		})
 	}
-	// start GPG agent if given in agent-type flag
-	home, err := os.UserHomeDir()
-	if err != nil {
-		log.Warn("couldn't determine $HOME", slog.Any("error", err))
-	}
-	fallbackKeys := filepath.Join(home, ".gnupg", "piv-agent.secring")
-	if _, ok := cmd.AgentTypes["gpg"]; ok {
-		log.Debug("starting GPG server")
-		g.Go(func() error {
-			s := server.NewGPG(p, pe, log, fallbackKeys, n)
-			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], idle, cmd.IdleTimeout)
-			if err != nil {
-				log.Debug("exiting GPG server", slog.Any("error", err))
-			} else {
-				log.Debug("exiting GPG server successfully")
-			}
-			cancel()
-			return err
-		})
-	}
 	// start age agent if given in agent-type flag
 	if _, ok := cmd.AgentTypes["age"]; ok {
 		log.Debug("starting age server")
@@ -139,20 +119,20 @@ func (cmd *ServeCmd) Run(log *slog.Logger) error {
 	}
 	exit := time.NewTicker(cmd.ExitTimeout)
 loop:
-		for {
-			select {
-			case <-ctx.Done():
-				log.Debug("exit done")
-				break loop
-			case <-idle.C:
-				log.Debug("idle timeout")
-				cancel()
-				break loop
-			case <-exit.C:
-				log.Debug("exit timeout")
-				cancel()
-				break loop
+			for {
+				select {
+				case <-ctx.Done():
+					log.Debug("exit done")
+					break loop
+				case <-idle.C:
+					log.Debug("idle timeout")
+					cancel()
+					break loop
+				case <-exit.C:
+					log.Debug("exit timeout")
+					cancel()
+					break loop
+				}
 			}
-		}
 	return g.Wait()
 }

@@ -11,9 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
-
-	"github.com/smlx/piv-agent/internal/keyservice/piv"
+	"github.com/smlx/piv-agent/internal/piv"
 	"github.com/smlx/piv-agent/internal/notify"
 	pinentry "github.com/smlx/piv-agent/internal/pinentry"
 	gossh "golang.org/x/crypto/ssh"

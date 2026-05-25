@@ -1,7 +1,7 @@
 ---
 title: "Use"
 weight: 30
-description: Use piv-agent with ssh and gpg.
+description: Use piv-agent with ssh and age.
 ---
 
 ## Start `piv-agent.socket`
@@ -11,7 +11,6 @@ Start the agent sockets, and test:
 ```
 systemctl --user enable --now piv-agent.socket
 ssh-add -l
-gpg -K
 ```
 
 This should be enough to allow you to use `piv-agent`.
@@ -31,6 +30,38 @@ The solution is to stop the agent and run the list command again.
 systemctl --user stop piv-agent
 # should work now..
 piv-agent status
+```
+
+### Encrypting and Decrypting with age
+
+You can list your age identities and their associated recipients by using the `status` command:
+
+```bash
+piv-agent status --age-identities
+```
+
+This will print the identity details for each initialized decrypting key on your security token. The output format includes the hardware identity metadata followed by the identity string, which looks like this:
+
+```
+# Hardware Identity for YubiKey 5 serial 12345678 slot 9d
+# Host name: hostname
+# Seed file: 0123456789abcdef
+# Recipient: age1...
+AGE-PLUGIN-PIV-AGENT-1...
+```
+
+To encrypt a file for your hardware identity, use the identity file generated during setup to derive the recipient string, or provide the recipient string directly:
+
+```bash
+# Encrypt a file to your hardware token
+age -R ~/.config/age/identities.txt -o secret.txt.age secret.txt
+```
+
+To decrypt the file, provide the same identities file. The `age` client will automatically communicate with the hardware token via the plugin:
+
+```bash
+# Decrypt the file
+age -d -i ~/.config/age/identities.txt secret.txt.age
 ```
 
 ## Advanced
