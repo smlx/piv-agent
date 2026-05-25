@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"golang.org/x/crypto/ssh"
@@ -27,14 +26,6 @@ type CryptoKey struct {
 type SigningKey struct {
 	CryptoKey
 	PubSSH ssh.PublicKey
-	PubPGP *packet.PublicKey
-}
-
-// DecryptingKey is a cryptographic decrypting key on a hardware security
-// device.
-type DecryptingKey struct {
-	CryptoKey
-	PubPGP *packet.PublicKey
 }
 
 // A SecurityKey is a physical hardware token which implements PIV, such as a
@@ -48,7 +39,7 @@ type SecurityKey struct {
 	mu             sync.Mutex // guards the cached fields below
 	validCache     bool
 	signingKeys    []SigningKey
-	decryptingKeys []DecryptingKey
+	decryptingKeys []CryptoKey
 	cryptoKeys     []CryptoKey
 	certificates   map[uint32]*x509.Certificate
 	certErrors     map[uint32]error
@@ -103,7 +94,7 @@ func (k *SecurityKey) loadCache() error {
 	certificates := map[uint32]*x509.Certificate{}
 	certErrors := map[uint32]error{}
 	var signingKeys []SigningKey
-	var decryptingKeys []DecryptingKey
+	var decryptingKeys []CryptoKey
 	var cryptoKeys []CryptoKey
 
 	for _, s := range defaultSignSlots {
@@ -133,8 +124,6 @@ func (k *SecurityKey) loadCache() error {
 		signingKeys = append(signingKeys, SigningKey{
 			CryptoKey: ck,
 			PubSSH:    pubSSH,
-			PubPGP: packet.NewECDSAPublicKey(cert.NotBefore,
-				openpgpECDSAPublicKey(pubKey)),
 		})
 	}
 
@@ -158,11 +147,7 @@ func (k *SecurityKey) loadCache() error {
 		}
 		ck := CryptoKey{Public: pubKey, SlotSpec: s}
 		cryptoKeys = append(cryptoKeys, ck)
-		decryptingKeys = append(decryptingKeys, DecryptingKey{
-			CryptoKey: ck,
-			PubPGP: packet.NewECDSAPublicKey(cert.NotBefore,
-				openpgpECDSAPublicKey(pubKey)),
-		})
+		decryptingKeys = append(decryptingKeys, ck)
 	}
 
 	// store cache
@@ -250,7 +235,7 @@ func (k *SecurityKey) SigningKeys() ([]SigningKey, error) {
 
 // DecryptingKeys returns the slice of cryptographic decrypting keys held by
 // the SecurityKey.
-func (k *SecurityKey) DecryptingKeys() ([]DecryptingKey, error) {
+func (k *SecurityKey) DecryptingKeys() ([]CryptoKey, error) {
 	if err := k.loadCache(); err != nil {
 		return nil, fmt.Errorf("couldn't load cache: %v", err)
 	}

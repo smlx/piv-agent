@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/smlx/piv-agent/internal/keyservice/piv"
+	"github.com/smlx/piv-agent/internal/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"golang.org/x/term"

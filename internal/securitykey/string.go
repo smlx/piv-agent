@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ProtonMail/go-crypto/openpgp"
 	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"github.com/smlx/piv-agent/internal/age"
 	"golang.org/x/crypto/ssh"
@@ -22,13 +21,6 @@ var touchStringMap = map[pivgo.TouchPolicy]string{
 	pivgo.TouchPolicyNever:  "never",
 	pivgo.TouchPolicyAlways: "always",
 	pivgo.TouchPolicyCached: "cached",
-}
-
-// Entity wraps a synthesized openpgp.Entity and associates it with a
-// SigningKey.
-type Entity struct {
-	openpgp.Entity
-	CryptoKey
 }
 
 // Comment returns a comment suitable for e.g. the SSH public key format
