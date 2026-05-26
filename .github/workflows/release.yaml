@@ -28,14 +28,7 @@ jobs:
       attestations: write
     needs: release-tag
     if: needs.release-tag.outputs.new-tag == 'true'
-    strategy:
-      # avoid concurrent goreleaser runs
-      max-parallel: 1
-      matrix:
-        os:
-        - ubuntu-latest
-        - macos-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
@@ -44,7 +37,6 @@ jobs:
       with:
         go-version: stable
     - name: Install Dependencies
-      if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
     - uses: advanced-security/sbom-generator-action@6fe43abf522b2e7a19bc769aec1e6c848614b517 # v0.0.2
       id: sbom
@@ -58,7 +50,7 @@ jobs:
       id: goreleaser
       with:
         version: latest
-        args: release --clean --config .goreleaser.${{ matrix.os }}.yaml
+        args: release --clean --config .goreleaser.yaml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_SBOM_PATH: ./sbom.spdx.json

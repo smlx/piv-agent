@@ -2,4 +2,5 @@
 Description=piv-agent service
 
 [Service]
-ExecStart=piv-agent serve --agent-types=ssh=0;gpg=1
+ExecStart=piv-agent serve --agent-types=ssh=0;gpg=1;age=2
+LoadCredentialEncrypted=seeds:%h/.config/credstore/seeds

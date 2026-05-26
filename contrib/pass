@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eou pipefail
+PREFIX="${PASSAGE_DIR:-$HOME/.passage/store}"
+name="$(find "$PREFIX" -type f -name '*.age' |
+	sed -e "s|$PREFIX/||" -e 's|\.age$||' |
+	fzf --height 40% --reverse --no-multi)"
+passage "${@}" "$name"

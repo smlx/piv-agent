@@ -21,7 +21,7 @@ func (g *KeyService) Keygrips() ([][]byte, error) {
 			case *rsa.PublicKey:
 				kg, err = keygripRSA(openpgpPubKey)
 				if err != nil {
-					return nil, fmt.Errorf("couldn't get keygrip: %w", err)
+					return nil, fmt.Errorf("couldn't get keygrip: %v", err)
 				}
 			case *openpgpecdsa.PublicKey:
 				pubKey, err := ecdsaPublicKey(openpgpPubKey)
@@ -30,7 +30,7 @@ func (g *KeyService) Keygrips() ([][]byte, error) {
 				}
 				kg, err = KeygripECDSA(pubKey)
 				if err != nil {
-					return nil, fmt.Errorf("couldn't get keygrip: %w", err)
+					return nil, fmt.Errorf("couldn't get keygrip: %v", err)
 				}
 			default:
 				// unknown public key type

@@ -1,6 +1,10 @@
 package securitykey
 
-import pivgo "github.com/go-piv/piv-go/v2/piv"
+import (
+	"fmt"
+
+	pivgo "github.com/go-piv/piv-go/v2/piv"
+)
 
 // SlotSpec represents a combination of slot and touch policy on the token.
 type SlotSpec struct {
@@ -54,4 +58,20 @@ var defaultDecryptSlots = map[string]SlotSpec{
 	"always": {alwaysDecryptSlot, pivgo.TouchPolicyAlways},
 	// "Retired" key management slot with a "never" touch policy.
 	"never": {neverDecryptSlot, pivgo.TouchPolicyNever},
+}
+
+// SigningSlotSpec returns the slot specification for a given touch policy.
+func SigningSlotSpec(policy string) (SlotSpec, error) {
+	if s, ok := defaultSignSlots[policy]; ok {
+		return s, nil
+	}
+	return SlotSpec{}, fmt.Errorf("invalid signing policy %q", policy)
+}
+
+// DecryptingSlotSpec returns the slot specification for a given touch policy.
+func DecryptingSlotSpec(policy string) (SlotSpec, error) {
+	if s, ok := defaultDecryptSlots[policy]; ok {
+		return s, nil
+	}
+	return SlotSpec{}, fmt.Errorf("invalid decrypting policy %q", policy)
 }

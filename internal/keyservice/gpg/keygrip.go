@@ -77,7 +77,7 @@ func KeygripECDSA(pubKey *ecdsa.PublicKey) ([]byte, error) {
 
 func compute(parts []part) ([]byte, error) {
 	h := new(bytes.Buffer)
-	for i := 0; i < len(parts); i++ {
+	for i := range parts {
 		_, err := fmt.Fprintf(h, "(%d:%s%d:%s)", len(parts[i].name), parts[i].name, len(parts[i].value), parts[i].value)
 		if err != nil {
 			return nil, err

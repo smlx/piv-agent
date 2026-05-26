@@ -3,8 +3,8 @@ package gpg_test
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/x509"
 	"encoding/hex"
-	"math/big"
 	"os"
 	"strings"
 	"testing"
@@ -18,22 +18,32 @@ import (
 
 func TestTrezorCompat(t *testing.T) {
 	var testCases = map[string]struct {
-		input  *big.Int
-		expect string
+		inputPKIXHex string
+		expect       string
 	}{
-		"keygrip 1": {input: big.NewInt(1), expect: "95852E917FE2C39152BA998192B5791DB15CDCF0"},
+		// inputPKIXHex is the ASN.1 DER (PKIX) encoding of the P-256 public key corresponding to
+		// the private scalar d=1. Pre-generating this string avoids using deprecated low-level
+		// curve.ScalarBaseMult and coordinate manipulation methods.
+		"keygrip 1": {inputPKIXHex: "3059301306072a8648ce3d020106082a8648ce3d030107034200046b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c2964fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5", expect: "95852E917FE2C39152BA998192B5791DB15CDCF0"},
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(tt *testing.T) {
 
-			// construct private key
-			priv := ecdsa.PrivateKey{}
-			curve := elliptic.P256()
-			priv.Curve = curve
-			priv.D = tc.input
-			priv.X, priv.Y = curve.ScalarBaseMult(tc.input.Bytes())
+			// parse public key
+			b, err := hex.DecodeString(tc.inputPKIXHex)
+			if err != nil {
+				tt.Fatal(err)
+			}
+			pubAny, err := x509.ParsePKIXPublicKey(b)
+			if err != nil {
+				tt.Fatal(err)
+			}
+			pub, ok := pubAny.(*ecdsa.PublicKey)
+			if !ok {
+				tt.Fatal("not an ECDSA public key")
+			}
 
-			keygrip, err := gpg.KeygripECDSA(&priv.PublicKey)
+			keygrip, err := gpg.KeygripECDSA(pub)
 			if err != nil {
 				tt.Fatal(err)
 			}

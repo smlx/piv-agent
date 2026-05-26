@@ -31,7 +31,7 @@ func (pe *PINEntry) GetPin(k SecurityKey) func() (string, error) {
 	return func() (string, error) {
 		r, err := k.Retries()
 		if err != nil {
-			return "", fmt.Errorf("couldn't get retries for security key: %w", err)
+			return "", fmt.Errorf("couldn't get retries for security key: %v", err)
 		}
 		c, err := gpm.NewClient(
 			gpm.WithBinaryName(pe.binaryName),
@@ -45,7 +45,7 @@ func (pe *PINEntry) GetPin(k SecurityKey) func() (string, error) {
 			gpm.WithKeyInfo(fmt.Sprintf("--yubikey-id-%d", k.Serial())),
 		)
 		if err != nil {
-			return "", fmt.Errorf("couldn't get pinentry client: %w", err)
+			return "", fmt.Errorf("couldn't get pinentry client: %v", err)
 		}
 		defer c.Close()
 		pin, _, err := c.GetPIN()
@@ -66,7 +66,7 @@ func (pe *PINEntry) GetPassphrase(desc, keyID string, tries int) ([]byte, error)
 		gpm.WithKeyInfo(keyID),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get pinentry client: %w", err)
+		return nil, fmt.Errorf("couldn't get pinentry client: %v", err)
 	}
 	defer c.Close()
 	pin, _, err := c.GetPIN()

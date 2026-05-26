@@ -33,7 +33,11 @@ func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 	if err != nil {
 		return nil, fmt.Errorf("couldn't set point bytes: %v", err)
 	}
-	_, err = sharedPoint.ScalarMult(sharedPoint, k.ecdsa.D.Bytes())
+	ecdhPriv, err := k.ecdsa.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't convert to ECDH private key: %v", err)
+	}
+	_, err = sharedPoint.ScalarMult(sharedPoint, ecdhPriv.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't perform scalar mult: %v", err)
 	}
@@ -41,7 +45,7 @@ func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 	shared := sharedPoint.Bytes()
 	sharedLen := len(shared)
 	shared = assuan.PercentEncodeSExp(shared)
-	return []byte(fmt.Sprintf("D (5:value%d:%s)\nOK\n", sharedLen, shared)), nil
+	return fmt.Appendf(nil, "D (5:value%d:%s)\nOK\n", sharedLen, shared), nil
 }
 
 // Public implements the other required method of the crypto.Decrypter and

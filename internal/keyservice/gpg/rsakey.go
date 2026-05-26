@@ -51,8 +51,8 @@ func (k *RSAKey) Decrypt(_ io.Reader, sexp []byte,
 	plaintextLen := len(plaintext)
 	// apply the buggy encoding as expected by gpg
 	plaintext = assuan.PercentEncodeSExp(plaintext)
-	return []byte(fmt.Sprintf("D (5:value%d:%s)\x00\nOK\n",
-		plaintextLen, plaintext)), nil
+	return fmt.Appendf(nil, "D (5:value%d:%s)\x00\nOK\n",
+		plaintextLen, plaintext), nil
 }
 
 // Public implements the other required method of the crypto.Decrypter and

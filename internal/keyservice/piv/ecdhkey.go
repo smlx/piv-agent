@@ -38,13 +38,20 @@ func (k *ECDHKey) Decrypt(_ io.Reader, sexp []byte,
 		return nil, fmt.Errorf("couldn't unmarshal ephemeral key: %v", err)
 	}
 	// perform scalar multiplication, encode, and return the result
-	shared, err := k.ECDH(ephPub)
+	shared, err := k.ECDSAPrivateKey.ECDH(ephPub)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't generate shared secret: %v", err)
 	}
 	sharedLen := len(shared)
 	shared = assuan.PercentEncodeSExp(shared)
-	return []byte(fmt.Sprintf("D (5:value%d:%s)\nOK\n", sharedLen, shared)), nil
+	return fmt.Appendf(nil, "D (5:value%d:%s)\nOK\n", sharedLen, shared), nil
+}
+
+// ECDH wraps the underlying private key ECDH operation in a mutex.
+func (k *ECDHKey) ECDH(peer *ecdh.PublicKey) ([]byte, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return k.ECDSAPrivateKey.ECDH(peer)
 }
 
 // Sign wraps the underlying private key Sign operation in a mutex.

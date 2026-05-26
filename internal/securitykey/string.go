@@ -2,18 +2,19 @@ package securitykey
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/ecdsa"
+	"crypto/mlkem"
+	"encoding/hex"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
 	"strings"
-	"time"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
-	"github.com/ProtonMail/go-crypto/openpgp/armor"
-	openpgpecdsa "github.com/ProtonMail/go-crypto/openpgp/ecdsa"
-	"github.com/ProtonMail/go-crypto/openpgp/errors"
-	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	pivgo "github.com/go-piv/piv-go/v2/piv"
+	"github.com/smlx/piv-agent/internal/age"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -37,139 +38,148 @@ func (k *SecurityKey) Comment(ss *SlotSpec) string {
 }
 
 // StringsSSH returns an array of commonly formatted SSH keys as strings.
-func (k *SecurityKey) StringsSSH() []string {
+func (k *SecurityKey) StringsSSH() ([]string, error) {
+	sks, err := k.SigningKeys()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get signing keys: %v", err)
+	}
 	var ss []string
-	for _, s := range k.SigningKeys() {
+	for _, s := range sks {
 		ss = append(ss, fmt.Sprintf("%s %s\n",
 			strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(s.PubSSH)), "\n"),
 			k.Comment(&s.SlotSpec)))
 	}
-	return ss
+	return ss, nil
 }
 
-func (k *SecurityKey) synthesizeEntity(ck *CryptoKey, now time.Time,
-	name, email, comment string) (*openpgp.Entity, error) {
-	cryptoPrivKey, err := k.PrivateKey(ck)
+// NonFatalErrors accumulates multiple non-fatal errors.
+type NonFatalErrors []error
+
+// Error implements the error interface.
+func (e NonFatalErrors) Error() string {
+	var msgs []string
+	for _, err := range e {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, ", ")
+}
+
+// StringsAge returns an array of commonly formatted Age identities and
+// recipients as strings.
+func (k *SecurityKey) StringsAge(slotFilter []uint32) ([]string, error) {
+	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get private key: %v", err)
+		return nil, fmt.Errorf("couldn't get user config dir: %v", err)
 	}
-	signer, ok := cryptoPrivKey.(crypto.Signer)
-	if !ok {
-		return nil, fmt.Errorf("private key is invalid type")
-	}
-	uid := packet.NewUserId(name, comment, email)
-	if uid == nil {
-		return nil, errors.InvalidArgumentError("invalid characters in user ID")
-	}
-	ecdsaPubKey, ok := ck.Public.(*ecdsa.PublicKey)
-	if !ok {
-		// TODO: handle ed25519 keys
-		return nil, fmt.Errorf("not an ECDSA key")
-	}
-	pub := packet.NewECDSAPublicKey(now,
-		openpgpecdsa.NewPublicKeyFromCurve(ecdsaPubKey.Curve))
-	priv := packet.NewSignerPrivateKey(now, signer)
-	selfSignature := packet.Signature{
-		CreationTime: now,
-		SigType:      packet.SigTypePositiveCert,
-		// TODO: determine the key type
-		PubKeyAlgo:  packet.PubKeyAlgoECDSA,
-		Hash:        crypto.SHA256,
-		IssuerKeyId: &pub.KeyId,
-		FlagsValid:  true,
-		FlagSign:    true,
-		FlagCertify: true,
-	}
-	err = selfSignature.SignUserId(uid.Id, pub, priv, nil)
+	seedsDir := filepath.Join(configDir, "credstore", "seeds")
+	entries, err := os.ReadDir(seedsDir)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't sign user ID: %v", err)
-	}
-	return &openpgp.Entity{
-		PrimaryKey: pub,
-		PrivateKey: priv,
-		Identities: map[string]*openpgp.Identity{
-			uid.Id: {
-				Name:          uid.Name,
-				UserId:        uid,
-				SelfSignature: &selfSignature,
-			},
-		},
-	}, nil
-}
-
-// synthesizeEntities returns an array of signing and decrypting Entities for
-// k's cryptographic keys.
-// Because OpenPGP entities must be self-signed, this function needs a physical
-// touch on the yubikey for slots with touch policies that require it.
-func (k *SecurityKey) synthesizeEntities(name, email string) ([]Entity,
-	[]Entity, error) {
-	now := time.Now()
-	var signing, decrypting []Entity
-	for _, sk := range k.SigningKeys() {
-		e, err := k.synthesizeEntity(&sk.CryptoKey, now, name, email,
-			fmt.Sprintf("piv-agent signing key; touch-policy %s",
-				touchStringMap[sk.SlotSpec.TouchPolicy]))
-		if err != nil {
-			return nil, nil, fmt.Errorf("couldn't synthesize entity: %v", err)
+		if os.IsNotExist(err) {
+			return nil, nil
 		}
-		signing = append(signing, Entity{Entity: *e, CryptoKey: sk.CryptoKey})
+		return nil, fmt.Errorf("couldn't read seeds dir: %v", err)
 	}
-	for _, dk := range k.DecryptingKeys() {
-		e, err := k.synthesizeEntity(&dk.CryptoKey, now, name, email,
-			fmt.Sprintf("piv-agent decrypting key; touch-policy %s",
-				touchStringMap[dk.SlotSpec.TouchPolicy]))
-		if err != nil {
-			return nil, nil, fmt.Errorf("couldn't synthesize entity: %v", err)
-		}
-		decrypting = append(decrypting, Entity{Entity: *e, CryptoKey: dk.CryptoKey})
-	}
-	return signing, decrypting, nil
-}
 
-func (k *SecurityKey) armorEntity(e *openpgp.Entity,
-	t pivgo.TouchPolicy) (string, error) {
-	buf := bytes.Buffer{}
-	w, err := armor.Encode(&buf, openpgp.PublicKeyType,
-		map[string]string{
-			"Comment": fmt.Sprintf("%v #%v, touch policy: %s",
-				k.card, k.serial, touchStringMap[t]),
+	type seedInfo struct {
+		fileID   [8]byte
+		mlkemKey *mlkem.DecapsulationKey768
+	}
+	var seeds []seedInfo
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		fileID, err := hex.DecodeString(entry.Name())
+		if err != nil || len(fileID) != 8 {
+			continue
+		}
+		seedPath := filepath.Join(seedsDir, entry.Name())
+		cmd := exec.Command(
+			"systemd-creds",
+			"decrypt",
+			"--user",
+			fmt.Sprintf("--name=seeds_%s", entry.Name()), seedPath, "-")
+		seedBytes, err := cmd.Output()
+		if err != nil || len(seedBytes) != 64 {
+			continue
+		}
+		mlkemKey, err := mlkem.NewDecapsulationKey768(seedBytes)
+		if err != nil {
+			continue
+		}
+		seeds = append(seeds, seedInfo{
+			fileID:   [8]byte(fileID),
+			mlkemKey: mlkemKey,
 		})
-	if err != nil {
-		return "", fmt.Errorf("couldn't get PGP public key armorer: %w", err)
 	}
-	err = e.Serialize(w)
-	if err != nil {
-		return "", fmt.Errorf("couldn't serialize PGP public key: %w", err)
-	}
-	err = w.Close()
-	if err != nil {
-		return "", fmt.Errorf("couldn't close pgp writer: %w", err)
-	}
-	return buf.String(), nil
-}
 
-// StringsGPG returns an array of commonly formatted GPG keys as strings.
-func (k *SecurityKey) StringsGPG(name, email string) ([]string, error) {
-	var ss []string
-	signing, decrypting, err := k.synthesizeEntities(name, email)
+	if len(seeds) == 0 {
+		return nil, nil
+	}
+	dks, err := k.DecryptingKeys()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't synthesize entities: %v", err)
+		return nil, fmt.Errorf("couldn't get decrypting keys: %v", err)
 	}
-	ss = append(ss, "\nSigning GPG Keys:")
-	for _, key := range signing {
-		s, err := k.armorEntity(&key.Entity, key.SlotSpec.TouchPolicy)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't armor entity: %v", err)
-		}
-		ss = append(ss, s)
+
+	var ss []string
+	var errs NonFatalErrors
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
 	}
-	ss = append(ss, "\nDecrypting GPG Keys:")
-	for _, key := range decrypting {
-		s, err := k.armorEntity(&key.Entity, key.SlotSpec.TouchPolicy)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't armor entity: %v", err)
+
+	for _, cryptoKey := range dks {
+		slotKey := cryptoKey.SlotSpec.Slot.Key
+		// filter if necessary
+		if len(slotFilter) > 0 && !slices.Contains(slotFilter, slotKey) {
+			continue
 		}
-		ss = append(ss, s)
+		// calculate the key tag
+		keyTag, err := cryptoKey.KeyTag()
+		if err != nil {
+			errs = append(errs,
+				fmt.Errorf("couldn't get key tag for slot %x: %v", slotKey, err))
+			continue
+		}
+		// convert public key to ECDH for age recipient generation
+		ecdhPub, err := cryptoKey.Public.(*ecdsa.PublicKey).ECDH()
+		if err != nil {
+			errs = append(errs,
+				fmt.Errorf("couldn't convert public key for slot %x: %v", slotKey, err))
+			continue
+		}
+		for _, seed := range seeds {
+			// check if the seed file is bound to this slot
+			expectedFileID := age.CalculateFileID(seed.mlkemKey, keyTag)
+			if !bytes.Equal(expectedFileID, seed.fileID[:]) {
+				continue
+			}
+
+			identity, err := age.NewIdentity(
+				k.Serial(), byte(slotKey), keyTag, seed.fileID).Encode()
+			if err != nil {
+				errs = append(errs,
+					fmt.Errorf("couldn't encode identity for slot %x: %v", slotKey, err))
+				continue
+			}
+
+			recipient := age.EncodeRecipient(
+				seed.mlkemKey.EncapsulationKey().Bytes(), ecdhPub.Bytes())
+
+			ss = append(ss, fmt.Sprintf(
+				"# Hardware Identity for %s serial %d slot %x",
+				k.Card(), k.Serial(), slotKey))
+			ss = append(ss, fmt.Sprintf("# Host name: %s", hostname))
+			ss = append(ss, fmt.Sprintf(
+				"# Seed file: %s", hex.EncodeToString(seed.fileID[:])))
+			ss = append(ss, fmt.Sprintf("# Recipient: %s", recipient))
+			ss = append(ss, identity)
+			ss = append(ss, "")
+		}
+	}
+	if len(errs) > 0 {
+		return ss, errs
 	}
 	return ss, nil
 }

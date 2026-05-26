@@ -57,7 +57,7 @@ func (a *Agent) List() ([]*agent.Key, error) {
 	// get security key identities first
 	ski, err := a.securityKeyIDs()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get token identities: %w", err)
+		return nil, fmt.Errorf("couldn't get token identities: %v", err)
 	}
 	// then key file identities
 	if !a.loadKeyfile {
@@ -65,7 +65,7 @@ func (a *Agent) List() ([]*agent.Key, error) {
 	}
 	kfi, err := a.keyFileIDs()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get keyfile identities: %w", err)
+		return nil, fmt.Errorf("couldn't get keyfile identities: %v", err)
 	}
 	return append(ski, kfi...), nil
 }
@@ -78,7 +78,11 @@ func (a *Agent) securityKeyIDs() ([]*agent.Key, error) {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, k := range securityKeys {
-		for _, s := range k.SigningKeys() {
+		sks, err := k.SigningKeys()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get signing keys: %v", err)
+		}
+		for _, s := range sks {
 			keys = append(keys, &agent.Key{
 				Format:  s.PubSSH.Type(),
 				Blob:    s.PubSSH.Marshal(),
@@ -125,7 +129,7 @@ func (a *Agent) Sign(key gossh.PublicKey, data []byte) (*gossh.Signature, error)
 	// try token keys first
 	ts, err := a.tokenSigners()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get token signers: %w", err)
+		return nil, fmt.Errorf("couldn't get token signers: %v", err)
 	}
 	sig, err := a.signWithSigners(key, data, ts)
 	if err != nil {
@@ -138,7 +142,7 @@ func (a *Agent) Sign(key gossh.PublicKey, data []byte) (*gossh.Signature, error)
 	// fall back to keyfile keys
 	ks, err := a.keyfileSigners()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get keyfile signers: %w", err)
+		return nil, fmt.Errorf("couldn't get keyfile signers: %v", err)
 	}
 	return a.signWithSigners(key, data, ks)
 }
@@ -193,14 +197,14 @@ func (a *Agent) Signers() ([]gossh.Signer, error) {
 	defer a.mu.Unlock()
 	ts, err := a.tokenSigners()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get token signers: %w", err)
+		return nil, fmt.Errorf("couldn't get token signers: %v", err)
 	}
 	if !a.loadKeyfile {
 		return ts, nil
 	}
 	ks, err := a.keyfileSigners()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get keyfile signers: %w", err)
+		return nil, fmt.Errorf("couldn't get keyfile signers: %v", err)
 	}
 	return append(ts, ks...), nil
 }
@@ -213,7 +217,11 @@ func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
 	}
 	for _, k := range securityKeys {
-		for _, s := range k.SigningKeys() {
+		sks, err := k.SigningKeys()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get signing keys: %v", err)
+		}
+		for _, s := range sks {
 			privKey, err := k.PrivateKey(&s.CryptoKey)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get private key for slot %x: %v",
@@ -238,7 +246,7 @@ func (a *Agent) doDecrypt(keyPath string,
 	var passphrase []byte
 	var signer gossh.Signer
 	var err error
-	for i := 0; i < retries; i++ {
+	for i := range retries {
 		passphrase = passphrases[string(pub.Marshal())]
 		if passphrase == nil {
 			fingerprint := gossh.FingerprintSHA256(pub)

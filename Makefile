@@ -11,5 +11,5 @@ mod-tidy:
 	go mod tidy
 
 .PHONY: build
-build: test
-	CGO_ENABLED=1 go build ./cmd/piv-agent
+build:
+	goreleaser build --clean --single-target --snapshot
