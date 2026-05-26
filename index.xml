@@ -1,1 +1,56 @@
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>PIV Agent – PIV Agent</title><link>/piv-agent/</link><description>Recent content on PIV Agent</description><generator>Hugo -- gohugo.io</generator><language>en</language><atom:link href="/piv-agent/index.xml" rel="self" type="application/rss+xml"/></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>PIV Agent</title><link>/piv-agent/</link><description>Recent content on PIV Agent</description><generator>Hugo</generator><language>en</language><atom:link href="/piv-agent/index.xml" rel="self" type="application/rss+xml"/><item><title>Install</title><link>/piv-agent/docs/install/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/piv-agent/docs/install/</guid><description>&lt;h2 id="prerequisites"&gt;Prerequisites&lt;/h2&gt;
+&lt;h3 id="consider-redundancy"&gt;Consider redundancy&lt;/h3&gt;
+&lt;p&gt;If you lose access to your hardware security device (for example if it is lost, stolen, or broken) &lt;strong&gt;there is no way to recover the keys stored on it&lt;/strong&gt;.
+For that reason it is highly recommended that you use fallback SSH or GPG keyfiles and/or multiple hardware security devices.&lt;/p&gt;
+&lt;h3 id="install-pcsclite"&gt;Install pcsclite&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;piv-agent&lt;/code&gt; has transitive dependencies through &lt;a href="https://github.com/go-piv/piv-go#installation"&gt;&lt;code&gt;piv-go&lt;/code&gt;&lt;/a&gt;, on &lt;a href="https://pcsclite.apdu.fr/"&gt;&lt;code&gt;pcsclite&lt;/code&gt;&lt;/a&gt;.&lt;/p&gt;
+&lt;pre tabindex="0"&gt;&lt;code&gt;# debian / ubuntu
+sudo apt install libpcsclite1
+# TODO: other platforms
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="install-piv-agent"&gt;Install piv-agent&lt;/h2&gt;
+&lt;p&gt;Download the latest &lt;a href="https://github.com/smlx/piv-agent/releases"&gt;release&lt;/a&gt;, and extract it to a temporary location.
+Copy the &lt;code&gt;piv-agent&lt;/code&gt; binary into your &lt;code&gt;$PATH&lt;/code&gt;, and the &lt;code&gt;systemd&lt;/code&gt; unit files to the correct location:&lt;/p&gt;</description></item><item><title>Setup</title><link>/piv-agent/docs/setup/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/piv-agent/docs/setup/</guid><description>&lt;h2 id="hardware"&gt;Hardware&lt;/h2&gt;
+&lt;h3 id="default-setup"&gt;Default setup&lt;/h3&gt;
+&lt;div class="alert alert-warning" role="alert"&gt;&lt;div class="h4 alert-heading" role="heading"&gt;Warning&lt;/div&gt;
+&lt;p&gt;This procedure resets the state of the PIV applet to factory defaults and wipes any existing keys from &lt;em&gt;all&lt;/em&gt; PIV slots.&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;This procedure is only required once per hardware security device.
+Performing it a second time will reset the keys on the PIV applet of the device.
+It will not make any changes to applets providing other functionality the device may have, such as WebAuthn.&lt;/p&gt;</description></item><item><title>Use</title><link>/piv-agent/docs/use/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/piv-agent/docs/use/</guid><description>&lt;h2 id="start-piv-agentsocket"&gt;Start &lt;code&gt;piv-agent.socket&lt;/code&gt;&lt;/h2&gt;
+&lt;p&gt;Start the agent sockets, and test:&lt;/p&gt;
+&lt;pre tabindex="0"&gt;&lt;code&gt;systemctl --user enable --now piv-agent.socket
+ssh-add -l
+gpg -K
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;This should be enough to allow you to use &lt;code&gt;piv-agent&lt;/code&gt;.&lt;/p&gt;
+&lt;h2 id="common-operations"&gt;Common operations&lt;/h2&gt;
+&lt;h3 id="list-keys"&gt;List keys&lt;/h3&gt;
+&lt;pre tabindex="0"&gt;&lt;code&gt;piv-agent status
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;If this command returns an empty list, it may be because the running agent is holding a transaction to the hardware security device.
+The solution is to stop the agent and run the list command again.&lt;/p&gt;
+&lt;pre tabindex="0"&gt;&lt;code&gt;systemctl --user stop piv-agent
+# should work now..
+piv-agent status
+&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="advanced"&gt;Advanced&lt;/h2&gt;
+&lt;p&gt;This section describes some ways to enhance the usability of &lt;code&gt;piv-agent&lt;/code&gt;.&lt;/p&gt;</description></item><item><title>FAQ</title><link>/piv-agent/docs/faq/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/piv-agent/docs/faq/</guid><description>&lt;h2 id="how-do-i-switch-between-gpg-agent-and-piv-agent"&gt;How do I switch between gpg-agent and piv-agent&lt;/h2&gt;
+&lt;p&gt;Stop both &lt;code&gt;gpg-agent&lt;/code&gt; and &lt;code&gt;piv-agent&lt;/code&gt;:&lt;/p&gt;
+&lt;div class="alert alert-primary" role="alert"&gt;&lt;div class="h4 alert-heading" role="heading"&gt;Note&lt;/div&gt;
+&lt;p&gt;The &lt;code&gt;pkill&lt;/code&gt; is required because &lt;code&gt;gpg&lt;/code&gt; may be configured to automatically start &lt;code&gt;gpg-agent&lt;/code&gt; in a manner which is not managed by &lt;code&gt;systemd&lt;/code&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;pre tabindex="0"&gt;&lt;code&gt;systemctl --user stop gpg-agent.socket gpg-agent.service piv-agent.socket piv-agent.service; pkill gpg-agent
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;Start &lt;code&gt;piv-agent&lt;/code&gt; sockets:&lt;/p&gt;
+&lt;pre tabindex="0"&gt;&lt;code&gt;systemctl --user start piv-agent.socket
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;Or start &lt;code&gt;gpg-agent&lt;/code&gt; socket:&lt;/p&gt;
+&lt;pre tabindex="0"&gt;&lt;code&gt;systemctl --user start gpg-agent.socket
+&lt;/code&gt;&lt;/pre&gt;&lt;h2 id="how-does-age-plugin-piv-agent-compare-to-age-plugin-yubikey"&gt;How does age-plugin-piv-agent compare to age-plugin-yubikey?&lt;/h2&gt;
+&lt;p&gt;Firstly, &lt;code&gt;age-plugin-yubikey&lt;/code&gt; is created by professional cryptographic engineers, and has a much larger user base.
+&lt;code&gt;piv-agent&lt;/code&gt; has neither attribute, so you should probably just use &lt;code&gt;age-plugin-yubikey&lt;/code&gt;.&lt;/p&gt;</description></item><item><title>GPG Walkthrough</title><link>/piv-agent/docs/gpg-walkthrough/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/piv-agent/docs/gpg-walkthrough/</guid><description>&lt;h2 id="overview"&gt;Overview&lt;/h2&gt;
+&lt;p&gt;GnuPG being a complex piece of software, setup with &lt;code&gt;piv-agent&lt;/code&gt; is a bit fiddly.
+This example is intended to illustrate how &lt;code&gt;piv-agent&lt;/code&gt; can integrate with existing GnuPG keys and workflows.&lt;/p&gt;
+&lt;div class="alert alert-primary" role="alert"&gt;&lt;div class="h4 alert-heading" role="heading"&gt;Note&lt;/div&gt;
+&lt;p&gt;This example requires switching between &lt;code&gt;gpg-agent&lt;/code&gt; and &lt;code&gt;piv-agent&lt;/code&gt;.
+See the &lt;a href="/piv-agent/docs/faq/"&gt;FAQ&lt;/a&gt; for how to do that.&lt;/p&gt;
+&lt;/div&gt;
+&lt;h2 id="setup"&gt;Setup&lt;/h2&gt;
+&lt;p&gt;Suppose I have an existing RSA OpenPGP key that I use with &lt;code&gt;gpg&lt;/code&gt;.
+Creation of a &lt;code&gt;gpg&lt;/code&gt; key is outside the scope of this document, but there are reasonable instructions &lt;a href="https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key"&gt;here&lt;/a&gt;.&lt;/p&gt;</description></item></channel></rss>
