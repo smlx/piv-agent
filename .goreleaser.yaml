@@ -22,6 +22,7 @@ builds:
   - linux
   goarch:
   - amd64
+  - arm64
 - id: age-plugin-piv-agent
   binary: age-plugin-piv-agent
   main: ./cmd/age-plugin-piv-agent
@@ -38,6 +39,7 @@ builds:
   - linux
   goarch:
   - amd64
+  - arm64
 
 changelog:
   use: github-native

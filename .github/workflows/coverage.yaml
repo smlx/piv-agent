@@ -18,9 +18,7 @@ jobs:
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
     - name: Calculate coverage
       run: |
-        go test -v -covermode=atomic -coverprofile=cover.out.raw -coverpkg=./... ./...
-        # remove generated code from coverage calculation
-        grep -Ev 'internal/mock|_enumer.go' cover.out.raw > cover.out
+        go test -count=1 -v -covermode=atomic -coverprofile=cover.out -coverpkg=./... ./...
     - name: Generage coverage badge
       uses: vladopajic/go-test-coverage@679e6807f68f2440a4c43d386442a1d0041838a9 # v2.18.3
       with:
