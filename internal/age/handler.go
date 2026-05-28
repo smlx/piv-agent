@@ -128,6 +128,17 @@ type ageIdentity struct {
 // use that value to enable fast verification, and defer hardware access until
 // a match is actually found.
 func (i *ageIdentity) Unwrap(ss []*age.Stanza) ([]byte, error) {
+	// Retrieve 64-byte seed for ML-KEM decapsulation key using the
+	// content-addressable fileID.
+	seed, err := i.fetchSeed(i.ident.SeedFileID)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't fetch ML-KEM seed: %v: %w", err, age.ErrIncorrectIdentity)
+	}
+	// Construct the ML-KEM decapsulation key from the seed.
+	mlkemKey, err := mlkem.NewDecapsulationKey768(seed)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't derive MLKEM key: %v: %w", err, age.ErrIncorrectIdentity)
+	}
 	// Iterate over all stanzas to find a matching one that can be unwrapped.
 	for _, s := range ss {
 		// Ignore stanzas that are not of the expected type.
@@ -183,24 +194,13 @@ func (i *ageIdentity) Unwrap(ss []*age.Stanza) ([]byte, error) {
 		if !bytes.Equal(tagArg, expTag) {
 			continue
 		}
-		// The tag matched, so this stanza is addressed to this identity. Get the
-		// ECDH key from the hardware to decrypt it. This is the point at which
-		// hardware is being accessed.
+		// The tag matched, so this stanza is addressed to this Identity (well,
+		// P-256 key). Get the ECDH key from the hardware to decrypt it. This is
+		// the point at which hardware is being accessed.
 		ecdhKey, err := i.piv.GetECDHKey(
 			i.ident.Serial, uint32(i.ident.Slot), i.ident.KeyTag)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't get ECDH key from device: %v: %w", err, age.ErrIncorrectIdentity)
-		}
-		// Retrieve 64-byte seed for ML-KEM decapsulation key using the
-		// content-addressable fileID.
-		seed, err := i.fetchSeed(i.ident.SeedFileID)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't fetch ML-KEM seed: %v: %w", err, age.ErrIncorrectIdentity)
-		}
-		// Construct the ML-KEM decapsulation key from the seed.
-		mlkemKey, err := mlkem.NewDecapsulationKey768(seed)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't derive MLKEM key: %v: %w", err, age.ErrIncorrectIdentity)
 		}
 		// Combine the ML-KEM key and the ECDH key into a single hybrid private key
 		// for age decryption.
@@ -212,11 +212,11 @@ func (i *ageIdentity) Unwrap(ss []*age.Stanza) ([]byte, error) {
 		}
 		// Trigger touch notification before hardware decryption
 		cancel := i.notify.Touch()
-		defer cancel()
 		// Construct the HPKE recipient context using the encapsulated key and
 		// private key.
 		r, err := hpke.NewRecipient(
 			enc, k, hpke.HKDFSHA256(), hpke.ChaCha20Poly1305(), []byte(hpkeInfo))
+		cancel() // Clear the touch notification
 		if err != nil {
 			return nil, fmt.Errorf("couldn't construct recipient: %v: %w", err, age.ErrIncorrectIdentity)
 		}
