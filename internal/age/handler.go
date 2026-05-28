@@ -107,10 +107,10 @@ func (e *pivKeyExchanger) ECDH(peer *ecdh.PublicKey) ([]byte, error) {
 // ageIdentity implements age.Identity for a hybrid P-256 + ML-KEM-768 key
 // backed by a PIV token.
 type ageIdentity struct {
-	ident    Identity
-	mlkemKey *mlkem.DecapsulationKey768
-	piv      ECDHService
-	notify   *notify.Notify
+	ident     Identity
+	fetchSeed SeedFetcher
+	piv       ECDHService
+	notify    *notify.Notify
 }
 
 // Unwrap attempts to decrypt the file key from the provided age stanzas.
@@ -189,15 +189,26 @@ func (i *ageIdentity) Unwrap(ss []*age.Stanza) ([]byte, error) {
 		ecdhKey, err := i.piv.GetECDHKey(
 			i.ident.Serial, uint32(i.ident.Slot), i.ident.KeyTag)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't get ECDH key from device: %v", err)
+			return nil, fmt.Errorf("couldn't get ECDH key from device: %v: %w", err, age.ErrIncorrectIdentity)
+		}
+		// Retrieve 64-byte seed for ML-KEM decapsulation key using the
+		// content-addressable fileID.
+		seed, err := i.fetchSeed(i.ident.SeedFileID)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't fetch ML-KEM seed: %v: %w", err, age.ErrIncorrectIdentity)
+		}
+		// Construct the ML-KEM decapsulation key from the seed.
+		mlkemKey, err := mlkem.NewDecapsulationKey768(seed)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't derive MLKEM key: %v: %w", err, age.ErrIncorrectIdentity)
 		}
 		// Combine the ML-KEM key and the ECDH key into a single hybrid private key
 		// for age decryption.
 		k, err := hpke.NewHybridPrivateKey(
-			hpkecrypto.DecapsulatorFromDecapsulationKey768(i.mlkemKey),
+			hpkecrypto.DecapsulatorFromDecapsulationKey768(mlkemKey),
 			&pivKeyExchanger{key: ecdhKey})
 		if err != nil {
-			return nil, fmt.Errorf("couldn't create hybrid private key: %v", err)
+			return nil, fmt.Errorf("couldn't create hybrid private key: %v: %w", err, age.ErrIncorrectIdentity)
 		}
 		// Trigger touch notification before hardware decryption
 		cancel := i.notify.Touch()
@@ -207,10 +218,16 @@ func (i *ageIdentity) Unwrap(ss []*age.Stanza) ([]byte, error) {
 		r, err := hpke.NewRecipient(
 			enc, k, hpke.HKDFSHA256(), hpke.ChaCha20Poly1305(), []byte(hpkeInfo))
 		if err != nil {
-			return nil, fmt.Errorf("couldn't construct recipient: %v", err)
+			return nil, fmt.Errorf("couldn't construct recipient: %v: %w", err, age.ErrIncorrectIdentity)
 		}
 		// Decrypt the file key.
-		return r.Open(nil, s.Body)
+		fileKey, err := r.Open(nil, s.Body)
+		if err == nil {
+			return fileKey, nil
+		}
+		// Decryption failed. Since multiple identities can share the same YubiKey
+		// (and therefore the same KeyTag), this stanza might simply be for another
+		// identity. Continue trying other stanzas.
 	}
 	// Return an error if no stanza could be unwrapped.
 	return nil, age.ErrIncorrectIdentity
@@ -240,24 +257,14 @@ func HandleIdentity(
 		if err := ident.UnmarshalBinary(data); err != nil {
 			return nil, err
 		}
-		// Retrieve 64-byte seed for ML-KEM decapsulation key using the
-		// content-addressable fileID.
-		seed, err := fetchSeed(ident.SeedFileID)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't fetch ML-KEM seed: %v", err)
-		}
-		// Construct the ML-KEM decapsulation key from the seed.
-		mlkemKey, err := mlkem.NewDecapsulationKey768(seed)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't derive MLKEM key: %v", err)
-		}
 		// Return the successfully constructed identity. Hardware token access
-		// is deferred until a matching stanza is found during Unwrap.
+		// and seed fetching is deferred until a matching stanza is found during
+		// Unwrap.
 		return &ageIdentity{
-			ident:    ident,
-			mlkemKey: mlkemKey,
-			piv:      piv,
-			notify:   n,
+			ident:     ident,
+			fetchSeed: fetchSeed,
+			piv:       piv,
+			notify:    n,
 		}, nil
 	}
 }
