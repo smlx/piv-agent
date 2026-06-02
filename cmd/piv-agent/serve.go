@@ -12,6 +12,7 @@ import (
 	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"github.com/smlx/piv-agent/internal/piv"
+	"github.com/smlx/piv-agent/internal/securitykey"
 	"github.com/smlx/piv-agent/internal/server"
 	"github.com/smlx/piv-agent/internal/sockets"
 	"github.com/smlx/piv-agent/internal/ssh"
@@ -32,6 +33,7 @@ type ServeCmd struct {
 	PinentryBinaryName   string        `kong:"default='pinentry',help='Pinentry binary which will be used, must be in $PATH'"`
 	AgentTypes           agentTypeFlag `kong:"default='ssh=0;age=1',help='Agent types to handle'"`
 	CredentialsDirectory string        `kong:"required,env='CREDENTIALS_DIRECTORY',help='Path to the systemd credentials directory'"`
+	NotifyOnMissingSeed  bool          `kong:"default=true,help='Notify the user if a security key is missing its ML-KEM seed locally'"`
 }
 
 // AfterApply validates the given agent types.
@@ -85,6 +87,40 @@ func (cmd *ServeCmd) Run(log *slog.Logger) error {
 	defer cancel()
 	idle := time.NewTicker(cmd.IdleTimeout)
 	n := notify.New(log)
+
+	if cmd.NotifyOnMissingSeed {
+		p.SetMissingSeedCheck(func(sk *securitykey.SecurityKey) {
+			dks, err := sk.DecryptingKeys()
+			if err != nil || len(dks) == 0 {
+				return
+			}
+			var hasSeed bool
+			for _, dk := range dks {
+				cert, err := sk.Certificate(dk.SlotSpec.Slot)
+				if err != nil {
+					continue
+				}
+				fileID, err := securitykey.ExtractFileIDFromCert(cert)
+				if err != nil || fileID == nil {
+					continue
+				}
+				filename := hex.EncodeToString(fileID)
+				seedPath := filepath.Join(
+					cmd.CredentialsDirectory, fmt.Sprintf("seeds_%s", filename))
+				if _, err := os.Stat(seedPath); err == nil {
+					hasSeed = true
+					break
+				}
+			}
+			if !hasSeed {
+				// ignore the error here since it is already logged in Message()
+				_ = n.Message("Missing ML-KEM seed",
+					fmt.Sprintf("Security key (serial \"%d\") does not have an available ML-KEM seed.\n", sk.Serial())+
+						"Run \"piv-agent setup --add-decrypting-key\" to configure a decrypting slot for this machine.")
+			}
+		})
+	}
+
 	g := errgroup.Group{}
 	// start SSH agent if given in agent-type flag
 	if _, ok := cmd.AgentTypes["ssh"]; ok {
@@ -119,20 +155,20 @@ func (cmd *ServeCmd) Run(log *slog.Logger) error {
 	}
 	exit := time.NewTicker(cmd.ExitTimeout)
 loop:
-			for {
-				select {
-				case <-ctx.Done():
-					log.Debug("exit done")
-					break loop
-				case <-idle.C:
-					log.Debug("idle timeout")
-					cancel()
-					break loop
-				case <-exit.C:
-					log.Debug("exit timeout")
-					cancel()
-					break loop
-				}
-			}
+	for {
+		select {
+		case <-ctx.Done():
+			log.Debug("exit done")
+			break loop
+		case <-idle.C:
+			log.Debug("idle timeout")
+			cancel()
+			break loop
+		case <-exit.C:
+			log.Debug("exit timeout")
+			cancel()
+			break loop
+		}
+	}
 	return g.Wait()
 }

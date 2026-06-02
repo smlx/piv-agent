@@ -22,6 +22,37 @@ func New(log *slog.Logger) *Notify {
 	}
 }
 
+// Message sends a simple notification to the user.
+func (n *Notify) Message(summary, body string) error {
+	conn, err := dbus.SessionBus()
+	if err != nil {
+		n.log.Warn("couldn't connect to dbus session bus", slog.Any("error", err))
+		return err
+	}
+	notifier, err := notify.New(conn)
+	if err != nil {
+		n.log.Warn("couldn't create dbus notifier", slog.Any("error", err))
+		return err
+	}
+	notification := notify.Notification{
+		AppName: "PIV Agent",
+		Summary: summary,
+		Body:    body,
+		AppIcon: "dialog-warning",
+	}
+	notification.SetUrgency(notify.UrgencyNormal)
+	_, err = notifier.SendNotification(notification)
+	if err != nil {
+		n.log.Warn("couldn't send message notification", slog.Any("error", err))
+		return err
+	}
+	go func() {
+		time.Sleep(5 * time.Second)
+		notifier.Close()
+	}()
+	return nil
+}
+
 // Touch notifies a user to touch the security device. When the returned
 // cancellation function is called, the notification is dismissed.
 // Touch waits for a brief period before displaying the notification to give

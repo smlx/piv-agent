@@ -39,27 +39,6 @@ var defaultSignSlots = map[string]SlotSpec{
 	"never": {pivgo.SlotCardAuthentication, pivgo.TouchPolicyNever},
 }
 
-var alwaysDecryptSlot, _ = pivgo.RetiredKeyManagementSlot(0x82)
-var neverDecryptSlot, _ = pivgo.RetiredKeyManagementSlot(0x83)
-
-// defaultDecryptSlots represents the slot specifications for decrypting
-// operations. By using additional "retired" slots we can enable multiple touch
-// policies for decrypt.
-var defaultDecryptSlots = map[string]SlotSpec{
-	// Slot 9d: Key Management
-	// This certificate and its associated private key is used for encryption for
-	// the purpose of confidentiality. This slot is used for things like
-	// encrypting e-mails or files. The end user PIN is required to perform any
-	// private key operations. Once the PIN has been provided successfully,
-	// multiple private key operations may be performed without additional
-	// cardholder consent.
-	"cached": {pivgo.SlotKeyManagement, pivgo.TouchPolicyCached},
-	// "Retired" key management slot with an "always" touch policy.
-	"always": {alwaysDecryptSlot, pivgo.TouchPolicyAlways},
-	// "Retired" key management slot with a "never" touch policy.
-	"never": {neverDecryptSlot, pivgo.TouchPolicyNever},
-}
-
 // SigningSlotSpec returns the slot specification for a given touch policy.
 func SigningSlotSpec(policy string) (SlotSpec, error) {
 	if s, ok := defaultSignSlots[policy]; ok {
@@ -68,10 +47,12 @@ func SigningSlotSpec(policy string) (SlotSpec, error) {
 	return SlotSpec{}, fmt.Errorf("invalid signing policy %q", policy)
 }
 
-// DecryptingSlotSpec returns the slot specification for a given touch policy.
-func DecryptingSlotSpec(policy string) (SlotSpec, error) {
-	if s, ok := defaultDecryptSlots[policy]; ok {
-		return s, nil
+// RetiredDecryptingSlots returns all 20 retired key management slots (0x82-0x95).
+func RetiredDecryptingSlots() []pivgo.Slot {
+	var slots []pivgo.Slot
+	for i := uint32(0x82); i <= 0x95; i++ {
+		s, _ := pivgo.RetiredKeyManagementSlot(i)
+		slots = append(slots, s)
 	}
-	return SlotSpec{}, fmt.Errorf("invalid decrypting policy %q", policy)
+	return slots
 }

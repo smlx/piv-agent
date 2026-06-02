@@ -28,14 +28,8 @@ Considering only hybrid PQ cryptography, there are some interesting usability co
 So for every machine you plug your YubiKey into, you'll have the same age identity.
 There is a `1:1` relationship between YubiKey slots and identities.
 
-`age-plugin-piv-agent` stores the two parts of the hybrid key separately: ECC private key on the YubiKey, ML-KEM seed on your laptop.
-So for every machine you plug your YubiKey into, you'll have a _different_ age identity.
-The ECC key will be the same, but the ML-KEM seed will be different.
-There is a `MxN` relationship between YubiKey slots and identities, where `M` is the number of machines you use, and `N` is the number of YubiKeys you own.
-
-I can't speak for users of `age-plugin-yubikey`, but from what I can tell that design encourages fewer identities, and is probably simpler to use.
-By contrast, `age-plugin-piv-agent` requires generating unique seeds per laptop, so each identity is tied to the combination of laptop and YubiKey slot.
-It encourages many identities, and is probably more difficult to use.
+`age-plugin-piv-agent` also enforces a `1:1` relationship between YubiKey slots and identities, but the seed is kept on your laptop (sealed by the TPM).
+This means that to decrypt files on multiple laptops, you should provision a separate decrypting slot on the YubiKey for each laptop.
 
 For the threat model of malware stealing your ML-KEM seed, I am not sure there is much difference between the two.
 For `age-plugin-yubikey`: the certificate can be read without requiring a touch on the YubiKey.

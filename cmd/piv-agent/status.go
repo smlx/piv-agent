@@ -8,17 +8,17 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/smlx/piv-agent/internal/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
+	"github.com/smlx/piv-agent/internal/piv"
 	"github.com/smlx/piv-agent/internal/securitykey"
 )
 
 // StatusCmd represents the status command.
 type StatusCmd struct {
-	SigningKeys    []string `kong:"enum='cached,always,never',help='Filter by signing keys with various touch policies'"`
-	DecryptingKeys []string `kong:"enum='cached,always,never',help='Filter by decrypting keys with various touch policies'"`
-	AgeRecipients  bool     `kong:"help='Omit the identity and only print the age recipient for the specified slot',xor='age'"`
-	AgeIdentities  bool     `kong:"help='Only print the age identities for the specified slot',xor='age'"`
+	SigningKeys     []string `kong:"enum='cached,always,never',help='Filter by signing keys with various touch policies'"`
+	DecryptingSlots []string `kong:"help='Filter by decrypting slots (e.g., 82, 83)'"`
+	AgeRecipients   bool     `kong:"help='Omit the identity and only print the age recipient for the specified slot',xor='age'"`
+	AgeIdentities   bool     `kong:"help='Only print the age identities for the specified slot',xor='age'"`
 }
 
 // printKeyStatus prints the status of the provided security key.
@@ -64,25 +64,39 @@ func printKeyStatus(
 	defer w.Flush()
 	var symbol string
 	var desc string
+	var missingSeed bool
+	var hasLocalSeed bool
 	for _, r := range reports {
 		switch r.Status {
 		case securitykey.SlotStatusPivAgent:
-			symbol = "🟢"
+			// U+FE0F (\xef\xb8\x8f) is the zero-width emoji varition sequence. It
+			// forces symbol to be two runes wide in tabwriter to match the warning
+			// symbol (which is already two runes wide).
+			symbol = "🟢\xef\xb8\x8f"
 			desc = "Set up by piv-agent"
+			if r.Type == securitykey.SlotTypeDecrypting {
+				hasLocalSeed = true
+			}
 		case securitykey.SlotStatusCompatible:
-			symbol = "🟡"
+			symbol = "🟡\xef\xb8\x8f"
 			desc = "Compatible key"
 		case securitykey.SlotStatusNotSetup:
-			symbol = "🔵"
+			symbol = "🔵\xef\xb8\x8f"
 			desc = "Not set up"
 		case securitykey.SlotStatusIncompatible:
-			symbol = "🔴"
+			symbol = "🔴\xef\xb8\x8f"
 			desc = "Incompatible key"
+		case securitykey.SlotStatusMissingSeed:
+			symbol = "⚠️"
+			desc = "Missing local seed"
+			missingSeed = true
 		}
+		rStr := fmt.Sprintf("Slot %x\t(%s,\ttouch policy: %s)",
+			r.Slot.Key, r.Type.String(), securitykey.TouchPolicyString(r.TouchPolicy))
 		if r.Error != nil {
-			fmt.Fprintf(w, "\t%s\t%s\t%s\t(%s)\n", symbol, r.String(), desc, r.Error)
+			fmt.Fprintf(w, "\t%s\t%s\t%s\t(%s)\n", symbol, rStr, desc, r.Error)
 		} else {
-			fmt.Fprintf(w, "\t%s\t%s\t%s\t\n", symbol, r.String(), desc)
+			fmt.Fprintf(w, "\t%s\t%s\t%s\t\n", symbol, rStr, desc)
 		}
 	}
 
@@ -121,6 +135,12 @@ func printKeyStatus(
 			fmt.Fprintf(w, "\t- %v\n", e)
 		}
 	}
+
+	if missingSeed && !hasLocalSeed {
+		fmt.Fprintf(w, "\n\t⚠️  Missing local seed: A slot is configured on the hardware, but its required\n")
+		fmt.Fprintf(w, "\t    ML-KEM seed is not available on this machine. It cannot be used for decryption here.\n")
+		fmt.Fprintf(w, "\t    Run 'piv-agent setup --add-decrypting-key' to provision a new identity for this host.\n")
+	}
 }
 
 // Run the status command.
@@ -141,12 +161,14 @@ func (cmd *StatusCmd) Run(l *slog.Logger) error {
 		slotFilter = append(slotFilter, s.Slot.Key)
 	}
 
-	for _, policy := range cmd.DecryptingKeys {
-		s, err := securitykey.DecryptingSlotSpec(policy)
+	for _, slotHex := range cmd.DecryptingSlots {
+		cleanSlotHex := strings.TrimPrefix(strings.ToLower(slotHex), "0x")
+		var slotKey uint32
+		_, err := fmt.Sscanf(cleanSlotHex, "%x", &slotKey)
 		if err != nil {
-			return err
+			return fmt.Errorf("invalid decrypting slot hex %q: %v", slotHex, err)
 		}
-		slotFilter = append(slotFilter, s.Slot.Key)
+		slotFilter = append(slotFilter, slotKey)
 	}
 
 	for i, k := range securityKeys {

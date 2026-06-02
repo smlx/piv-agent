@@ -225,9 +225,10 @@ func (i *ageIdentity) Unwrap(ss []*age.Stanza) ([]byte, error) {
 		if err == nil {
 			return fileKey, nil
 		}
-		// Decryption failed. Since multiple identities can share the same YubiKey
-		// (and therefore the same KeyTag), this stanza might simply be for another
-		// identity. Continue trying other stanzas.
+		// Decryption failed. With the 1:1 mapping between YubiKey slot and seed,
+		// if the tag matched, this stanza was definitely addressed to this identity.
+		// A decryption failure here means the stanza is corrupt or invalid.
+		return nil, fmt.Errorf("decryption failed for matching stanza: %v", err)
 	}
 	// Return an error if no stanza could be unwrapped.
 	return nil, age.ErrIncorrectIdentity

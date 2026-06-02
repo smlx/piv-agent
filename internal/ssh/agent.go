@@ -11,9 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"github.com/smlx/piv-agent/internal/piv"
+
 	"github.com/smlx/piv-agent/internal/notify"
 	pinentry "github.com/smlx/piv-agent/internal/pinentry"
+	"github.com/smlx/piv-agent/internal/piv"
 	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -159,7 +160,8 @@ func (a *Agent) signWithSigners(key gossh.PublicKey, data []byte,
 		defer cancel()
 		// perform signature
 		a.log.Debug("signing",
-			slog.Any("public key bytes", s.PublicKey().Marshal()))
+			slog.String("public key fingerprint",
+				gossh.FingerprintSHA256(s.PublicKey())))
 		return s.Sign(rand.Reader, data)
 	}
 	return nil, fmt.Errorf("%w: %v", ErrUnknownKey, key)
@@ -233,8 +235,11 @@ func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get signer for key: %v", err)
 			}
+			pubkey := s.PublicKey()
+			gossh.FingerprintSHA256(pubkey)
 			a.log.Debug("loaded signing key from security key",
-				slog.Any("public key bytes", s.PublicKey().Marshal()))
+				slog.String("public key fingerprint",
+					gossh.FingerprintSHA256(s.PublicKey())))
 			signers = append(signers, s)
 		}
 	}
@@ -262,7 +267,8 @@ func (a *Agent) doDecrypt(keyPath string,
 		signer, err = gossh.ParsePrivateKeyWithPassphrase(priv, passphrase)
 		if err == nil {
 			a.log.Debug("loaded key from disk",
-				slog.Any("public key bytes", signer.PublicKey().Marshal()))
+				slog.String("public key fingerprint",
+					gossh.FingerprintSHA256(signer.PublicKey())))
 			passphrases[string(signer.PublicKey().Marshal())] = passphrase
 			return signer, nil
 		}

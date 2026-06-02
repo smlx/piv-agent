@@ -40,10 +40,11 @@ You can list your age identities and their associated recipients by using the `s
 piv-agent status --age-identities
 ```
 
-This will print the identity details for each initialized decrypting key on your security token. The output format includes the hardware identity metadata followed by the identity string, which looks like this:
+This will print the identity details for each initialized decrypting key on your security token.
+The output format includes the hardware identity metadata followed by the identity string, which looks like this:
 
 ```
-# Hardware Identity for YubiKey 5 serial 12345678 slot 9d
+# Hardware Identity for YubiKey 5 serial 12345678 slot 82
 # Host name: hostname
 # Seed file: 0123456789abcdef
 # Recipient: age1...
@@ -57,7 +58,8 @@ To encrypt a file for your hardware identity, use the identity file generated du
 age -R ~/.config/age/identities.txt -o secret.txt.age secret.txt
 ```
 
-To decrypt the file, provide the same identities file. The `age` client will automatically communicate with the hardware token via the plugin:
+To decrypt the file, provide the same identities file.
+The `age` client will automatically communicate with the hardware token via the plugin:
 
 ```bash
 # Decrypt the file

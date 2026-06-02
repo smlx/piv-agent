@@ -5,10 +5,9 @@ import (
 )
 
 type CLI struct {
-	AgePlugin     string           `kong:"name='age-plugin',help='age plugin state machine',enum='recipient-v1,identity-v1,',default=''"`
-	GenerateSeeds GenerateSeedsCmd `kong:"cmd,help='Generate seeds and print corresponding identities'"`
-	Serve         ServeCmd         `kong:"cmd,default='1',help='Listen for age plugin requests'"`
-	Version       VersionCmd       `kong:"cmd,help='Print version information'"`
+	AgePlugin string     `kong:"name='age-plugin',help='age plugin state machine',enum='recipient-v1,identity-v1,',default=''"`
+	Serve     ServeCmd   `kong:"cmd,default='1',help='Listen for age plugin requests'"`
+	Version   VersionCmd `kong:"cmd,help='Print version information'"`
 }
 
 func main() {

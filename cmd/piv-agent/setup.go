@@ -9,21 +9,23 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/smlx/piv-agent/internal/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
+	"github.com/smlx/piv-agent/internal/piv"
 	"github.com/smlx/piv-agent/internal/securitykey"
 	"golang.org/x/term"
 )
 
 // SetupCmd represents the setup command.
 type SetupCmd struct {
-	Serial         uint32   `kong:"help='Specify the serial number of the security key to target'"`
-	FactoryReset   bool     `kong:"help='Wipe all existing keys on the security key and perform a full reset of the PIV applet'"`
-	Force          bool     `kong:"help='Bypass all interactive confirmation prompts'"`
-	PIN            string   `kong:"xor='pin',help='Authenticate with this PIN. Prompted interactively if not provided.'"`
-	NewPIN         string   `kong:"xor='pin',help='Set this as the new PIN/PUK during factory reset or initial setup. Prompted interactively if not provided.'"`
-	SigningKeys    []string `kong:"enum='cached,always,never',help='Generate signing keys with various touch policies'"`
-	DecryptingKeys []string `kong:"enum='cached,always,never',help='Generate decrypting keys with various touch policies'"`
+	Serial           uint32   `kong:"help='Specify the serial number of the security key to target'"`
+	FactoryReset     bool     `kong:"help='Wipe all existing keys on the security key and perform a full reset of the PIV applet'"`
+	Force            bool     `kong:"help='Bypass all interactive confirmation prompts'"`
+	PIN              string   `kong:"xor='pin',help='Authenticate with this PIN. Prompted interactively if not provided.'"`
+	NewPIN           string   `kong:"xor='pin',help='Set this as the new PIN/PUK during factory reset or initial setup. Prompted interactively if not provided.'"`
+	SigningKeys      []string `kong:"enum='cached,always,never',help='Generate signing keys with various touch policies'"`
+	AddDecryptingKey bool     `kong:"help='Generate a new decrypting key on the next available hardware slot'"`
+	OverwriteSlot    string   `kong:"help='Force setup of a specific slot (e.g. 82 or 9c)'"`
+	TouchPolicy      string   `kong:"enum='cached,always,never',default='always',help='Touch policy to apply when using --overwrite-slot'"`
 }
 
 // Help returns detailed help text for the setup command.
@@ -120,7 +122,11 @@ func promptPIN(prompt string, confirm bool) (string, error) {
 }
 
 // promptConfirm prompts the user to confirm an action.
-func promptConfirm(prompt, expectedPhrase string, caseSensitive bool) (bool, error) {
+func promptConfirm(
+	prompt,
+	expectedPhrase string,
+	caseSensitive bool,
+) (bool, error) {
 	fmt.Print(prompt)
 	response, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	if err != nil {
@@ -138,21 +144,24 @@ func promptConfirm(prompt, expectedPhrase string, caseSensitive bool) (bool, err
 }
 
 // confirmOverwrite prompts the user to confirm overwriting specific slots.
-func confirmOverwrite(k *securitykey.SecurityKey, force bool, signingKeys []string, decryptingKeys []string) (bool, error) {
+func confirmOverwrite(
+	k *securitykey.SecurityKey,
+	force bool,
+	signingKeys []string,
+	overwriteSlot string,
+) (bool, error) {
 	statuses := k.Statuses(nil)
 	var slots []string
 	for _, status := range statuses {
-		if status.Status == securitykey.SlotStatusIncompatible && status.Error != nil {
-			return false, fmt.Errorf("couldn't check slot %s: %v", status.String(), status.Error)
-		}
 		// skip slots that the user isn't trying to configure
 		slotOverwrite := false
 		if status.Type == securitykey.SlotTypeSigning &&
-			slices.Contains(signingKeys, status.TouchPolicy.String()) {
+			slices.Contains(signingKeys, securitykey.TouchPolicyString(status.TouchPolicy)) {
 			slotOverwrite = true
 		}
+		cleanSlot := strings.TrimPrefix(strings.ToLower(overwriteSlot), "0x")
 		if status.Type == securitykey.SlotTypeDecrypting &&
-			slices.Contains(decryptingKeys, status.TouchPolicy.String()) {
+			cleanSlot != "" && fmt.Sprintf("%x", status.Slot.Key) == cleanSlot {
 			slotOverwrite = true
 		}
 		if !slotOverwrite {
@@ -210,20 +219,21 @@ func (cmd *SetupCmd) AfterApply() error {
 		}
 	}
 
+	if cmd.OverwriteSlot != "" {
+		if cmd.AddDecryptingKey || len(cmd.SigningKeys) > 0 {
+			return fmt.Errorf("--overwrite-slot cannot be used with --signing-keys or --add-decrypting-key")
+		}
+	}
+	if cmd.OverwriteSlot == "" && cmd.TouchPolicy != "always" {
+		return fmt.Errorf("--touch-policy can only be used with --overwrite-slot")
+	}
+
 	seenSigning := map[string]bool{}
 	for _, policy := range cmd.SigningKeys {
 		if seenSigning[policy] {
 			return fmt.Errorf("duplicate touch policy specified in --signing-keys")
 		}
 		seenSigning[policy] = true
-	}
-
-	seenDecrypting := map[string]bool{}
-	for _, policy := range cmd.DecryptingKeys {
-		if seenDecrypting[policy] {
-			return fmt.Errorf("duplicate touch policy specified in --decrypting-keys")
-		}
-		seenDecrypting[policy] = true
 	}
 
 	return nil
@@ -267,29 +277,73 @@ func (cmd *SetupCmd) Run(l *slog.Logger) error {
 	}
 
 	var signingKeys []string
-	var decryptingKeys []string
+	var addDecryptingKey bool
+	var overwriteSlot string
+	var touchPolicy string
 
-	if len(cmd.SigningKeys) == 0 && len(cmd.DecryptingKeys) == 0 {
+	if len(cmd.SigningKeys) == 0 && !cmd.AddDecryptingKey && cmd.OverwriteSlot == "" {
 		if cmd.FactoryReset || isFactoryState {
 			signingKeys = []string{"cached", "always", "never"}
-			decryptingKeys = []string{"cached", "always", "never"}
+			addDecryptingKey = true
 		} else {
 			return fmt.Errorf("security key is already set up: " +
-				"configure specific slots with --signing-keys or --decrypting-keys, " +
+				"configure specific slots with --signing-keys, --add-decrypting-key, or --overwrite-slot, " +
 				"or use --factory-reset")
 		}
 	} else {
 		// specific key specified
 		signingKeys = cmd.SigningKeys
-		decryptingKeys = cmd.DecryptingKeys
+		addDecryptingKey = cmd.AddDecryptingKey
+		overwriteSlot = cmd.OverwriteSlot
+		touchPolicy = cmd.TouchPolicy
+
+		if len(signingKeys) > 0 || addDecryptingKey || overwriteSlot != "" {
+			fmt.Printf("\nConfiguration to be applied:\n")
+			for _, p := range signingKeys {
+				if spec, err := securitykey.SigningSlotSpec(p); err == nil {
+					fmt.Printf(" - Setup Signing slot %x with touch policy: %s\n", spec.Slot.Key, p)
+				}
+			}
+			if addDecryptingKey {
+				if spec, err := targetKey.NextAvailableDecryptSlot(); err == nil {
+					fmt.Printf(" - Setup Decrypting slot %x with touch policy: always\n", spec.Slot.Key)
+				} else {
+					fmt.Printf(" - Setup Decrypting slot: (error finding next available slot)\n")
+				}
+			}
+			if overwriteSlot != "" {
+				fmt.Printf(" - Overwrite slot %s with touch policy: %s\n", overwriteSlot, touchPolicy)
+			}
+		}
 
 		if !cmd.FactoryReset && !isFactoryState {
-			ok, err := confirmOverwrite(targetKey, cmd.Force, signingKeys, decryptingKeys)
+			ok, err := confirmOverwrite(targetKey, cmd.Force, signingKeys, overwriteSlot)
 			if err != nil {
 				return fmt.Errorf("couldn't confirm overwriting keys: %v", err)
 			}
 			if !ok {
 				return fmt.Errorf("overwriting keys denied")
+			}
+
+			if addDecryptingKey && !cmd.Force {
+				var hasAvailableSeed bool
+				for _, status := range targetKey.Statuses(nil) {
+					if status.Type == securitykey.SlotTypeDecrypting && status.Status == securitykey.SlotStatusPivAgent {
+						hasAvailableSeed = true
+						break
+					}
+				}
+				if hasAvailableSeed {
+					fmt.Printf("\n⚠️ WARNING: A decrypting slot is already configured and available for this machine. ⚠️\n")
+					fmt.Printf("Adding another decrypting key will consume an additional slot.\n")
+					ok, err := promptConfirm("Type \"yes\" to continue, or anything else to cancel: ", "yes", false)
+					if err != nil {
+						return fmt.Errorf("couldn't confirm adding decrypting key: %v", err)
+					}
+					if !ok {
+						return fmt.Errorf("adding decrypting key denied")
+					}
+				}
 			}
 		}
 	}
@@ -378,19 +432,24 @@ func (cmd *SetupCmd) Run(l *slog.Logger) error {
 	}
 
 	err = targetKey.Setup(version, securitykey.SetupOptions{
-		FactoryReset:   cmd.FactoryReset,
-		IsFactoryState: isFactoryState,
-		SigningKeys:    signingKeys,
-		DecryptingKeys: decryptingKeys,
-		PIN:            currentPIN,
-		NewPIN:         newPIN,
+		FactoryReset:     cmd.FactoryReset,
+		IsFactoryState:   isFactoryState,
+		SigningKeys:      signingKeys,
+		AddDecryptingKey: addDecryptingKey,
+		OverwriteSlot:    overwriteSlot,
+		TouchPolicy:      touchPolicy,
+		PIN:              currentPIN,
+		NewPIN:           newPIN,
 	})
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("\n✅ Successfully configured %d slot(s).\n\n",
-		len(signingKeys)+len(decryptingKeys))
+	numSlots := len(signingKeys)
+	if addDecryptingKey || overwriteSlot != "" {
+		numSlots++
+	}
+	fmt.Printf("\n✅ Successfully configured %d slot(s).\n\n", numSlots)
 	printKeyStatus(targetKey, nil, false, false)
 
 	return nil

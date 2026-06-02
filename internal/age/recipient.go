@@ -16,10 +16,10 @@ func EncodeRecipient(mlkemPub, ecdhPub []byte) string {
 	return plugin.EncodeRecipient("piv-agent", pub)
 }
 
-// CalculateFileID computes the 8-byte file ID that binds a seed to a specific
+// CalculateSeedFileID computes the 8-byte file ID that binds a seed to a specific
 // slot. It is calculated as the truncated SHA-256 hash of the concatenated
 // ML-KEM encapsulation key and the 4-byte P-256 keyTag.
-func CalculateFileID(dk *mlkem.DecapsulationKey768, keyTag [4]byte) []byte {
+func CalculateSeedFileID(dk *mlkem.DecapsulationKey768, keyTag [4]byte) []byte {
 	hashInput := append(dk.EncapsulationKey().Bytes(), keyTag[:]...)
 	hash := sha256.Sum256(hashInput)
 	return hash[:8]

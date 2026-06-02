@@ -15,7 +15,7 @@ This procedure is only required once per hardware security device.
 Performing it a second time will reset the keys on the PIV applet of the device.
 It will not make any changes to applets providing other functionality the device may have, such as WebAuthn.
 
-By default, `piv-agent` uses six slots on your hardware security device to set up three signing keys, and three decrypting key.
+By default, `piv-agent` uses up to six slots on your hardware security device to set up three signing keys, and up to three decrypting keys.
 Each of the signing and decrypting keys have different [touch policies](https://docs.yubico.com/yesdk/users-manual/application-piv/pin-touch-policies.html): never required, cached (for 15 seconds), and always.
 
 The three signing keys are used for SSH signing.
@@ -30,9 +30,11 @@ It is highly recommended to use these setup defaults as this has had the most us
 | `0x9a`  | PIV Authentication       | Signing           | Cached       |
 | `0x9c`  | Digital Signature        | Signing           | Always       |
 | `0x9e`  | Card Authentication      | Signing           | Never        |
-| `0x9d`  | Key Management           | Decrypting        | Cached       |
 | `0x82`  | Key Management (retired) | Decrypting        | Always       |
-| `0x83`  | Key Management (retired) | Decrypting        | Never        |
+| `0x83`  | Key Management (retired) | Decrypting        | Always *     |
+| `0x84`  | Key Management (retired) | Decrypting        | Always *     |
+
+\* Used when configuring the security key for decrypting on multiple machines.
 
 #### Example setup workflow
 
@@ -63,7 +65,7 @@ Other PIV slots will not be affected, and will retain their existing keys.
 For example this command will reset just the decrypting key with touch policy `never` on your Yubikey:
 
 ```bash
-piv-agent setup --serial=12345678 --pin=123456 --decrypting-keys=never
+piv-agent setup --serial=12345678 --pin=123456 --overwrite-slot=82 --touch-policy=never
 ```
 
 See the interactive help for more usage details:
@@ -129,23 +131,29 @@ IdentityFile ~/.ssh/id_yk_cached.pub
 
 ### Setup
 
-To set up `age` with your hardware security device, use the `generate-seeds` command to create your seeds and output your corresponding hardware identity:
+To set up `age` with your hardware security device, the default `piv-agent setup` command will generate a local seed and assign it to the next available decrypting slot (typically `0x82`).
+
+To view your age identities, use the `status` command:
 
 ```bash
-age-plugin-piv-agent generate-seeds
+piv-agent status --age-identities
 ```
 
 Save the output identity to a file (for example, `~/.config/age/identities.txt`) so you can use it to encrypt or decrypt files with `age`.
 
 > [!WARNING]
-> Running the `generate-seeds` command a second time will generate new random seeds and new identities. The old seeds will remain in the credential store so existing files can still be decrypted, but you will receive different identity strings.
+> Running the `piv-agent setup --add-decrypting-key` command a second time will provision a new slot on the device with a new seed.
+> The old seeds will remain in the credential store so existing files can still be decrypted, and the old slot can still be used if needed.
 
 ### Offline Recovery Identity (Break-Glass)
 
-Generating an offline recovery identity (`mlkem768x25519` native post-quantum key) alongside your hardware-bound identity is highly recommended. This provides a "break-glass" mechanism for two important scenarios:
+Generating an offline recovery identity (`mlkem768x25519` native post-quantum key) alongside your hardware-bound identity is highly recommended.
+This provides a "break-glass" mechanism for two important scenarios:
 
-* **Disaster Recovery (Lost Hardware):** If your machine is destroyed or your hardware token is lost, the local TPM-sealed seed is permanently inaccessible. Having the offline seed allows you to decrypt your data on any machine using a standard `age` client.
-* **High-Volume Batch Decryption:** If your hardware token is configured with an `always` touch policy, batch decrypting many files (e.g., during a password manager migration) would require hundreds of physical touches. You can temporarily use the software offline key to perform batch decryption instantly using CPU power alone.
+* **Disaster Recovery (Lost Hardware):** If your machine is destroyed or your hardware token is lost, the local TPM-sealed seed is permanently inaccessible.
+  Having the offline seed allows you to decrypt your data on any machine using a standard `age` client.
+* **High-Volume Batch Decryption:** If your hardware token is configured with an `always` touch policy, batch decrypting many files (e.g., during a password manager migration) would require hundreds of physical touches.
+  You can temporarily use the software offline key to perform batch decryption instantly using CPU power alone.
 
 To generate this recovery key, use the standard `age-keygen` tool:
 
@@ -154,10 +162,11 @@ To generate this recovery key, use the standard `age-keygen` tool:
 age-keygen -pq -o /tmp/recovery-identity.txt
 ```
 
-You should print the resulting `AGE-SECRET-KEY-PQ-...` string as a QR code and store it entirely offline in cold storage. On Debian Linux, you can easily generate a QR code using `qrencode`:
+You should print the resulting `AGE-SECRET-KEY-PQ-...` string as a QR code and store it entirely offline in cold storage.
+You can generate a QR code using `qrencode`:
 
 ```bash
-# Install qrencode if necessary
+# Install qrencode if necessary. Example command for Debian/Ubuntu.
 sudo apt-get install qrencode
 
 # Generate the QR code image
@@ -187,14 +196,14 @@ These will be used by passage for decryption.
 > Passage doesn't currently support multiple identities. There's a PR for this [here](https://github.com/FiloSottile/passage/pull/71).
 
 ```bash
-piv-agent status --age-identities --decrypting-keys=always >> $HOME/.passage/identities
+piv-agent status --age-identities --decrypting-slots=82 >> $HOME/.passage/identities
 ```
 
 Configure the passage recipients.
 These will be used by passage for encryption.
 
 ```bash
-piv-agent status --age-recipients --decrypting-keys=always >> $HOME/.passage/store/.age-recipients
+piv-agent status --age-recipients --decrypting-slots=82 >> $HOME/.passage/store/.age-recipients
 ```
 
 Now you can migrate from pass to passage.

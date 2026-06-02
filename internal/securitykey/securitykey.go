@@ -7,6 +7,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/asn1"
 	"errors"
 	"fmt"
 	"sync"
@@ -45,6 +46,15 @@ type SecurityKey struct {
 	certErrors     map[uint32]error
 }
 
+// SeedFileIDOID is the custom OID used to store the 8-byte FileID of the ML-KEM
+// seed in the X.509 certificate on the YubiKey.
+// It uses the smlx Private Enterprise Number 65955.
+var SeedFileIDOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 65955, 1, 1}
+
+// TouchPolicyOID is the OID for the touch policy extension.
+// See https://docs.yubico.com/hardware/oid/oid-piv-arc.html#sample-oid-with-piv-type
+var TouchPolicyOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 41482, 3, 8}
+
 // KeyTag returns a 4-byte truncated SHA256 hash of the uncompressed P-256
 // curve point. This short tag is used to uniquely identify the key and
 // cryptographically bind data (such as age seed files) to this PIV key.
@@ -82,6 +92,19 @@ func New(card string, pe *pinentry.PINEntry) (*SecurityKey, error) {
 	}
 
 	return k, nil
+}
+
+// ExtractFileIDFromCert returns the FileID from the custom OID extension, or nil.
+func ExtractFileIDFromCert(cert *x509.Certificate) ([]byte, error) {
+	for _, ext := range cert.Extensions {
+		if ext.Id.Equal(SeedFileIDOID) {
+			if len(ext.Value) == 8 {
+				return ext.Value, nil
+			}
+			return nil, fmt.Errorf("invalid file ID length in certificate: %d", len(ext.Value))
+		}
+	}
+	return nil, nil
 }
 
 func (k *SecurityKey) loadCache() error {
@@ -127,24 +150,45 @@ func (k *SecurityKey) loadCache() error {
 		})
 	}
 
-	for _, s := range defaultDecryptSlots {
-		// load cert
-		cert, err := k.yubikey.Certificate(s.Slot)
-		certErrors[s.Slot.Key] = err
+	for _, slot := range RetiredDecryptingSlots() {
+		cert, err := k.yubikey.Certificate(slot)
+		certErrors[slot.Key] = err
 		if errors.Is(err, pivgo.ErrNotFound) {
 			continue // no certificate in this slot, so no key available
 		}
 		if err != nil {
 			return fmt.Errorf(
-				"couldn't get certificate for slot %x: %v", s.Slot.Key, err)
+				"couldn't get certificate for slot %x: %v", slot.Key, err)
 		}
+
 		// cache cert
-		certificates[s.Slot.Key] = cert
+		certificates[slot.Key] = cert
+
+		// check if it's our decrypting key
+		fileID, err := ExtractFileIDFromCert(cert)
+		if err != nil {
+			return fmt.Errorf("couldn't extract file ID from cert for slot %x: %w", slot.Key, err)
+		}
+		if fileID == nil {
+			continue // not a piv-agent decrypting slot
+		}
+
 		// load keys
 		pubKey, ok := cert.PublicKey.(*ecdsa.PublicKey)
 		if !ok {
 			return fmt.Errorf("invalid public key type: %T", cert.PublicKey)
 		}
+
+		touchPolicy := pivgo.TouchPolicyAlways
+		for _, ext := range cert.Extensions {
+			if ext.Id.Equal(TouchPolicyOID) {
+				if len(ext.Value) == 2 {
+					touchPolicy = pivgo.TouchPolicy(ext.Value[1])
+				}
+			}
+		}
+		s := SlotSpec{Slot: slot, TouchPolicy: touchPolicy}
+
 		ck := CryptoKey{Public: pubKey, SlotSpec: s}
 		cryptoKeys = append(cryptoKeys, ck)
 		decryptingKeys = append(decryptingKeys, ck)

@@ -22,8 +22,9 @@ import (
 type KeyService struct {
 	mu           sync.Mutex
 	log          *slog.Logger
-	pinentry     *pinentry.PINEntry
-	securityKeys []*securitykey.SecurityKey
+	pinentry         *pinentry.PINEntry
+	securityKeys     []*securitykey.SecurityKey
+	missingSeedCheck func(sk *securitykey.SecurityKey)
 }
 
 // ECDHKey implements ECDH using an underlying ECDSA key.
@@ -45,6 +46,13 @@ func New(l *slog.Logger, pe *pinentry.PINEntry) *KeyService {
 		log:      l,
 		pinentry: pe,
 	}
+}
+
+// SetMissingSeedCheck sets a callback to be executed when a new security key is loaded.
+func (p *KeyService) SetMissingSeedCheck(f func(sk *securitykey.SecurityKey)) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.missingSeedCheck = f
 }
 
 // KeyTag calculates the 4-byte truncated SHA-256 hash of the uncompressed
@@ -138,6 +146,9 @@ func (p *KeyService) reloadSecurityKeys(cards []string) error {
 			continue
 		}
 		p.securityKeys = append(p.securityKeys, sk)
+		if p.missingSeedCheck != nil {
+			go p.missingSeedCheck(sk)
+		}
 	}
 	if len(p.securityKeys) == 0 {
 		p.log.Warn("no valid security keys found")
