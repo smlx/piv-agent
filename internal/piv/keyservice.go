@@ -174,13 +174,7 @@ func (p *KeyService) getSecurityKeys() ([]*securitykey.SecurityKey, error) {
 				reload = true
 				break
 			}
-			// check the keys are healthy
-			if _, err = sk.AttestationCertificate(); err != nil {
-				p.log.Debug("PIV KeyService: couldn't get AttestationCertificate()",
-					slog.Any("error", err))
-				reload = true
-				break
-			}
+
 		}
 	}
 	if reload || len(p.securityKeys) == 0 {
@@ -189,6 +183,16 @@ func (p *KeyService) getSecurityKeys() ([]*securitykey.SecurityKey, error) {
 		}
 	}
 	return p.securityKeys, nil
+}
+
+// ClearCache clears the cached security keys, forcing a reload on the next access.
+func (p *KeyService) ClearCache() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for _, sk := range p.securityKeys {
+		_ = sk.Close()
+	}
+	p.securityKeys = nil
 }
 
 // SecurityKeys returns a slice containing all available security keys.

@@ -129,25 +129,57 @@ func (a *Agent) Sign(
 ) (*gossh.Signature, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+
 	// try token keys first
-	ts, err := a.tokenSigners()
+	s, err := a.getTokenSignerForPublicKey(key)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get token signers: %v", err)
-	}
-	sig, err := a.signWithSigners(key, data, ts)
-	if err != nil {
-		if !errors.Is(err, ErrUnknownKey) || !a.loadKeyfile {
+		if !errors.Is(err, ErrUnknownKey) {
+			return nil, fmt.Errorf("couldn't get token signer: %v", err)
+		}
+		if !a.loadKeyfile {
 			return nil, err
 		}
 	} else {
-		return sig, nil
+		sig, signErr := a.signWithRetry(s, key, data)
+		if signErr == nil {
+			return sig, nil
+		}
+		if !errors.Is(signErr, ErrUnknownKey) || !a.loadKeyfile {
+			return nil, signErr
+		}
 	}
+
 	// fall back to keyfile keys
 	ks, err := a.keyfileSigners()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get keyfile signers: %v", err)
 	}
 	return a.signWithSigners(key, data, ks)
+}
+
+func (a *Agent) signWithRetry(
+	s gossh.Signer,
+	key gossh.PublicKey,
+	data []byte,
+) (*gossh.Signature, error) {
+	cancel := a.notify.Touch()
+	defer cancel()
+	// perform signature
+	a.log.Debug("signing",
+		slog.String("public key fingerprint",
+			gossh.FingerprintSHA256(s.PublicKey())))
+	sig, err := s.Sign(rand.Reader, data)
+	if err != nil {
+		a.log.Debug("signing failed, retrying with force reload", slog.Any("error", err))
+		a.piv.ClearCache()
+		// try to get signer again
+		s, err = a.getTokenSignerForPublicKey(key)
+		if err != nil {
+			return nil, err
+		}
+		return s.Sign(rand.Reader, data)
+	}
+	return sig, nil
 }
 
 func (a *Agent) signWithSigners(key gossh.PublicKey, data []byte,
@@ -163,6 +195,37 @@ func (a *Agent) signWithSigners(key gossh.PublicKey, data []byte,
 			slog.String("public key fingerprint",
 				gossh.FingerprintSHA256(s.PublicKey())))
 		return s.Sign(rand.Reader, data)
+	}
+	return nil, fmt.Errorf("%w: %v", ErrUnknownKey, key)
+}
+
+func (a *Agent) getTokenSignerForPublicKey(
+	key gossh.PublicKey,
+) (gossh.Signer, error) {
+	securityKeys, err := a.piv.SecurityKeys()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get security keys: %v", err)
+	}
+	for _, k := range securityKeys {
+		sks, err := k.SigningKeys()
+		if err != nil {
+			continue // skip errors
+		}
+		for _, s := range sks {
+			if !bytes.Equal(s.PubSSH.Marshal(), key.Marshal()) {
+				continue
+			}
+			privKey, err := k.PrivateKey(&s.CryptoKey)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get private key for slot %x: %v",
+					s.SlotSpec.Slot.Key, err)
+			}
+			signer, err := gossh.NewSignerFromKey(privKey)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get signer for key: %v", err)
+			}
+			return signer, nil
+		}
 	}
 	return nil, fmt.Errorf("%w: %v", ErrUnknownKey, key)
 }
