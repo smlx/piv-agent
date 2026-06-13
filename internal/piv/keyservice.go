@@ -20,8 +20,8 @@ import (
 // KeyService represents a collection of tokens and slots accessed by the
 // Personal Identity Verifaction card interface.
 type KeyService struct {
-	mu           sync.Mutex
-	log          *slog.Logger
+	mu               sync.Mutex
+	log              *slog.Logger
 	pinentry         *pinentry.PINEntry
 	securityKeys     []*securitykey.SecurityKey
 	missingSeedCheck func(sk *securitykey.SecurityKey)
@@ -77,6 +77,8 @@ func KeyTag(pub crypto.PublicKey) ([4]byte, error) {
 func (p *KeyService) GetECDHKey(serial uint32, slotID uint32, keyTag [4]byte) (age.ECDHKey, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	var retried bool
+retry:
 	securityKeys, err := p.getSecurityKeys()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
@@ -106,6 +108,11 @@ func (p *KeyService) GetECDHKey(serial uint32, slotID uint32, keyTag [4]byte) (a
 			}
 			privKey, err := sk.PrivateKey(&cryptoKey)
 			if err != nil {
+				if !retried {
+					p.clearCacheLocked()
+					retried = true
+					goto retry
+				}
 				return nil, fmt.Errorf("couldn't get private key from slot")
 			}
 			pivGoPrivKey, ok := privKey.(*pivgo.ECDSAPrivateKey)
@@ -189,6 +196,11 @@ func (p *KeyService) getSecurityKeys() ([]*securitykey.SecurityKey, error) {
 func (p *KeyService) ClearCache() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	p.clearCacheLocked()
+}
+
+func (p *KeyService) clearCacheLocked() {
+	p.log.Debug("clearing key cache to reload security keys")
 	for _, sk := range p.securityKeys {
 		_ = sk.Close()
 	}

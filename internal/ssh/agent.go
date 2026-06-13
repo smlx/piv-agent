@@ -202,6 +202,8 @@ func (a *Agent) signWithSigners(key gossh.PublicKey, data []byte,
 func (a *Agent) getTokenSignerForPublicKey(
 	key gossh.PublicKey,
 ) (gossh.Signer, error) {
+	var retried bool
+retry:
 	securityKeys, err := a.piv.SecurityKeys()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
@@ -217,6 +219,11 @@ func (a *Agent) getTokenSignerForPublicKey(
 			}
 			privKey, err := k.PrivateKey(&s.CryptoKey)
 			if err != nil {
+				if !retried {
+					a.piv.ClearCache()
+					retried = true
+					goto retry
+				}
 				return nil, fmt.Errorf("couldn't get private key for slot %x: %v",
 					s.SlotSpec.Slot.Key, err)
 			}
@@ -279,6 +286,9 @@ func (a *Agent) Signers() ([]gossh.Signer, error) {
 // get signers for all keys stored in hardware tokens
 func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 	var signers []gossh.Signer
+	var retried bool
+retry:
+	signers = nil
 	securityKeys, err := a.piv.SecurityKeys()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get security keys: %v", err)
@@ -291,19 +301,24 @@ func (a *Agent) tokenSigners() ([]gossh.Signer, error) {
 		for _, s := range sks {
 			privKey, err := k.PrivateKey(&s.CryptoKey)
 			if err != nil {
+				if !retried {
+					a.piv.ClearCache()
+					retried = true
+					goto retry
+				}
 				return nil, fmt.Errorf("couldn't get private key for slot %x: %v",
 					s.SlotSpec.Slot.Key, err)
 			}
-			s, err := gossh.NewSignerFromKey(privKey)
+			signer, err := gossh.NewSignerFromKey(privKey)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get signer for key: %v", err)
 			}
-			pubkey := s.PublicKey()
+			pubkey := signer.PublicKey()
 			gossh.FingerprintSHA256(pubkey)
 			a.log.Debug("loaded signing key from security key",
 				slog.String("public key fingerprint",
-					gossh.FingerprintSHA256(s.PublicKey())))
-			signers = append(signers, s)
+					gossh.FingerprintSHA256(signer.PublicKey())))
+			signers = append(signers, signer)
 		}
 	}
 	return signers, nil
