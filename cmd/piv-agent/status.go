@@ -69,25 +69,22 @@ func printKeyStatus(
 	for _, r := range reports {
 		switch r.Status {
 		case securitykey.SlotStatusPivAgent:
-			// U+FE0F (\xef\xb8\x8f) is the zero-width emoji varition sequence. It
-			// forces symbol to be two runes wide in tabwriter to match the warning
-			// symbol (which is already two runes wide).
-			symbol = "🟢\xef\xb8\x8f"
+			symbol = "🟢"
 			desc = "Set up by piv-agent"
 			if r.Type == securitykey.SlotTypeDecrypting {
 				hasLocalSeed = true
 			}
 		case securitykey.SlotStatusCompatible:
-			symbol = "🟡\xef\xb8\x8f"
+			symbol = "🔵"
 			desc = "Compatible key"
 		case securitykey.SlotStatusNotSetup:
-			symbol = "🔵\xef\xb8\x8f"
+			symbol = "⚪"
 			desc = "Not set up"
 		case securitykey.SlotStatusIncompatible:
-			symbol = "🔴\xef\xb8\x8f"
+			symbol = "🔴"
 			desc = "Incompatible key"
 		case securitykey.SlotStatusMissingSeed:
-			symbol = "⚠️"
+			symbol = "🟡"
 			desc = "Missing local seed"
 			missingSeed = true
 		}
