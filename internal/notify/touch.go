@@ -60,7 +60,7 @@ func (n *Notify) Message(summary, body string) error {
 func (n *Notify) Touch() context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		timer := time.NewTimer(time.Second)
+		timer := time.NewTimer(2 * time.Second)
 		defer timer.Stop()
 		select {
 		case <-ctx.Done():
