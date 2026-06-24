@@ -92,9 +92,9 @@ If you have tested another device or firmware version with `piv-agent` successfu
 
 ### Protocol / Encryption Algorithm support
 
-| Supported | Not Supported | Support Blocked (Curve25519) |
-| ---       | ---           | ---                          |
-| ✅        | ❌            | ⏳                           |
+| Supported | Not Supported |
+| ---       | ---           |
+| ✅        | ❌            |
 
 #### ssh-agent
 
