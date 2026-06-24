@@ -7,11 +7,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/asn1"
 	"errors"
 	"fmt"
 	"sync"
 
-	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	pivgo "github.com/go-piv/piv-go/v2/piv"
 	"github.com/smlx/piv-agent/internal/pinentry"
 	"golang.org/x/crypto/ssh"
@@ -27,14 +27,6 @@ type CryptoKey struct {
 type SigningKey struct {
 	CryptoKey
 	PubSSH ssh.PublicKey
-	PubPGP *packet.PublicKey
-}
-
-// DecryptingKey is a cryptographic decrypting key on a hardware security
-// device.
-type DecryptingKey struct {
-	CryptoKey
-	PubPGP *packet.PublicKey
 }
 
 // A SecurityKey is a physical hardware token which implements PIV, such as a
@@ -48,11 +40,20 @@ type SecurityKey struct {
 	mu             sync.Mutex // guards the cached fields below
 	validCache     bool
 	signingKeys    []SigningKey
-	decryptingKeys []DecryptingKey
+	decryptingKeys []CryptoKey
 	cryptoKeys     []CryptoKey
 	certificates   map[uint32]*x509.Certificate
 	certErrors     map[uint32]error
 }
+
+// SeedFileIDOID is the custom OID used to store the 8-byte FileID of the ML-KEM
+// seed in the X.509 certificate on the YubiKey.
+// It uses the smlx Private Enterprise Number 65955.
+var SeedFileIDOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 65955, 1, 1}
+
+// TouchPolicyOID is the OID for the touch policy extension.
+// See https://docs.yubico.com/hardware/oid/oid-piv-arc.html#sample-oid-with-piv-type
+var TouchPolicyOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 41482, 3, 8}
 
 // KeyTag returns a 4-byte truncated SHA256 hash of the uncompressed P-256
 // curve point. This short tag is used to uniquely identify the key and
@@ -93,6 +94,19 @@ func New(card string, pe *pinentry.PINEntry) (*SecurityKey, error) {
 	return k, nil
 }
 
+// ExtractFileIDFromCert returns the FileID from the custom OID extension, or nil.
+func ExtractFileIDFromCert(cert *x509.Certificate) ([]byte, error) {
+	for _, ext := range cert.Extensions {
+		if ext.Id.Equal(SeedFileIDOID) {
+			if len(ext.Value) == 8 {
+				return ext.Value, nil
+			}
+			return nil, fmt.Errorf("invalid file ID length in certificate: %d", len(ext.Value))
+		}
+	}
+	return nil, nil
+}
+
 func (k *SecurityKey) loadCache() error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -103,7 +117,7 @@ func (k *SecurityKey) loadCache() error {
 	certificates := map[uint32]*x509.Certificate{}
 	certErrors := map[uint32]error{}
 	var signingKeys []SigningKey
-	var decryptingKeys []DecryptingKey
+	var decryptingKeys []CryptoKey
 	var cryptoKeys []CryptoKey
 
 	for _, s := range defaultSignSlots {
@@ -133,36 +147,51 @@ func (k *SecurityKey) loadCache() error {
 		signingKeys = append(signingKeys, SigningKey{
 			CryptoKey: ck,
 			PubSSH:    pubSSH,
-			PubPGP: packet.NewECDSAPublicKey(cert.NotBefore,
-				openpgpECDSAPublicKey(pubKey)),
 		})
 	}
 
-	for _, s := range defaultDecryptSlots {
-		// load cert
-		cert, err := k.yubikey.Certificate(s.Slot)
-		certErrors[s.Slot.Key] = err
+	for _, slot := range RetiredDecryptingSlots() {
+		cert, err := k.yubikey.Certificate(slot)
+		certErrors[slot.Key] = err
 		if errors.Is(err, pivgo.ErrNotFound) {
 			continue // no certificate in this slot, so no key available
 		}
 		if err != nil {
 			return fmt.Errorf(
-				"couldn't get certificate for slot %x: %v", s.Slot.Key, err)
+				"couldn't get certificate for slot %x: %v", slot.Key, err)
 		}
+
 		// cache cert
-		certificates[s.Slot.Key] = cert
+		certificates[slot.Key] = cert
+
+		// check if it's our decrypting key
+		fileID, err := ExtractFileIDFromCert(cert)
+		if err != nil {
+			return fmt.Errorf("couldn't extract file ID from cert for slot %x: %w", slot.Key, err)
+		}
+		if fileID == nil {
+			continue // not a piv-agent decrypting slot
+		}
+
 		// load keys
 		pubKey, ok := cert.PublicKey.(*ecdsa.PublicKey)
 		if !ok {
 			return fmt.Errorf("invalid public key type: %T", cert.PublicKey)
 		}
+
+		touchPolicy := pivgo.TouchPolicyAlways
+		for _, ext := range cert.Extensions {
+			if ext.Id.Equal(TouchPolicyOID) {
+				if len(ext.Value) == 2 {
+					touchPolicy = pivgo.TouchPolicy(ext.Value[1])
+				}
+			}
+		}
+		s := SlotSpec{Slot: slot, TouchPolicy: touchPolicy}
+
 		ck := CryptoKey{Public: pubKey, SlotSpec: s}
 		cryptoKeys = append(cryptoKeys, ck)
-		decryptingKeys = append(decryptingKeys, DecryptingKey{
-			CryptoKey: ck,
-			PubPGP: packet.NewECDSAPublicKey(cert.NotBefore,
-				openpgpECDSAPublicKey(pubKey)),
-		})
+		decryptingKeys = append(decryptingKeys, ck)
 	}
 
 	// store cache
@@ -250,7 +279,7 @@ func (k *SecurityKey) SigningKeys() ([]SigningKey, error) {
 
 // DecryptingKeys returns the slice of cryptographic decrypting keys held by
 // the SecurityKey.
-func (k *SecurityKey) DecryptingKeys() ([]DecryptingKey, error) {
+func (k *SecurityKey) DecryptingKeys() ([]CryptoKey, error) {
 	if err := k.loadCache(); err != nil {
 		return nil, fmt.Errorf("couldn't load cache: %v", err)
 	}

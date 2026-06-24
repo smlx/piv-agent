@@ -1,6 +1,7 @@
 version: 2
 archives:
 - files:
+  - contrib
   - deploy/systemd
   - LICENSE
   - README.md

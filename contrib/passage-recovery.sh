@@ -19,6 +19,12 @@ if ! type passage >/dev/null 2>&1; then
 	exit 1
 fi
 
+# ensure age-keygen is installed
+if ! type age-keygen >/dev/null 2>&1; then
+	echo "age-keygen is not installed"
+	exit 1
+fi
+
 # ensure clean up on exit
 trap 'rm -rf /tmp/recovery && echo "Wiped identity."' EXIT
 
@@ -37,6 +43,23 @@ else
 	zbarcam --raw --quiet --oneshot >/tmp/recovery/identity.txt
 fi
 echo "QR Code successfully scanned."
+
+PASSAGE_DIR="${PASSAGE_DIR:-$HOME/.passage/store}"
+PUBLIC_KEY=$(age-keygen -y /tmp/recovery/identity.txt)
+
+if ! grep -q "^$PUBLIC_KEY\$" "$PASSAGE_DIR/.age-recipients"; then
+	echo "The scanned identity is not in $PASSAGE_DIR/.age-recipients."
+	echo "If you do not add it, the operation will be aborted because otherwise the store will no longer be decryptable by the recovery identity!"
+	read -p "Do you want to add it? [y/N] " -n 1 -r
+	echo
+	if [[ $REPLY =~ ^[Yy]$ ]]; then
+		echo "Adding recovery identity to $PASSAGE_DIR/.age-recipients"
+		echo "$PUBLIC_KEY" >>"$PASSAGE_DIR/.age-recipients"
+	else
+		echo "Aborting."
+		exit 1
+	fi
+fi
 
 # perform the bulk re-encryption using passage
 export PASSAGE_IDENTITIES_FILE="/tmp/recovery/identity.txt"

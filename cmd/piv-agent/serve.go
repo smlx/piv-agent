@@ -4,17 +4,18 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/smlx/piv-agent/internal/keyservice/piv"
 	"github.com/smlx/piv-agent/internal/notify"
 	"github.com/smlx/piv-agent/internal/pinentry"
+	"github.com/smlx/piv-agent/internal/piv"
+	"github.com/smlx/piv-agent/internal/securitykey"
 	"github.com/smlx/piv-agent/internal/server"
 	"github.com/smlx/piv-agent/internal/sockets"
 	"github.com/smlx/piv-agent/internal/ssh"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -22,17 +23,17 @@ import (
 type agentTypeFlag map[string]uint
 
 // validAgents is the list of agents supported by piv-agent.
-var validAgents = []string{"ssh", "gpg", "age"}
+var validAgents = []string{"ssh", "age"}
 
 // ServeCmd represents the listen command.
 type ServeCmd struct {
 	LoadKeyfile          bool          `kong:"default=true,help='Load the key file from ~/.ssh/id_ed25519'"`
 	ExitTimeout          time.Duration `kong:"default=12h,help='Exit after this period to drop transaction and key file passphrase cache, even if service is in use'"`
 	IdleTimeout          time.Duration `kong:"default=128m,help='Exit after this period of disuse'"`
-	TouchNotifyDelay     time.Duration `kong:"default=6s,help='Display a notification after this period when waiting for a touch'"`
 	PinentryBinaryName   string        `kong:"default='pinentry',help='Pinentry binary which will be used, must be in $PATH'"`
-	AgentTypes           agentTypeFlag `kong:"default='ssh=0;gpg=1;age=2',help='Agent types to handle'"`
+	AgentTypes           agentTypeFlag `kong:"default='ssh=0;age=1',help='Agent types to handle'"`
 	CredentialsDirectory string        `kong:"required,env='CREDENTIALS_DIRECTORY',help='Path to the systemd credentials directory'"`
+	NotifyOnMissingSeed  bool          `kong:"default=true,help='Notify the user if a security key is missing its ML-KEM seed locally'"`
 }
 
 // AfterApply validates the given agent types.
@@ -64,9 +65,10 @@ func (cmd *ServeCmd) fetchSeed(fileID [8]byte) ([]byte, error) {
 }
 
 // Run the listen command to start listening for requests.
-func (cmd *ServeCmd) Run(log *zap.Logger) error {
-	log.Info("startup", zap.String("version", version),
-		zap.String("build date", date))
+func (cmd *ServeCmd) Run(log *slog.Logger) error {
+	log.Info("startup",
+		slog.String("version", version),
+		slog.String("build date", date))
 	pe := pinentry.New(cmd.PinentryBinaryName)
 	p := piv.New(log, pe)
 	defer p.CloseAll()
@@ -84,7 +86,41 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	idle := time.NewTicker(cmd.IdleTimeout)
-	n := notify.New(log, cmd.TouchNotifyDelay)
+	n := notify.New(log)
+
+	if cmd.NotifyOnMissingSeed {
+		p.SetMissingSeedCheck(func(sk *securitykey.SecurityKey) {
+			dks, err := sk.DecryptingKeys()
+			if err != nil || len(dks) == 0 {
+				return
+			}
+			var hasSeed bool
+			for _, dk := range dks {
+				cert, err := sk.Certificate(dk.SlotSpec.Slot)
+				if err != nil {
+					continue
+				}
+				fileID, err := securitykey.ExtractFileIDFromCert(cert)
+				if err != nil || fileID == nil {
+					continue
+				}
+				filename := hex.EncodeToString(fileID)
+				seedPath := filepath.Join(
+					cmd.CredentialsDirectory, fmt.Sprintf("seeds_%s", filename))
+				if _, err := os.Stat(seedPath); err == nil {
+					hasSeed = true
+					break
+				}
+			}
+			if !hasSeed {
+				// ignore the error here since it is already logged in Message()
+				_ = n.Message("Missing ML-KEM seed",
+					fmt.Sprintf("Security key (serial \"%d\") does not have an available ML-KEM seed.\n", sk.Serial())+
+						"Run \"piv-agent setup --add-decrypting-key\" to configure a decrypting slot for this machine.")
+			}
+		})
+	}
+
 	g := errgroup.Group{}
 	// start SSH agent if given in agent-type flag
 	if _, ok := cmd.AgentTypes["ssh"]; ok {
@@ -94,29 +130,9 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 			a := ssh.NewAgent(p, pe, log, cmd.LoadKeyfile, n, cancel)
 			err := s.Serve(ctx, a, ls[cmd.AgentTypes["ssh"]], idle, cmd.IdleTimeout)
 			if err != nil {
-				log.Debug("exiting SSH server", zap.Error(err))
+				log.Debug("exiting SSH server", slog.Any("error", err))
 			} else {
 				log.Debug("exiting SSH server successfully")
-			}
-			cancel()
-			return err
-		})
-	}
-	// start GPG agent if given in agent-type flag
-	home, err := os.UserHomeDir()
-	if err != nil {
-		log.Warn("couldn't determine $HOME", zap.Error(err))
-	}
-	fallbackKeys := filepath.Join(home, ".gnupg", "piv-agent.secring")
-	if _, ok := cmd.AgentTypes["gpg"]; ok {
-		log.Debug("starting GPG server")
-		g.Go(func() error {
-			s := server.NewGPG(p, pe, log, fallbackKeys, n)
-			err := s.Serve(ctx, ls[cmd.AgentTypes["gpg"]], idle, cmd.IdleTimeout)
-			if err != nil {
-				log.Debug("exiting GPG server", zap.Error(err))
-			} else {
-				log.Debug("exiting GPG server successfully")
 			}
 			cancel()
 			return err
@@ -126,10 +142,10 @@ func (cmd *ServeCmd) Run(log *zap.Logger) error {
 	if _, ok := cmd.AgentTypes["age"]; ok {
 		log.Debug("starting age server")
 		g.Go(func() error {
-			s := server.NewAge(log, p, cmd.fetchSeed)
+			s := server.NewAge(log, p, cmd.fetchSeed, n)
 			err := s.Serve(ctx, ls[cmd.AgentTypes["age"]], idle, cmd.IdleTimeout)
 			if err != nil {
-				log.Debug("exiting age server", zap.Error(err))
+				log.Debug("exiting age server", slog.Any("error", err))
 			} else {
 				log.Debug("exiting age server successfully")
 			}

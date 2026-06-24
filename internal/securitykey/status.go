@@ -3,8 +3,11 @@ package securitykey
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 
 	pivgo "github.com/go-piv/piv-go/v2/piv"
@@ -22,6 +25,8 @@ const (
 	SlotStatusCompatible
 	// SlotStatusIncompatible means the slot is set up with an incompatible key (red).
 	SlotStatusIncompatible
+	// SlotStatusMissingSeed means the slot is configured but local seed is missing (yellow/warning).
+	SlotStatusMissingSeed
 )
 
 // SlotType represents whether the slot is used for signing or decrypting.
@@ -43,44 +48,27 @@ func (st SlotType) String() string {
 	}
 }
 
-// TouchPolicy represents the touch policy requirement.
-type TouchPolicy int
-
-const (
-	TouchPolicyCached TouchPolicy = iota
-	TouchPolicyAlways
-	TouchPolicyNever
-)
-
-func (tp TouchPolicy) String() string {
-	switch tp {
-	case TouchPolicyCached:
-		return "cached"
-	case TouchPolicyAlways:
-		return "always"
-	case TouchPolicyNever:
-		return "never"
-	default:
-		return "unknown"
-	}
-}
-
 // SlotReport contains the status and information about a slot.
 type SlotReport struct {
 	Slot        pivgo.Slot
 	Type        SlotType
-	TouchPolicy TouchPolicy
+	TouchPolicy pivgo.TouchPolicy
 	Status      SlotStatus
 	Error       error
 }
 
 // String generates a user-readable description of the slot.
 func (r *SlotReport) String() string {
-	return fmt.Sprintf("Slot %x (%s, touch policy: %s)", r.Slot.Key, r.Type.String(), r.TouchPolicy.String())
+	return fmt.Sprintf("Slot %x (%s, touch policy: %s)",
+		r.Slot.Key, r.Type.String(), TouchPolicyString(r.TouchPolicy))
 }
 
 // Status checks the status of a specific slot on the security key.
-func (k *SecurityKey) Status(slot pivgo.Slot, slotType SlotType, policy TouchPolicy) SlotReport {
+func (k *SecurityKey) Status(
+	slot pivgo.Slot,
+	slotType SlotType,
+	policy pivgo.TouchPolicy,
+) SlotReport {
 	report := SlotReport{
 		Slot:        slot,
 		Type:        slotType,
@@ -97,6 +85,11 @@ func (k *SecurityKey) Status(slot pivgo.Slot, slotType SlotType, policy TouchPol
 		}
 		return report
 	}
+	if cert == nil {
+		report.Status = SlotStatusIncompatible
+		report.Error = fmt.Errorf("certificate could not be loaded")
+		return report
+	}
 
 	// Check if set up by piv-agent
 	var actualOrg string
@@ -106,7 +99,8 @@ func (k *SecurityKey) Status(slot pivgo.Slot, slotType SlotType, policy TouchPol
 		actualOrg = cert.Issuer.Organization[0]
 	}
 
-	isPivAgentOrg := slices.Contains(cert.Subject.Organization, "piv-agent") || slices.Contains(cert.Issuer.Organization, "piv-agent")
+	isPivAgentOrg := slices.Contains(cert.Subject.Organization, "piv-agent") ||
+		slices.Contains(cert.Issuer.Organization, "piv-agent")
 
 	// Check compatibility
 	if _, isECDSA := cert.PublicKey.(*ecdsa.PublicKey); !isECDSA {
@@ -128,36 +122,57 @@ func (k *SecurityKey) Status(slot pivgo.Slot, slotType SlotType, policy TouchPol
 
 	if isPivAgentOrg && cert.Subject.CommonName == "piv-agent key" {
 		report.Status = SlotStatusPivAgent
-		return report
+	} else {
+		report.Status = SlotStatusCompatible
+		if !isPivAgentOrg {
+			if actualOrg != "" {
+				report.Error = fmt.Errorf("unexpected organization: %s", actualOrg)
+			}
+		} else if cert.Subject.CommonName != "piv-agent key" && cert.Subject.CommonName != "" {
+			report.Error = fmt.Errorf("unexpected common name: %s", cert.Subject.CommonName)
+		}
 	}
 
-	report.Status = SlotStatusCompatible
-	if !isPivAgentOrg {
-		if actualOrg != "" {
-			report.Error = fmt.Errorf("unexpected organization: %s", actualOrg)
+	if slotType == SlotTypeDecrypting && report.Status == SlotStatusPivAgent {
+		fileID, err := ExtractFileIDFromCert(cert)
+		switch {
+		case err != nil:
+			report.Status = SlotStatusIncompatible
+			report.Error = err
+		case fileID != nil:
+			configDir, err := os.UserConfigDir()
+			if err != nil {
+				report.Error = err
+			}
+			filename := hex.EncodeToString(fileID)
+			seedPath := filepath.Join(configDir, "credstore", "seeds", filename)
+			if _, err := os.Stat(seedPath); os.IsNotExist(err) {
+				report.Status = SlotStatusMissingSeed
+			}
+		default:
+			// v1 and earlier piv-agent certificates didn't use the OID extension,
+			// rendering them incompatible with v2
+			report.Status = SlotStatusIncompatible
+			report.Error = fmt.Errorf("certificate lacks custom seed OID extension")
 		}
-	} else if cert.Subject.CommonName != "piv-agent key" && cert.Subject.CommonName != "" {
-		report.Error = fmt.Errorf("unexpected common name: %s", cert.Subject.CommonName)
 	}
 
 	return report
 }
 
-// Statuses returns a report for all slots used by piv-agent, or a subset of slots if specified.
+// Statuses returns a report for all slots used by piv-agent, or a subset of
+// slots if specified.
 func (k *SecurityKey) Statuses(slotFilter []uint32) []SlotReport {
 	var reports []SlotReport
 
 	slotsToCheck := []struct {
 		Slot        pivgo.Slot
 		Type        SlotType
-		TouchPolicy TouchPolicy
+		TouchPolicy pivgo.TouchPolicy
 	}{
-		{defaultSignSlots["cached"].Slot, SlotTypeSigning, TouchPolicyCached},
-		{defaultSignSlots["always"].Slot, SlotTypeSigning, TouchPolicyAlways},
-		{defaultSignSlots["never"].Slot, SlotTypeSigning, TouchPolicyNever},
-		{defaultDecryptSlots["cached"].Slot, SlotTypeDecrypting, TouchPolicyCached},
-		{defaultDecryptSlots["always"].Slot, SlotTypeDecrypting, TouchPolicyAlways},
-		{defaultDecryptSlots["never"].Slot, SlotTypeDecrypting, TouchPolicyNever},
+		{defaultSignSlots["cached"].Slot, SlotTypeSigning, pivgo.TouchPolicyCached},
+		{defaultSignSlots["always"].Slot, SlotTypeSigning, pivgo.TouchPolicyAlways},
+		{defaultSignSlots["never"].Slot, SlotTypeSigning, pivgo.TouchPolicyNever},
 	}
 
 	for _, s := range slotsToCheck {
@@ -166,6 +181,26 @@ func (k *SecurityKey) Statuses(slotFilter []uint32) []SlotReport {
 		}
 		report := k.Status(s.Slot, s.Type, s.TouchPolicy)
 		reports = append(reports, report)
+	}
+
+	for _, slot := range RetiredDecryptingSlots() {
+		if len(slotFilter) > 0 && !slices.Contains(slotFilter, slot.Key) {
+			continue
+		}
+		report := k.Status(slot, SlotTypeDecrypting, pivgo.TouchPolicyAlways)
+		// Try to read touch policy from extension if configured
+		cert, err := k.Certificate(slot)
+		if err == nil {
+			for _, ext := range cert.Extensions {
+				if ext.Id.Equal(TouchPolicyOID) && len(ext.Value) == 2 {
+					report.TouchPolicy = pivgo.TouchPolicy(ext.Value[1])
+				}
+			}
+		}
+
+		if report.Status != SlotStatusNotSetup {
+			reports = append(reports, report)
+		}
 	}
 
 	return reports

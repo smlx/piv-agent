@@ -37,7 +37,7 @@ func TestHandleIdentity(t *testing.T) {
 		return seed, nil
 	}
 
-	handler := age.HandleIdentity(nil, mockFetcher)
+	handler := age.HandleIdentity(nil, mockFetcher, nil)
 
 	// Create valid 18-byte identity data
 	data := make([]byte, 18)
@@ -56,7 +56,7 @@ func TestHandleIdentity(t *testing.T) {
 }
 
 func TestHandleIdentityInvalidLength(t *testing.T) {
-	handler := age.HandleIdentity(nil, nil)
+	handler := age.HandleIdentity(nil, nil, nil)
 
 	// Too short
 	_, err := handler([]byte{1, 2, 3})
