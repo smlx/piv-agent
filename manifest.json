@@ -1,0 +1,15 @@
+{
+  "name": "PIV Agent",
+  "short_name": "PIV Agent",
+  "start_url": "/piv-agent/",
+  "scope": "/piv-agent/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/piv-agent/favicon.svg",
+      "sizes": "512x512"
+    }
+  ]
+}

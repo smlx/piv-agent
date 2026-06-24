@@ -1,1 +1,9 @@
-User-agent: *
+PIV Agent
+
+- PIV Agent Documentation: /piv-agent/docs/
+- Install: /piv-agent/docs/install/
+- Setup: /piv-agent/docs/setup/
+- Use: /piv-agent/docs/use/
+- FAQ: /piv-agent/docs/faq/
+
+
