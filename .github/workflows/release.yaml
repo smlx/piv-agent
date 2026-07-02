@@ -39,7 +39,7 @@ jobs:
     - name: Install Dependencies
       run: sudo apt-get update && sudo apt-get -u install libpcsclite-dev
     - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-    - uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+    - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
       id: goreleaser
       with:
         version: latest
@@ -47,6 +47,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     # attest artifacts
-    - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+    - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
       with:
         subject-checksums: ./dist/checksums.txt
