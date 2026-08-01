@@ -10,7 +10,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
       with:
         go-version: stable
@@ -20,7 +20,7 @@ jobs:
       run: |
         go test -count=1 -v -covermode=atomic -coverprofile=cover.out -coverpkg=./... ./...
     - name: Generage coverage badge
-      uses: vladopajic/go-test-coverage@a93b868a4cbcbf18dc3781650fad241f0020e609 # v2.18.8
+      uses: vladopajic/go-test-coverage@f94bcf0d6b9fa5fb8b783830b22648f6c17475e2 # v2.19.0
       with:
         profile: cover.out
         local-prefix: github.com/${{ github.repository }}
