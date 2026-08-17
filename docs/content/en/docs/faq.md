@@ -29,7 +29,8 @@ So for every machine you plug your YubiKey into, you'll have the same age identi
 There is a `1:1` relationship between YubiKey slots and identities.
 
 `age-plugin-piv-agent` also enforces a `1:1` relationship between YubiKey slots and identities, but the seed is kept on your laptop (sealed by the TPM).
-This means that to decrypt files on multiple laptops, you should provision a separate decrypting slot on the YubiKey for each laptop.
+This means that for each laptop you need to use a different slot on the YubiKey, and you'll have a different age identity.
+To decrypt files on multiple laptops, you have to encrypt the files for multiple recipients (corresponding to each unique identity)
 
 For the threat model of malware stealing your ML-KEM seed, I am not sure there is much difference between the two.
 For `age-plugin-yubikey`: the certificate can be read without requiring a touch on the YubiKey.
