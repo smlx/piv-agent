@@ -154,7 +154,9 @@ func (s *SSH) Serve(ctx context.Context, a *ssh.Agent, l net.Listener,
 			// * conn deadline reached (client stopped responding)
 			//   err will be non-nil in this case.
 			go func() {
-				if err := agent.ServeAgent(a, conn); err != nil && !errors.Is(err, io.EOF) {
+				// ServeAgent never returns nil; check for anything other than EOF
+				// instead.
+				if err := agent.ServeAgent(a, conn); !errors.Is(err, io.EOF) {
 					s.log.Error("ssh-agent error", slog.Any("error", err))
 				}
 				s.log.Debug("finish serving ssh-agent connection")
